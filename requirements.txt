@@ -1,0 +1,5 @@
+Django==6.0.6
+gunicorn==21.2.0
+yt-dlp==2026.7.4
+qrcode==8.2
+pillow==12.3.0
