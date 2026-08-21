@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ร้านยำปากเจ่อ - Music Player</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Kanit"', "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-white to-amber-50 text-slate-900 min-h-screen p-3 sm:p-4 md:p-6 font-sans">
+    <div class="max-w-6xl mx-auto">
+
+        <!-- หัวข้อแบรนด์ + โลโก้ -->
+        <header class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+            <img src="{% static 'music/img/logo.jpg' %}" alt="ร้านยำปากเจ่อ" class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 object-cover rounded-xl ring-4 ring-amber-400/60 shadow-xl" onerror="this.style.display='none'">
+            <div>
+                <h1 class="text-lg sm:text-2xl md:text-3xl font-extrabold text-slate-900">ร้านยำปากเจ่อกำเเพงเพชรอร่อยถูกดีอันดับ1</h1>
+                <p class="text-[10px] sm:text-xs text-slate-500">ระบบคิวเพลงอัตโนมัติสำหรับลูกค้า</p>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+
+            <!-- เครื่องเล่นวิดีโอ YouTube -->
+            <div class="md:col-span-2 space-y-4">
+                <div class="aspect-video bg-black rounded-2xl overflow-hidden shadow-xl relative border border-slate-200" id="video-container">
+                    <div id="player" class="w-full h-full"></div>
+
+                    <!-- Queue overlay: shows when queue exists but no current song -->
+                    <div id="queue-overlay" class="absolute inset-0 z-10 hidden flex-col items-center justify-center bg-white p-4">
+                        <p class="text-2xl md:text-4xl font-extrabold text-amber-700 text-center">
+                            ยำปากเจ่อกำแพงเพชรอร่อยถูกดีอันดับ1
+                        </p>
+                    </div>
+
+                    <!-- Idle splash: shows when no queue AND no current song -->
+                    <div id="idle-splash" class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 md:gap-4 bg-gradient-to-br from-white/95 to-amber-50/95 p-4 text-center">
+                        <div class="grid grid-cols-2 gap-3 w-full max-w-2xl mx-auto">
+                            <img src="{% static 'music/img/1.png' %}" alt="ร้านยำปากเจ่อ" class="w-full h-48 object-cover rounded-2xl ring-2 ring-amber-400/60 shadow-xl" onerror="this.style.display='none'">
+                            <img src="{% static 'music/img/2.jpg' %}" alt="ร้านยำปากเจ่อ" class="w-full h-48 object-cover rounded-2xl ring-2 ring-amber-400/60 shadow-xl" onerror="this.style.display='none'">
+                        </div>
+                        <img src="/qr.png" class="w-28 h-28 md:w-36 md:h-36 rounded-xl bg-white p-1 shadow-lg border border-slate-200" alt="QR Code">
+                        <p class="text-xl md:text-3xl font-extrabold text-amber-600">สแกน QR เพื่อขอเพลง</p>
+                        <p class="text-xs md:text-sm text-slate-500">รอเพลงจากลูกค้า...</p>
+                    </div>
+                </div>
+
+                <div class="bg-white shadow-md p-3 sm:p-4 rounded-xl flex items-center justify-between border border-slate-200">
+                    <div class="overflow-hidden pr-2">
+                        <span class="text-[10px] sm:text-xs text-amber-600 font-bold tracking-wider">กำลังเล่น</span>
+                        <h2 id="now-playing-title" class="text-sm sm:text-base md:text-lg font-bold truncate text-slate-900">รอเพลงจากลูกค้า...</h2>
+                    </div>
+                    <button onclick="skipSong()" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow transition flex-shrink-0">
+                        ข้ามเพลง
+                    </button>
+                </div>
+            </div>
+
+            <!-- ฝั่ง QR Code และ คิวเพลง -->
+            <div class="space-y-3 sm:space-y-4">
+                <div class="bg-white shadow-md p-4 sm:p-5 rounded-2xl text-center border border-slate-200">
+                    <h3 class="font-bold text-base sm:text-lg text-slate-900 mb-2">สแกนเพื่อขอเพลง</h3>
+                    <img src="/qr.png" class="w-36 h-36 sm:w-44 sm:h-44 mx-auto rounded-xl border-2 border-amber-400 bg-white p-2" alt="QR Code">
+                    <p class="text-[10px] sm:text-xs text-slate-500 mt-2">เปิดกล้องมือถือสแกนเพื่อเลือกเพลง</p>
+                    <button onclick="printQR()" class="mt-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow transition">
+                        พิมพ์ QR Code
+                    </button>
+                </div>
+
+                <div class="bg-white shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-base sm:text-lg text-slate-900"> คิวเพลงต่อไป (<span id="queue-count">0</span>)</h3>
+                        <button onclick="clearQueue()" class="text-[10px] sm:text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-2 sm:px-3 py-1.5 rounded-lg font-bold border border-amber-200 transition">รีคิวเพลง</button>
+                    </div>
+                    <div id="queue-list" class="space-y-2 max-h-60 sm:max-h-80 overflow-y-auto pr-1"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        let player = null;
+        let currentSong = null;
+        let queue = [];
+        let isPlayerReady = false;
+        let wakeLock = null;
+        let lastPlayedVideoId = null;
+        // Prevent duplicate skip/end requests and stale responses from
+        // resetting the song that is currently playing.
+        const finishingSongIds = new Set();
+
+        // กันจอหลับ / พับจอแล้วเพลงยังเล่นต่อ
+        async function requestWakeLock() {
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+            } catch (err) {
+                console.warn('Wake Lock error:', err);
+            }
+        }
+        requestWakeLock();
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') requestWakeLock();
+        });
+
+        let userInteracted = false;
+        function markInteracted() { userInteracted = true; }
+        document.addEventListener('click', markInteracted, { once: true });
+        document.addEventListener('touchstart', markInteracted, { once: true });
+
+        function ensurePlaying() {
+            if (!player || !currentSong) return;
+            if (userInteracted && player.isMuted && player.isMuted()) {
+                player.unMute();
+            }
+            if (player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) {
+                player.playVideo();
+            }
+        }
+        document.addEventListener('click', ensurePlaying);
+        document.addEventListener('touchstart', ensurePlaying);
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '100%',
+                width: '100%',
+                playerVars: {
+                    'autoplay': 1,
+                    'controls': 1,
+                    'enablejsapi': 1,
+                    'playsinline': 1,
+                    'rel': 0,
+                    'origin': window.location.origin
+                },
+                events: {
+                    'onReady': () => {
+                        isPlayerReady = true;
+                        fetchQueue();
+                    },
+                    'onStateChange': onPlayerStateChange,
+                    'onError': (event) => {
+                      // Error 153 = embedding disabled by video owner
+                      // Other codes (2, 5, 100, 101, 150) may be transient
+                      if (event.data === 153) {
+                          console.warn('Video embedding disabled (Error 153), skipping:', currentSong?.title);
+                          skipSong();
+                      } else {
+                          console.warn('YouTube player error:', event.data, 'retrying once...');
+                          // Retry once by reloading the same video
+                          if (currentSong && !window._retryCount) {
+                              window._retryCount = 1;
+                              player.loadVideoById(currentSong.video_id);
+                          } else {
+                              window._retryCount = 0;
+                              skipSong();
+                          }
+                      }
+                  }
+                }
+            });
+        }
+
+        function onPlayerStateChange(event) {
+            if (event.data === YT.PlayerState.ENDED && currentSong) {
+                removePlayedSong(currentSong.id);
+            }
+        }
+
+        function fetchQueue(onDone) {
+            fetch('/api/queue/')
+                .then(res => res.json())
+                .then(data => {
+                    queue = data.queue;
+                    document.getElementById('queue-count').innerText = queue.length;
+                    renderQueue();
+
+                    const videoContainer = document.getElementById('video-container');
+                    const queueOverlay = document.getElementById('queue-overlay');
+                    const idleSplash = document.getElementById('idle-splash');
+
+                    if (isPlayerReady && !currentSong && queue.length > 0) {
+                        playNext();
+                    } else if (!currentSong) {
+                        // No current song, update overlays based on queue
+                        if (queue.length > 0) {
+                            idleSplash.classList.add('hidden');
+                            queueOverlay.classList.remove('hidden');
+                            videoContainer.classList.remove('bg-black');
+                            videoContainer.classList.add('bg-white');
+                        } else {
+                            idleSplash.classList.remove('hidden');
+                            queueOverlay.classList.add('hidden');
+                            videoContainer.classList.remove('bg-white');
+                            videoContainer.classList.add('bg-black');
+                        }
+                    }
+                    if (onDone) onDone();
+                })
+                .catch(err => console.error(err));
+        }
+
+        // เล่นเพลงแรกในคิว (เล่นอัตโนมัติเมื่อมีคนขอเพลง / เพลงจบ / กดข้าม)
+        function playNext() {
+            const next = queue.find(song => !finishingSongIds.has(song.id));
+            const videoContainer = document.getElementById('video-container');
+            const queueOverlay = document.getElementById('queue-overlay');
+            const idleSplash = document.getElementById('idle-splash');
+
+            if (next) {
+                // กัน race: polling อาจเจอเพลงเดิมที่เพิ่งจบยังไม่ถูกตัดออกจากคิว -> ไม่เล่นซ้ำ
+                if (currentSong && currentSong.id === next.id) return;
+                currentSong = next;
+                lastPlayedVideoId = next.video_id;
+                document.getElementById('now-playing-title').innerText = currentSong.title;
+                idleSplash.classList.add('hidden');
+                queueOverlay.classList.add('hidden');
+                videoContainer.classList.remove('bg-white');
+                videoContainer.classList.add('bg-black');
+                player.loadVideoById(currentSong.video_id);
+                player.mute();      // เริ่มแบบปิดเสียงก่อน (browser อนุญาต autoplay แบบ muted เสมอ)
+                player.playVideo();
+                player.unMute();    // เปิดเสียงทันที
+            } else {
+                currentSong = null;
+                lastPlayedVideoId = null;
+                document.getElementById('now-playing-title').innerText = "รอเพลงจากลูกค้า...";
+                idleSplash.classList.remove('hidden');
+                if (queue.length > 0) {
+                    queueOverlay.classList.remove('hidden');
+                    videoContainer.classList.remove('bg-black');
+                    videoContainer.classList.add('bg-white');
+                } else {
+                    queueOverlay.classList.add('hidden');
+                    videoContainer.classList.remove('bg-white');
+                    videoContainer.classList.add('bg-black');
+                }
+            }
+        }
+
+        function skipSong() {
+            const songToSkip = currentSong || queue.find(song => !finishingSongIds.has(song.id));
+            if (songToSkip) removePlayedSong(songToSkip.id);
+        }
+
+        function printQR() {
+            const printWindow = window.open("/qr.png", "_blank");
+            if (printWindow) {
+                printWindow.onload = function() {
+                    printWindow.print();
+                };
+            } else {
+                // Popup blocked - fallback to direct link
+                window.location.href = "/qr.png";
+            }
+        }
+
+        function clearQueue() {
+            if (!confirm('ล้างคิวเพลงทั้งหมด?')) return;
+            fetch('/api/clear/', { method: 'POST' })
+                .then(() => {
+                    currentSong = null;
+                    lastPlayedVideoId = null;
+                    fetchQueue();
+                });
+        }
+
+        function removePlayedSong(songId) {
+            if (!songId || finishingSongIds.has(songId)) return;
+
+            finishingSongIds.add(songId);
+            // Release the current slot immediately. The old request must not
+            // race a poll or a second YouTube event.
+            if (currentSong && currentSong.id === songId) currentSong = null;
+
+            fetch(`/api/played/${songId}/`)
+                .then(() => fetchQueue())
+                .catch(err => console.error('Unable to finish song:', err))
+                .finally(() => {
+                    finishingSongIds.delete(songId);
+                    if (!currentSong && isPlayerReady) fetchQueue();
+                });
+        }
+
+        function renderQueue() {
+            const container = document.getElementById('queue-list');
+            container.innerHTML = '';
+
+            if (queue.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">ไม่มีคิวเพลงในระบบ</p>';
+                return;
+            }
+
+            queue.forEach((song, idx) => {
+                const isPlayingNow = currentSong && song.id === currentSong.id;
+                container.innerHTML += `
+                    <div class="flex items-center gap-3 p-2 rounded-lg text-sm ${isPlayingNow ? 'bg-amber-50 border border-amber-300' : 'bg-slate-50 border border-slate-100'}">
+                        <span class="font-bold text-amber-600">#${idx+1}</span>
+                        <img src="${song.thumbnail}" class="w-10 h-10 object-cover rounded flex-shrink-0">
+                        <div class="overflow-hidden">
+                            <p class="font-semibold truncate text-slate-900">${song.title}</p>
+                            <p class="text-xs text-slate-500 truncate">ขอโดย: ${song.requested_by}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        setInterval(fetchQueue, 3000);
+    </script>
+</body>
+</html>
