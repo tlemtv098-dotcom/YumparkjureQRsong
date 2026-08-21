@@ -1,9 +1,9 @@
 [build]
-builder = "nixpacks"
+builder = \"nixpacks\"
 
 [deploy]
-startCommand = "gunicorn yum_jukebox.wsgi:application --bind 0.0.0.0:\"
-healthcheckPath = "/"
+startCommand = \"gunicorn yum_jukebox.wsgi:application --bind 0.0.0.0:\\"
+healthcheckPath = \"/\"
 healthcheckTimeout = 300
-restartPolicyType = "on_failure"
+restartPolicyType = \"on_failure\"
 restartPolicyMaxRetries = 10
