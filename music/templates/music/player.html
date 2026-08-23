@@ -49,10 +49,6 @@
 
                     <!-- Idle splash: shows when no queue AND no current song -->
                     <div id="idle-splash" class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 md:gap-4 bg-gradient-to-br from-white/95 to-amber-50/95 p-4 text-center">
-                        <div class="grid grid-cols-2 gap-3 w-full max-w-2xl mx-auto">
-                            <img src="{% static 'music/img/1.png' %}" alt="ร้านยำปากเจ่อ" class="w-full h-48 object-cover rounded-2xl ring-2 ring-amber-400/60 shadow-xl" >
-                            <img src="{% static 'music/img/2.jpg' %}" alt="ร้านยำปากเจ่อ" class="w-full h-48 object-cover rounded-2xl ring-2 ring-amber-400/60 shadow-xl" >
-                        </div>
                         <img src="{% url 'qr_code' %}" class="w-28 h-28 md:w-36 md:h-36 rounded-xl bg-white p-1 shadow-lg border border-slate-200" alt="QR Code">
                         <p class="text-xl md:text-3xl font-extrabold text-amber-600">สแกน QR เพื่อขอเพลง</p>
                         <p class="text-xs md:text-sm text-slate-500">รอเพลงจากลูกค้า...</p>
