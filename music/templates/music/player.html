@@ -254,14 +254,17 @@
         }
 
         function printQR() {
-            const printWindow = window.open("{% url 'qr_code' %}", "_blank");
+            // Get QR URL from the QR code image src (rendered by template)
+            const qrImg = document.querySelector("#idle-splash img[alt="QR Code"]") || 
+                          document.querySelector(".space-y-3 img[alt="QR Code"]");
+            const qrUrl = qrImg ? qrImg.src : "/qr.png";
+            const printWindow = window.open(qrUrl, "_blank");
             if (printWindow) {
                 printWindow.onload = function() {
                     printWindow.print();
                 };
             } else {
-                // Popup blocked - fallback to direct link
-                window.location.href = "{% url 'qr_code' %}";
+                window.location.href = qrUrl;
             }
         }
 

@@ -146,8 +146,15 @@ def remove_my_song(request, song_id):
     return JsonResponse({'status': 'failed'}, status=400)
 
 def generate_qr(request):
-    local_ip = get_local_ip()
-    qr_img = qrcode.make(f'http://{local_ip}:8000/request/')
+    # Use public URL from env var, fallback to request host
+    public_url = os.environ.get('PUBLIC_URL')
+    if public_url:
+        qr_url = f'{public_url.rstrip("/")}/request/'
+    else:
+        # Build from request host (works on Railway with proper host header)
+        scheme = 'https' if request.is_secure() else 'http'
+        qr_url = f'{scheme}://{request.get_host()}/request/'
+    qr_img = qrcode.make(qr_url)
     buffer = io.BytesIO()
     qr_img.save(buffer, format='PNG')
     return HttpResponse(buffer.getvalue(), content_type='image/png')
