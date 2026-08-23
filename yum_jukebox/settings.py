@@ -123,6 +123,9 @@ STATICFILES_DIRS = [
     BASE_DIR / 'music' / 'static',
 ]
 
+# WhiteNoise storage for production
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
 
