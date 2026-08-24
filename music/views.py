@@ -11,10 +11,12 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import SongQueue
 
 # Video IDs with embedding disabled (Error 153) - filtered server-side
+# Many Thai songs from GMM, etc. have embedding disabled
 BLOCKED_VIDEO_IDS = {
-    'jNQXAC9IVRw',  # Me at the zoo
-    'dQw4w9WgXcQ',  # Never Gonna Give You Up
-    'qguo-j5PxBE',  # ซ่อน(ไม่)หา - Jeff Satur
+    'jNQXAC9IVRw',   # Me at the zoo
+    'dQw4w9WgXcQ',   # Never Gonna Give You Up
+    'qguo-j5PxBE',   # ซ่อน(ไม่)หา - Jeff Satur
+    # Add more known blocked Thai songs here as discovered
 }
 
 def get_local_ip():

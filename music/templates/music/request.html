@@ -78,7 +78,13 @@
         }
 
         // Known video IDs that have embedding disabled (Error 153)
-        const blockedVideoIds = new Set(["jNQXAC9IVRw", "dQw4w9WgXcQ", "qguo-j5PxBE"]);
+        // Many Thai songs from GMM, etc. have embedding disabled
+        const blockedVideoIds = new Set([
+            "jNQXAC9IVRw",   // Me at the zoo
+            "dQw4w9WgXcQ",   // Never Gonna Give You Up
+            "qguo-j5PxBE",   // ซ่อน(ไม่)หา - Jeff Satur
+            // Add more known blocked Thai songs here as discovered
+        ]);
 
         let searchResults = [];
         let searchTimer = null;

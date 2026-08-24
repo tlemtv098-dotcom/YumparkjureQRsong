@@ -154,7 +154,10 @@
                       // Other codes (2, 5, 100, 101, 150) may be transient
                       if (event.data === 153) {
                           console.warn('Video embedding disabled (Error 153), skipping:', currentSong?.title);
-                          skipSong();
+                          // Show user-friendly message
+                          const titleEl = document.getElementById("now-playing-title");
+                          if (titleEl) titleEl.innerText = "เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) - ข้ามไปเพลงถัดไป...";
+                          setTimeout(() => skipSong(), 1500);
                       } else {
                           console.warn('YouTube player error:', event.data, 'retrying once...');
                           // Retry once by reloading the same video
