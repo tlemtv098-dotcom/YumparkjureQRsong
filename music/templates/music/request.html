@@ -203,7 +203,12 @@
                     client_id: clientId
                 })
             })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(err => { throw new Error(err.error || "HTTP " + res.status); });
+                }
+                return res.json();
+            })
             .then(data => {
                 if (data.status === "success") {
                     showResult(data.song_id);
@@ -216,8 +221,8 @@
                 }
             })
             .catch(err => {
-                console.error(err);
-                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+                console.error("Request error:", err);
+                alert("เกิดข้อผิดพลาด: " + err.message);
             });
         }
 
