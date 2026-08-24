@@ -156,8 +156,21 @@ def generate_qr(request):
     else:
         # Build from request host (works on Railway with proper host header)
         scheme = 'https' if request.is_secure() else 'http'
-        qr_url = f'{scheme}://{request.get_host()}/request/'
-    qr_img = qrcode.make(qr_url)
-    buffer = io.BytesIO()
-    qr_img.save(buffer, format='PNG')
-    return HttpResponse(buffer.getvalue(), content_type='image/png')
+        host = request.get_host()
+        # Validate host format
+        if not host or ' ' in host:
+            host = 'web-production-2c2ef.up.railway.app'
+        qr_url = f'{scheme}://{host}/request/'
+    
+    try:
+        qr_img = qrcode.make(qr_url)
+        buffer = io.BytesIO()
+        qr_img.save(buffer, format='PNG')
+        return HttpResponse(buffer.getvalue(), content_type='image/png')
+    except Exception as e:
+        # Fallback QR code
+        fallback_url = 'https://web-production-2c2ef.up.railway.app/request/'
+        qr_img = qrcode.make(fallback_url)
+        buffer = io.BytesIO()
+        qr_img.save(buffer, format='PNG')
+        return HttpResponse(buffer.getvalue(), content_type='image/png')
