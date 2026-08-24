@@ -180,6 +180,9 @@
             }
         }
 
+        let lastQueueLength = 0;
+        let fastPollTimer = null;
+
         function fetchQueue(onDone) {
             fetch('/api/queue/')
                 .then(res => res.json())
@@ -191,6 +194,10 @@
                     const videoContainer = document.getElementById('video-container');
                     const queueOverlay = document.getElementById('queue-overlay');
                     const idleSplash = document.getElementById('idle-splash');
+
+                    // Detect new songs added to queue
+                    const hasNewSongs = queue.length > lastQueueLength;
+                    lastQueueLength = queue.length;
 
                     if (isPlayerReady && !currentSong && queue.length > 0) {
                         playNext();
@@ -208,6 +215,13 @@
                             videoContainer.classList.add('bg-black');
                         }
                     }
+                    
+                    // If new songs added, trigger immediate play
+                    if (hasNewSongs && isPlayerReady && !currentSong) {
+                        playNext();
+                        setFastPoll();  // Switch to fast polling for 10 seconds
+                    }
+                    
                     if (onDone) onDone();
                 })
                 .catch(err => console.error(err));
@@ -322,7 +336,125 @@
             });
         }
 
-        setInterval(fetchQueue, 3000);
+        // Manual search/play functions for player page
+        let manualSearchResults = [];
+        let manualSearchTimer = null;
+
+        function manualSearch() {
+            const query = document.getElementById("manual-search").value.trim();
+            if (!query) return;
+            document.getElementById("manual-loading").classList.remove("hidden");
+            document.getElementById("manual-results").innerHTML = "";
+            
+            fetch("/api/search/?q=" + encodeURIComponent(query))
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById("manual-loading").classList.add("hidden");
+                    manualSearchResults = data.results.filter(song => !blockedVideoIds.has(song.id));
+                    const container = document.getElementById("manual-results");
+                    container.innerHTML = "";
+                    if (manualSearchResults.length === 0) {
+                        container.innerHTML = "<p class="text-xs text-slate-500 text-center py-2">ไม่พบเพลงที่ค้นหา</p>";
+                        return;
+                    }
+                    manualSearchResults.forEach((song, idx) => {
+                        container.innerHTML += `
+                            <div class="bg-white shadow-md p-2 rounded-xl border border-slate-200 flex items-center gap-2">
+                                <img src="${song.thumbnail}" class="w-10 h-10 object-cover rounded-lg flex-shrink-0">
+                                <div class="flex-1 overflow-hidden">
+                                    <p class="font-semibold text-xs truncate text-slate-900">${song.title}</p>
+                                    <p class="text-[10px] text-slate-500 truncate">${song.channel}</p>
+                                </div>
+                                <button onclick="manualPlay(${idx})"
+                                        class="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
+                                    เล่นทันที
+                                </button>
+                            </div>
+                        `;
+                    });
+                })
+                .catch(err => {
+                    document.getElementById("manual-loading").classList.add("hidden");
+                    console.error(err);
+                });
+        }
+
+        function manualPlay(idx) {
+            const song = manualSearchResults[idx];
+            // Add to queue and play immediately
+            fetch("/api/add/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: song.title,
+                    video_id: song.id,
+                    thumbnail: song.thumbnail,
+                    channel: song.channel,
+                    requested_by: "เจ้าของร้าน (เล่นเอง)",
+                    client_id: "manual_" + Date.now()
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "success") {
+                    // Trigger immediate play on player
+                    fetchQueue(() => {
+                        // Force play the newly added song
+                        setTimeout(() => {
+                            if (queue.length > 0 && !currentSong) {
+                                playNext();
+                            }
+                        }, 100);
+                    });
+                    // Hide manual section, show player
+                    document.getElementById("manual-play-section").classList.add("hidden");
+                    document.getElementById("manual-search").value = "";
+                    document.getElementById("manual-results").innerHTML = "";
+                } else {
+                    alert("เพิ่มเพลงไม่สำเร็จ: " + (data.error || "Unknown error"));
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("เกิดข้อผิดพลาด: " + err.message);
+            });
+        }
+
+        // Debounce manual search
+        document.addEventListener("DOMContentLoaded", function() {
+            const manualSearchInput = document.getElementById("manual-search");
+            if (manualSearchInput) {
+                manualSearchInput.addEventListener("input", function() {
+                    clearTimeout(manualSearchTimer);
+                    manualSearchTimer = setTimeout(manualSearch, 500);
+                });
+                manualSearchInput.addEventListener("keypress", function(e) {
+                    if (e.key === "Enter") manualSearch();
+                });
+            }
+        });
+
+        // Dynamic polling: fast (1s) when queue has changes, normal (3s) otherwise
+        let pollInterval = 3000;
+        let pollTimer = null;
+
+        function startPolling() {
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = setInterval(fetchQueue, pollInterval);
+        }
+
+        function setFastPoll() {
+            pollInterval = 1000;
+            startPolling();
+            // Revert to normal after 10 seconds
+            setTimeout(() => {
+                pollInterval = 3000;
+                startPolling();
+            }, 10000);
+        }
+
+        // Start initial polling
+        startPolling();
     </script>
 </body>
 </html>
