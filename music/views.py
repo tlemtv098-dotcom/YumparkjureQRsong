@@ -104,17 +104,30 @@ def hits(request):
 @csrf_exempt
 def add_to_queue(request):
     if request.method == 'POST':
-        data = json.loads(request.body)
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'failed', 'error': 'Invalid JSON'}, status=400)
+        
+        # Validate required fields
+        video_id = data.get('video_id')
+        if not video_id:
+            return JsonResponse({'status': 'failed', 'error': 'Missing video_id'}, status=400)
+        
+        # Check if video is blocked
+        if video_id in BLOCKED_VIDEO_IDS:
+            return JsonResponse({'status': 'failed', 'error': 'This video cannot be embedded'}, status=400)
+        
         song = SongQueue.objects.create(
-            title=data.get('title'),
-            video_id=data.get('video_id'),
-            thumbnail=data.get('thumbnail'),
-            channel=data.get('channel'),
+            title=data.get('title', 'Unknown Title'),
+            video_id=video_id,
+            thumbnail=data.get('thumbnail', f'https://img.youtube.com/vi/{video_id}/mqdefault.jpg'),
+            channel=data.get('channel', 'YouTube'),
             requested_by=data.get('requested_by', 'ลูกค้าในร้าน'),
             client_id=data.get('client_id', '')
         )
         return JsonResponse({'status': 'success', 'song_id': song.id})
-    return JsonResponse({'status': 'failed'}, status=400)
+    return JsonResponse({'status': 'failed', 'error': 'Method not allowed'}, status=405)
 
 def get_queue(request):
     songs = SongQueue.objects.filter(is_played=False).values(
