@@ -23,7 +23,7 @@
 <body class="bg-white min-h-screen font-sans pb-24">
     <div class="max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto px-4 sm:px-6 pt-6">
         <div class="flex items-center gap-3 mb-6">
-            <img src="/static/music/img/logo.jpg" class="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded-xl ring-2 ring-amber-400/50 shadow-md">
+            <img src="{% static 'music/img/logo.jpg' %}" class="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded-xl ring-2 ring-amber-400/50 shadow-md">
             <div>
                 <h1 class="font-extrabold text-lg sm:text-xl text-slate-900">ร้านยำปากเจ่อ</h1>
                 <p class="text-xs sm:text-sm text-slate-500">สแกน QR เพื่อขอเพลง</p>
@@ -115,10 +115,16 @@
                             <p class="font-semibold text-sm truncate text-slate-900">${song.title}</p>
                             <p class="text-xs text-slate-500 truncate">${song.channel}</p>
                         </div>
-                        <button onclick="requestHit(${hitSongs.indexOf(song)})"
-                                class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
-                            ขอเพลง
-                        </button>
+                        <div class="flex gap-2">
+                            <button onclick="previewSong('${song.id}')" 
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
+                                ฟังตัวอย่าง
+                            </button>
+                            <button onclick="requestHit(${hitSongs.indexOf(song)})"
+                                    class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
+                                ขอเพลง
+                            </button>
+                        </div>
                     </div>
                 `;
             });
@@ -160,7 +166,7 @@
                     const container = document.getElementById("results");
                     container.innerHTML = "";
                     if (searchResults.length === 0) {
-                        container.innerHTML = "<p class=\"text-sm text-slate-500 text-center py-3\">ไม่พบเพลงที่ค้นหา</p>";
+                        container.innerHTML = "<p class="text-sm text-slate-500 text-center py-3">ไม่พบเพลงที่ค้นหา</p>";
                         return;
                     }
                     searchResults.forEach((song, idx) => {
@@ -171,10 +177,16 @@
                                     <p class="font-semibold text-sm truncate text-slate-900">${song.title}</p>
                                     <p class="text-xs text-slate-500 truncate">${song.channel}</p>
                                 </div>
-                                <button onclick="requestSong(${idx})"
-                                        class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
-                                    ขอเพลง
-                                </button>
+                                <div class="flex gap-2">
+                                    <button onclick="previewSong('${song.id}')" 
+                                            class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
+                                        ฟังตัวอย่าง
+                                    </button>
+                                    <button onclick="requestSong(${idx})"
+                                            class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
+                                        ขอเพลง
+                                    </button>
+                                </div>
                             </div>
                         `;
                     });
@@ -188,6 +200,11 @@
         function requestSong(idx) {
             const song = searchResults[idx];
             requestSongData(song);
+        }
+
+        function previewSong(videoId) {
+            // Open YouTube video in new tab for preview
+            window.open("https://www.youtube.com/watch?v=" + videoId, "_blank");
         }
 
         function requestSongData(song) {
@@ -282,7 +299,7 @@
                 .then(data => {
                     const container = document.getElementById("my-songs-list");
                     if (!data.songs || data.songs.length === 0) {
-                        container.innerHTML = "<p class=\"text-xs text-slate-400 text-center py-3\">ยังไม่มีเพลงที่ขอไว้</p>";
+                        container.innerHTML = "<p class="text-xs text-slate-400 text-center py-3">ยังไม่มีเพลงที่ขอไว้</p>";
                         return;
                     }
                     container.innerHTML = "";

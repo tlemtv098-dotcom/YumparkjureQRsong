@@ -26,10 +26,10 @@
 
         <!-- หัวข้อแบรนด์ + โลโก้ -->
         <header class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-            <img src="{% static 'music/img/logo.jpg' %}" alt="ร้านยำปากเจ่อ" class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 object-cover rounded-xl ring-4 ring-amber-400/60 shadow-xl" >
+            <img src="{% static 'music/img/logo.jpg' %}" alt="ร้านยำปากเจ่อ" class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 object-cover rounded-xl ring-4 ring-amber-400/60 shadow-xl">
             <div>
                 <h1 class="text-lg sm:text-2xl md:text-3xl font-extrabold text-slate-900">ร้านยำปากเจ่อKPP</h1>
-                <p gclass="text-[10px] sm:text-xs text-slate-500">ระบบคิวเพลงอัตโนมัติสำหรับลูกค้า</p>
+                <p class="text-[10px] sm:text-xs text-slate-500">ระบบคิวเพลงอัตโนมัติสำหรับลูกค้า</p>
             </div>
         </header>
 
@@ -155,8 +155,8 @@
                       if (event.data === 153) {
                           console.warn('Video embedding disabled (Error 153), skipping:', currentSong?.title);
                           // Show user-friendly message
-                          const titleEl = document.getElementById("now-playing-title");
-                          if (titleEl) titleEl.innerText = "เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) - ข้ามไปเพลงถัดไป...";
+                          const titleEl = document.getElementById('now-playing-title');
+                          if (titleEl) titleEl.innerText = 'เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) - ข้ามไปเพลงถัดไป...';
                           setTimeout(() => skipSong(), 1500);
                       } else {
                           console.warn('YouTube player error:', event.data, 'retrying once...');
@@ -237,7 +237,7 @@
             } else {
                 currentSong = null;
                 lastPlayedVideoId = null;
-                document.getElementById('now-playing-title').innerText = "รอเพลงจากลูกค้า...";
+                document.getElementById('now-playing-title').innerText = 'รอเพลงจากลูกค้า...';
                 idleSplash.classList.remove('hidden');
                 if (queue.length > 0) {
                     queueOverlay.classList.remove('hidden');
@@ -258,10 +258,10 @@
 
         function printQR() {
             // Get QR URL from the QR code image src (rendered by template)
-            const qrImg = document.querySelector("#idle-splash img[alt="QR Code"]") || 
-                          document.querySelector(".space-y-3 img[alt="QR Code"]");
-            const qrUrl = qrImg ? qrImg.src : "/qr.png";
-            const printWindow = window.open(qrUrl, "_blank");
+            const qrImg = document.querySelector('#idle-splash img[alt="QR Code"]') || 
+                          document.querySelector('.space-y-3 img[alt="QR Code"]');
+            const qrUrl = qrImg ? qrImg.src : '/qr.png';
+            const printWindow = window.open(qrUrl, '_blank');
             if (printWindow) {
                 printWindow.onload = function() {
                     printWindow.print();
