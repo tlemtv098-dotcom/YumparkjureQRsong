@@ -44,13 +44,14 @@
                     <div id="player" class="w-full h-full"></div>
 
                     <!-- Queue overlay: shows when queue exists but no current song -->
-                    <div id="queue-overlay" class="absolute inset-0 z-10 hidden flex-col items-center justify-center bg-white p-4">
-                        <p class="text-2xl md:text-4xl font-extrabold text-amber-700 text-center">
-                            ยำปากเจ่อKPP
+                    <div id="queue-overlay" class="absolute inset-0 z-10 hidden flex-col items-center justify-center bg-white/95 p-4 gap-3">
+                        <p class="text-xl md:text-2xl font-extrabold text-amber-700 text-center">
+                            มีเพลงรอเล่น
                         </p>
-                        <button onclick="ensurePlaying()"
-                                class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-5 py-2.5 rounded-xl font-bold shadow">
-                            เริ่มเล่นเพลง
+                        <p class="text-xs text-slate-500 text-center">แตะเพื่อเริ่มเล่น</p>
+                        <button onclick="handleOverlayTap()"
+                                class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg text-base">
+                            ▶ เริ่มเล่นเพลง
                         </button>
                     </div>
 
@@ -163,21 +164,35 @@
         });
 
         let userInteracted = false;
-        function markInteracted() { userInteracted = true; }
-        document.addEventListener('click', markInteracted, { once: true });
-        document.addEventListener('touchstart', markInteracted, { once: true });
 
-        function ensurePlaying() {
-            if (!player || !currentSong) return;
-            if (userInteracted && player.isMuted && player.isMuted()) {
-                player.unMute();
+        function handleOverlayTap() {
+            userInteracted = true;
+            if (!isPlayerReady || !player) {
+                showToast("กำลังโหลดเครื่องเล่น...", "info");
+                return;
             }
-            if (player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) {
-                player.playVideo();
+            if (!currentSong && queue.length > 0) {
+                playNext();
+                // also unmute after gesture
+                setTimeout(() => { if (player && player.isMuted && player.isMuted()) player.unMute(); }, 500);
+            } else {
+                ensurePlaying();
             }
         }
-        document.addEventListener('click', ensurePlaying);
-        document.addEventListener('touchstart', ensurePlaying);
+
+        function ensurePlaying() {
+            userInteracted = true;
+            if (!player || !isPlayerReady) return;
+            if (!currentSong && queue.length > 0) {
+                playNext();
+                return;
+            }
+            if (!currentSong) return;
+            if (player.isMuted && player.isMuted()) player.unMute();
+            if (player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo();
+        }
+        document.addEventListener('touchstart', () => { userInteracted = true; ensurePlaying(); }, {once: true});
+        document.addEventListener('click', () => { userInteracted = true; ensurePlaying(); }, {once: true});
 
         // --- Toast ---
         function showToast(msg, type="info") {
@@ -221,12 +236,14 @@
             player = new YT.Player('player', {
                 height: '100%',
                 width: '100%',
+                host: 'https://www.youtube-nocookie.com',
                 playerVars: {
                     'autoplay': 1,
                     'mute': 1,
                     'controls': 1,
                     'enablejsapi': 1,
                     'playsinline': 1,
+                    'iv_load_policy': 3,
                     'rel': 0,
                     'origin': window.location.origin
                 },
@@ -284,7 +301,14 @@
                     lastQueueLength = queue.length;
 
                     if (isPlayerReady && !currentSong && queue.length > 0) {
-                        playNext();
+                        if (!userInteracted) {
+                            idleSplash.classList.add('hidden');
+                            queueOverlay.classList.remove('hidden');
+                            videoContainer.classList.remove('bg-black');
+                            videoContainer.classList.add('bg-white');
+                        } else {
+                            playNext();
+                        }
                     } else if (!currentSong) {
                         if (queue.length > 0) {
                             idleSplash.classList.add('hidden');
@@ -300,7 +324,14 @@
                     }
 
                     if (hasNewSongs && isPlayerReady && !currentSong) {
-                        playNext();
+                        if (!userInteracted) {
+                            idleSplash.classList.add('hidden');
+                            queueOverlay.classList.remove('hidden');
+                            videoContainer.classList.remove('bg-black');
+                            videoContainer.classList.add('bg-white');
+                        } else {
+                            playNext();
+                        }
                         setFastPoll();
                     }
 
