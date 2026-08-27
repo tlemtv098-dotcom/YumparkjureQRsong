@@ -139,6 +139,7 @@
         let currentSong = null;
         let queue = [];
         let isPlayerReady = false;
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         let wakeLock = null;
         let lastPlayedVideoId = null;
         const finishingSongIds = new Set();
@@ -167,6 +168,9 @@
 
         function handleOverlayTap() {
             userInteracted = true;
+            if (!currentSong && queue.length > 0) {
+                playNext();
+            }
             if (player && player.isMuted && player.isMuted()) player.unMute();
             if (player && player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo();
             document.getElementById('queue-overlay').classList.add('hidden');
@@ -294,11 +298,14 @@
                     lastQueueLength = queue.length;
 
                     if (isPlayerReady && !currentSong && queue.length > 0) {
-                        playNext();
-                        // show overlay as "tap to unmute" hint if not yet interacted
-                        if (!userInteracted) {
-                            queueOverlay.classList.remove('hidden');
+                        if (isMobile && !userInteracted) {
+                            // Mobile: show tap overlay, don't auto-play
                             idleSplash.classList.add('hidden');
+                            queueOverlay.classList.remove('hidden');
+                            videoContainer.classList.remove('bg-black');
+                            videoContainer.classList.add('bg-white');
+                        } else {
+                            playNext();
                         }
                     } else if (!currentSong) {
                         if (queue.length > 0 && !userInteracted) {
@@ -320,15 +327,19 @@
                         }
                     }
 
-                    if (hasNewSongs) {
-                        setFastPoll();
-                        if (isPlayerReady && !currentSong) {
+                    if (hasNewSongs && isPlayerReady && !currentSong) {
+                        if (isMobile && !userInteracted) {
+                            // show overlay, don't auto-play
+                            idleSplash.classList.add('hidden');
+                            queueOverlay.classList.remove('hidden');
+                            videoContainer.classList.remove('bg-black');
+                            videoContainer.classList.add('bg-white');
+                        } else {
                             playNext();
-                            if (!userInteracted) {
-                                queueOverlay.classList.remove('hidden');
-                                idleSplash.classList.add('hidden');
-                            }
+                            setFastPoll();
                         }
+                    } else if (hasNewSongs) {
+                        setFastPoll();
                     }
 
                     if (onDone) onDone();
