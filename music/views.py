@@ -200,7 +200,7 @@ def hits(request):
             {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg"},
             {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
             {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/I9ZIq7ynvdU/mqdefault.jpg"},
-            {"id": "6y1a6a2a6a", "title": "ใจฉันตามเธอไป - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://img.youtube.com/vi/bD8l9bH8w3E/mqdefault.jpg"},
+            {"id": "TbXoF8a7VDw", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://img.youtube.com/vi/TbXoF8a7VDw/mqdefault.jpg"},
         ]
     random.shuffle(results)
     out = results[:8]
@@ -222,7 +222,7 @@ def add_to_queue(request):
         
         # Check if video is blocked
         if _is_blocked(video_id):
-            return JsonResponse({'status': 'failed', 'error': 'This video cannot be embedded'}, status=400)
+            return JsonResponse({'status': 'failed', 'error': 'เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) ลองเลือกเพลงอื่นนะ'}, status=400)
         
         if not _check_rate_limit(request):
             return JsonResponse({'status': 'failed', 'error': 'Too many requests, please wait'}, status=429)

@@ -528,13 +528,12 @@
                     toggleSearchPanel();
                     showToast("เพิ่มเพลงเข้าคิวแล้ว", "success");
                 } else {
-                    alert("เพิ่มเพลงไม่สำเร็จ: " + (data.error || "Unknown error"));
+                    showToast(data.error || "เพิ่มเพลงไม่สำเร็จ", "error");
                 }
             })
             .catch(err => {
                 console.error(err);
-                alert("เกิดข้อผิดพลาด: " + err.message);
-                showToast("เกิดข้อผิดพลาด", "error");
+                showToast(err.message, "error");
             });
         }
 
@@ -637,10 +636,10 @@
                     });
                     showToast("เพิ่มเพลงเข้าคิวแล้ว", "success");
                 } else {
-                    alert("เพิ่มเพลงไม่สำเร็จ: " + (data.error || "Unknown error"));
+                    showToast(data.error || "เพิ่มเพลงไม่สำเร็จ", "error");
                 }
             })
-            .catch(err => { console.error(err); alert("เกิดข้อผิดพลาด: " + err.message); showToast("เกิดข้อผิดพลาด", "error"); });
+            .catch(err => { console.error(err); showToast(err.message, "error"); });
         }
 
         // --- DOMContentLoaded: bind events ---
