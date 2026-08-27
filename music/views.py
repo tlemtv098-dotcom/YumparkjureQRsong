@@ -32,28 +32,27 @@ def _get_blocked_ids():
     return BLOCKED_VIDEO_IDS | db_ids
 
 def _is_embeddable(video_id):
-    # Check via YoutubeDL full extract (not flat) with short timeout
     try:
         opts = {'quiet': True, 'skip_download': True, 'noplaylist': True, 'socket_timeout': 5}
         with YoutubeDL(opts) as ydl:
             info = ydl.extract_info(f'https://www.youtube.com/watch?v={video_id}', download=False)
             if not info:
-                return False
-            # yt-dlp provides playable_in_embed or availability
+                return None  # network or unknown
             if info.get('playable_in_embed') is False:
                 return False
             if info.get('availability') in ('private', 'premium_only', 'subscriber_only'):
                 return False
             status = info.get('playabilityStatus', {})
             if isinstance(status, dict) and status.get('status') in ('ERROR', 'UNPLAYABLE'):
-                # check reason contains embedding disabled
                 reason = status.get('reason', '') or ''
                 if 'embedding' in reason.lower() or 'blocked' in reason.lower():
                     return False
                 return False
             return True
-    except Exception:
-        return False
+    except Exception as e:
+        # Network block or yt-dlp error — don't conclude not embeddable
+        print(f'_is_embeddable check failed for {video_id}: {e}')
+        return None
 
 _rate_limit_store = defaultdict(list)
 def _check_rate_limit(request, limit=30, window=10):
@@ -133,16 +132,20 @@ def search_youtube(query, max_results=8):
     # Now check embeddable per video (slow but accurate) — limit to first 8 to keep time <5s
     filtered = []
     for r in raw[:8]:
-        if _is_embeddable(r['id']):
+        embed = _is_embeddable(r['id'])
+        if embed is True:
             filtered.append(r)
-        else:
-            # auto-block this id for future
+        elif embed is False:
+            # truly not embeddable -> auto-block
             try:
                 BlockedVideo.objects.get_or_create(video_id=r['id'], defaults={'reason': 'Not embeddable'})
             except: pass
+        else:
+            # None = network error, don't block, keep as fallback candidate
+            filtered.append(r)  # keep it, player will handle
         if len(filtered) >= 5:
             break
-    return filtered if filtered else raw[:5]  # fallback to raw if check all fail (e.g., PythonAnywhere block)
+    return filtered if filtered else raw[:5]
 
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
