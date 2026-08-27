@@ -140,7 +140,24 @@ def search_song(request):
     query = request.GET.get('q', '').strip()
     if not query:
         return JsonResponse({'results': []})
-    return JsonResponse({'results': search_youtube(query, 5)})
+    results = search_youtube(query, 5)
+    if not results:
+        # Fallback for PythonAnywhere free where yt-dlp blocked — return hits-style fallback filtered by query
+        fallback = [
+            {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/ks7p6DA0dKk/mqdefault.jpg"},
+            {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/zwvv71slEYc/mqdefault.jpg"},
+            {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://img.youtube.com/vi/L1k0wkQ6uww/mqdefault.jpg"},
+            {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg"},
+            {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
+        ]
+        # simple filter by query substring
+        q_lower = query.lower()
+        results = [s for s in fallback if q_lower in s['title'].lower() or q_lower in s['channel'].lower()]
+        if not results:
+            results = fallback[:3]
+        # filter blocked
+        results = [r for r in results if not _is_blocked(r['id'])]
+    return JsonResponse({'results': results})
 
 def suggest_song(request):
     query = request.GET.get('q', '').strip().lower()
@@ -200,7 +217,7 @@ def hits(request):
             {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg"},
             {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
             {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/I9ZIq7ynvdU/mqdefault.jpg"},
-            {"id": "TbXoF8a7VDw", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://img.youtube.com/vi/TbXoF8a7VDw/mqdefault.jpg"},
+            {"id": "yEbv0QiI1Ns", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://img.youtube.com/vi/yEbv0QiI1Ns/mqdefault.jpg"},
         ]
     random.shuffle(results)
     out = results[:8]
