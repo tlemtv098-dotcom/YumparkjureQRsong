@@ -251,12 +251,10 @@
                         // Embedding disabled / video unavailable errors
                         if ([2, 5, 100, 101, 150, 153].includes(event.data)) {
                             console.warn('YouTube video cannot be embedded (Error ' + event.data + '), skipping:', currentSong?.title);
-                            // Auto-block this video for future searches
-                            fetch('/api/block/' + encodeURIComponent(currentSong.video_id) + '/', {method: 'POST'}).catch(()=>{});
+                            // Soft skip: memory-only block, no DB persistence
                             blockedVideoIds.add(currentSong.video_id);
-                            const titleEl = document.getElementById('now-playing-title');
-                            if (titleEl) titleEl.innerText = 'เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) - ข้ามไปเพลงถัดไป...';
-                            setTimeout(() => skipSong(), 500);
+                            showToast("เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) → ข้ามไปเพลงถัดไป", "warning");
+                            skipSong();
                         } else {
                             // Transient errors - retry once
                             console.warn('YouTube player error:', event.data, 'retrying once...');
