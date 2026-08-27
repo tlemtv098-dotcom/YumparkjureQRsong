@@ -31,6 +31,30 @@ def _get_blocked_ids():
     db_ids = set(BlockedVideo.objects.values_list('video_id', flat=True))
     return BLOCKED_VIDEO_IDS | db_ids
 
+def _is_embeddable(video_id):
+    # Check via YoutubeDL full extract (not flat) with short timeout
+    try:
+        opts = {'quiet': True, 'skip_download': True, 'noplaylist': True, 'socket_timeout': 5}
+        with YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(f'https://www.youtube.com/watch?v={video_id}', download=False)
+            if not info:
+                return False
+            # yt-dlp provides playable_in_embed or availability
+            if info.get('playable_in_embed') is False:
+                return False
+            if info.get('availability') in ('private', 'premium_only', 'subscriber_only'):
+                return False
+            status = info.get('playabilityStatus', {})
+            if isinstance(status, dict) and status.get('status') in ('ERROR', 'UNPLAYABLE'):
+                # check reason contains embedding disabled
+                reason = status.get('reason', '') or ''
+                if 'embedding' in reason.lower() or 'blocked' in reason.lower():
+                    return False
+                return False
+            return True
+    except Exception:
+        return False
+
 _rate_limit_store = defaultdict(list)
 def _check_rate_limit(request, limit=30, window=10):
     ip = request.META.get('REMOTE_ADDR', 'unknown')
@@ -93,29 +117,32 @@ def search_youtube(query, max_results=8):
     if api_results:
         return api_results
 
-    ydl_opts = {
-        'quiet': True,
-        'skip_download': True,
-        'extract_flat': True,
-        'default_search': f'ytsearch{max_results}',
-    }
-    results = []
-    try:
-        with YoutubeDL(ydl_opts) as ydl:
+    ydl_opts = {'quiet': True, 'skip_download': True, 'extract_flat': True, 'default_search': f'ytsearch{max_results}'}
+    raw = []
+    with YoutubeDL(ydl_opts) as ydl:
+        try:
             info = ydl.extract_info(f'ytsearch{max_results}:{query}', download=False)
             for entry in info.get('entries', []):
-                video_id = entry.get('id')
-                if not video_id or _is_blocked(video_id):
+                vid_id = entry.get('id')
+                if not vid_id or _is_blocked(vid_id):
                     continue
-                results.append({
-                    'id': video_id,
-                    'title': entry.get('title', 'Unknown Title'),
-                    'channel': entry.get('uploader') or entry.get('channel', 'YouTube'),
-                    'thumbnail': f'https://img.youtube.com/vi/{video_id}/mqdefault.jpg',
-                })
-    except Exception as exc:
-        print('Search Error:', exc)
-    return results
+                raw.append({'id': vid_id, 'title': entry.get('title','Unknown'), 'channel': entry.get('uploader') or entry.get('channel','YouTube'), 'thumbnail': f'https://img.youtube.com/vi/{vid_id}/mqdefault.jpg'})
+        except Exception as e:
+            print('Search Error:', e)
+            return []
+    # Now check embeddable per video (slow but accurate) — limit to first 8 to keep time <5s
+    filtered = []
+    for r in raw[:8]:
+        if _is_embeddable(r['id']):
+            filtered.append(r)
+        else:
+            # auto-block this id for future
+            try:
+                BlockedVideo.objects.get_or_create(video_id=r['id'], defaults={'reason': 'Not embeddable'})
+            except: pass
+        if len(filtered) >= 5:
+            break
+    return filtered if filtered else raw[:5]  # fallback to raw if check all fail (e.g., PythonAnywhere block)
 
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
