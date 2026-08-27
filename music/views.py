@@ -184,6 +184,18 @@ def hits(request):
     if cached:
         return JsonResponse({'results': cached})
     results = search_youtube(query, 10)
+    if not results:
+        # Fallback static hits for PythonAnywhere free (YouTube blocked)
+        results = [
+            {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/ks7p6DA0dKk/mqdefault.jpg"},
+            {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/zwvv71slEYc/mqdefault.jpg"},
+            {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://img.youtube.com/vi/L1k0wkQ6uww/mqdefault.jpg"},
+            {"id": "yEbv0QiI1Ns", "title": "คนไม่สำคัญ - Safeplanet", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/yEbv0QiI1Ns/mqdefault.jpg"},
+            {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg"},
+            {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
+            {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/I9ZIq7ynvdU/mqdefault.jpg"},
+            {"id": "6y1a6a2a6a", "title": "ใจฉันตามเธอไป - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://img.youtube.com/vi/bD8l9bH8w3E/mqdefault.jpg"},
+        ]
     random.shuffle(results)
     out = results[:8]
     cache.set(cache_key, out, 60)
