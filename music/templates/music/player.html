@@ -139,7 +139,7 @@
         let currentSong = null;
         let queue = [];
         let isPlayerReady = false;
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         let wakeLock = null;
         let lastPlayedVideoId = null;
         const finishingSongIds = new Set();
