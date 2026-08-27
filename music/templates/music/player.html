@@ -46,9 +46,9 @@
                     <!-- Queue overlay: shows when queue exists but no current song -->
                     <div id="queue-overlay" class="absolute inset-0 z-10 hidden flex-col items-center justify-center bg-white/95 p-4 gap-3">
                         <p class="text-xl md:text-2xl font-extrabold text-amber-700 text-center">
-                            มีเพลงรอเล่น
+                            แตะเพื่อเปิดเสียง
                         </p>
-                        <p class="text-xs text-slate-500 text-center">แตะเพื่อเริ่มเล่น</p>
+                        <p class="text-xs text-slate-500 text-center">เพลงเล่นแบบปิดเสียงอยู่</p>
                         <button onclick="handleOverlayTap()"
                                 class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg text-base">
                             ▶ เริ่มเล่นเพลง
@@ -167,17 +167,10 @@
 
         function handleOverlayTap() {
             userInteracted = true;
-            if (!isPlayerReady || !player) {
-                showToast("กำลังโหลดเครื่องเล่น...", "info");
-                return;
-            }
-            if (!currentSong && queue.length > 0) {
-                playNext();
-                // also unmute after gesture
-                setTimeout(() => { if (player && player.isMuted && player.isMuted()) player.unMute(); }, 500);
-            } else {
-                ensurePlaying();
-            }
+            if (player && player.isMuted && player.isMuted()) player.unMute();
+            if (player && player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo();
+            document.getElementById('queue-overlay').classList.add('hidden');
+            showToast("เปิดเสียงแล้ว", "success");
         }
 
         function ensurePlaying() {
@@ -301,20 +294,24 @@
                     lastQueueLength = queue.length;
 
                     if (isPlayerReady && !currentSong && queue.length > 0) {
+                        playNext();
+                        // show overlay as "tap to unmute" hint if not yet interacted
                         if (!userInteracted) {
-                            idleSplash.classList.add('hidden');
                             queueOverlay.classList.remove('hidden');
-                            videoContainer.classList.remove('bg-black');
-                            videoContainer.classList.add('bg-white');
-                        } else {
-                            playNext();
+                            idleSplash.classList.add('hidden');
                         }
                     } else if (!currentSong) {
-                        if (queue.length > 0) {
+                        if (queue.length > 0 && !userInteracted) {
+                            // keep queueOverlay visible as "tap to unmute" hint
                             idleSplash.classList.add('hidden');
                             queueOverlay.classList.remove('hidden');
                             videoContainer.classList.remove('bg-black');
                             videoContainer.classList.add('bg-white');
+                        } else if (queue.length > 0) {
+                            idleSplash.classList.add('hidden');
+                            queueOverlay.classList.add('hidden');
+                            videoContainer.classList.remove('bg-white');
+                            videoContainer.classList.add('bg-black');
                         } else {
                             idleSplash.classList.remove('hidden');
                             queueOverlay.classList.add('hidden');
@@ -323,16 +320,15 @@
                         }
                     }
 
-                    if (hasNewSongs && isPlayerReady && !currentSong) {
-                        if (!userInteracted) {
-                            idleSplash.classList.add('hidden');
-                            queueOverlay.classList.remove('hidden');
-                            videoContainer.classList.remove('bg-black');
-                            videoContainer.classList.add('bg-white');
-                        } else {
-                            playNext();
-                        }
+                    if (hasNewSongs) {
                         setFastPoll();
+                        if (isPlayerReady && !currentSong) {
+                            playNext();
+                            if (!userInteracted) {
+                                queueOverlay.classList.remove('hidden');
+                                idleSplash.classList.add('hidden');
+                            }
+                        }
                     }
 
                     if (onDone) onDone();
