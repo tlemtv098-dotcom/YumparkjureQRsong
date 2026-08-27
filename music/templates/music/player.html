@@ -41,7 +41,7 @@
             <!-- เครื่องเล่นวิดีโอ YouTube -->
             <div class="md:col-span-2 space-y-4">
                 <div class="aspect-video bg-black rounded-2xl overflow-hidden shadow-xl relative border border-slate-200" id="video-container">
-                    <div id="player" class="w-full h-full"></div>
+                    <div id="player" class="w-full h-full" playsinline webkit-playsinline></div>
 
                     <!-- Queue overlay: shows when queue exists but no current song -->
                     <div id="queue-overlay" class="absolute inset-0 z-10 hidden flex-col items-center justify-center bg-white/95 p-4 gap-3">
@@ -233,7 +233,7 @@
             player = new YT.Player('player', {
                 height: '100%',
                 width: '100%',
-                host: 'https://www.youtube-nocookie.com',
+                host: 'https://www.youtube.com',
                 playerVars: {
                     'autoplay': 1,
                     'mute': 1,
