@@ -7,6 +7,7 @@ urlpatterns = [
     path('api/search/', views.search_song, name='search_song'),
     path('api/hits/', views.hits, name='hits'),
     path('api/add/', views.add_to_queue, name='add_to_queue'),
+    path('api/add-front/', views.add_to_queue_front, name='add_to_queue_front'),
     path('api/queue/', views.get_queue, name='get_queue'),
     path('api/played/<int:song_id>/', views.mark_played, name='mark_played'),
     path('api/clear/', views.clear_queue, name='clear_queue'),

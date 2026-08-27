@@ -8,6 +8,7 @@ import urllib.parse
 import urllib.request
 import time
 from collections import defaultdict
+from datetime import timedelta
 from yt_dlp import YoutubeDL
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
@@ -301,6 +302,77 @@ def add_to_queue(request):
             client_id=client_id
         )
         return JsonResponse({'status': 'success', 'song_id': song.id})
+    return JsonResponse({'status': 'failed', 'error': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+def add_to_queue_front(request):
+    """Add song to FRONT of queue (priority play for owner)"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'failed', 'error': 'Invalid JSON'}, status=400)
+        
+        video_id = data.get('video_id')
+        title_raw = str(data.get('title', '')).strip()
+        if not video_id or not title_raw:
+            return JsonResponse({'status': 'failed', 'error': 'กรุณาใส่ชื่อเพลง'}, status=400)
+        
+        if _is_blocked(video_id):
+            return JsonResponse({'status': 'failed', 'error': 'เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) ลองเลือกเพลงอื่นนะ'}, status=400)
+        
+        if not _check_rate_limit(request):
+            return JsonResponse({'status': 'failed', 'error': 'ส่งคำขอเร็วเกินไป รอสักครู่'}, status=429)
+        
+        # Dedup: same video_id already in queue
+        if SongQueue.objects.filter(video_id=video_id, is_played=False).exists():
+            return JsonResponse({'status': 'failed', 'error': 'เพลงนี้อยู่ในคิวแล้ว'}, status=400)
+        
+        # Limit per client (max 5 queued per client_id) - manual uses special client_id
+        client_id = data.get('client_id', '')
+        if client_id and client_id.startswith('manual_'):
+            # Manual play has no limit
+            pass
+        elif client_id:
+            if SongQueue.objects.filter(client_id=client_id, is_played=False).count() >= 5:
+                return JsonResponse({'status': 'failed', 'error': 'คุณมีเพลงในคิวครบ 5 เพลงแล้ว รอให้เล่นก่อนนะ'}, status=400)
+        
+        title = title_raw[:255]
+        channel = str(data.get('channel', 'YouTube')).strip()[:255]
+        requested_by = str(data.get('requested_by', 'เจ้าของร้าน (เล่นเอง - ข้ามคิว)')).strip()[:100]
+        thumbnail = str(data.get('thumbnail', f'https://img.youtube.com/vi/{video_id}/mqdefault.jpg')).strip()[:500]
+        audio_url = str(data.get('audio_url', '')).strip()[:1000]
+        client_id = str(client_id).strip()[:64]
+        
+        # Get current first song position
+        first_song = SongQueue.objects.filter(is_played=False).order_by('created_at').first()
+        
+        if first_song:
+            # Insert before first song by setting created_at slightly earlier
+            new_song = SongQueue.objects.create(
+                title=title,
+                video_id=video_id,
+                thumbnail=thumbnail,
+                channel=channel,
+                audio_url=audio_url,
+                requested_by=requested_by,
+                client_id=client_id,
+                created_at=first_song.created_at - timedelta(seconds=1)
+            )
+        else:
+            # Queue empty, normal create
+            new_song = SongQueue.objects.create(
+                title=title,
+                video_id=video_id,
+                thumbnail=thumbnail,
+                channel=channel,
+                audio_url=audio_url,
+                requested_by=requested_by,
+                client_id=client_id
+            )
+        
+        return JsonResponse({'status': 'success', 'song_id': new_song.id, 'priority': True})
     return JsonResponse({'status': 'failed', 'error': 'Method not allowed'}, status=405)
 
 def get_queue(request):

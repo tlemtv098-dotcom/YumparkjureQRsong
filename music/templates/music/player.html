@@ -498,6 +498,10 @@
                                         class="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
                                     เล่นทันที
                                 </button>
+                                <button onclick="manualPlayFront(${idx})"
+                                        class="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow transition flex-shrink-0 ml-1">
+                                    เล่นทันที (ข้ามคิว)
+                                </button>
                             </div>
                         `;
                     });
@@ -615,6 +619,10 @@
                                 class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
                             เล่น
                         </button>
+                        <button onclick="hitPlayFront(${idx})"
+                                class="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow transition flex-shrink-0 ml-1">
+                            เล่น (ข้ามคิว)
+                        </button>
                     </div>
                 `;
             });
@@ -648,6 +656,46 @@
                 }
             })
             .catch(err => { console.error(err); showToast("เกิดข้อผิดพลาด ลองใหม่นะ", "error"); });
+        }
+
+        // --- Priority Play (เล่นทันทีข้ามคิว) ---
+        function playPriority(song) {
+            fetch("/api/add-front/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: song.title,
+                    video_id: song.id,
+                    thumbnail: song.thumbnail,
+                    channel: song.channel,
+                    requested_by: "เจ้าของร้าน (เล่นเอง - ข้ามคิว)",
+                    client_id: "manual_priority_" + Date.now()
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "success") {
+                    showToast("เพิ่มเพลงหน้าคิวแล้ว!", "success");
+                    fetchQueue(() => {
+                        setTimeout(() => {
+                            if (queue.length > 0 && !currentSong) playNext();
+                        }, 100);
+                    });
+                } else {
+                    showToast(data.error || "เพิ่มไม่สำเร็จ", "error");
+                }
+            })
+            .catch(err => showToast("เกิดข้อผิดพลาด: " + err.message, "error"));
+        }
+
+        function manualPlayFront(idx) {
+            const song = manualSearchResults[idx];
+            playPriority(song);
+        }
+
+        function hitPlayFront(idx) {
+            const song = hitSongs[idx];
+            playPriority(song);
         }
 
         // --- DOMContentLoaded: bind events ---
