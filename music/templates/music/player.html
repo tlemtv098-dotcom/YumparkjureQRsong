@@ -260,6 +260,7 @@
                         } else {
                             // Transient errors - retry once
                             console.warn('YouTube player error:', event.data, 'retrying once...');
+                            showToast("กำลังลองเล่นใหม่...", "info");
                             if (currentSong && !window._retryCount) {
                                 window._retryCount = 1;
                                 player.loadVideoById(currentSong.video_id);
@@ -540,7 +541,7 @@
             })
             .catch(err => {
                 console.error(err);
-                showToast(err.message, "error");
+                showToast("เกิดข้อผิดพลาด ลองใหม่นะ", "error");
             });
         }
 
@@ -586,7 +587,7 @@
                         renderHitList();
                     }
                 })
-                .catch(err => { console.error(err); showToast("เกิดข้อผิดพลาด", "error"); });
+                .catch(err => { console.error(err); showToast("โหลดเพลงแนะนำไม่สำเร็จ", "error"); });
         }
 
         document.addEventListener("DOMContentLoaded", function () {
@@ -646,7 +647,7 @@
                     showToast(data.error || "เพิ่มเพลงไม่สำเร็จ", "error");
                 }
             })
-            .catch(err => { console.error(err); showToast(err.message, "error"); });
+            .catch(err => { console.error(err); showToast("เกิดข้อผิดพลาด ลองใหม่นะ", "error"); });
         }
 
         // --- DOMContentLoaded: bind events ---

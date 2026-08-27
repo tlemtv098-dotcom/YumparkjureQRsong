@@ -186,7 +186,7 @@
                         renderHitList();
                     }
                 })
-                .catch(err => console.error(err))
+                .catch(err => { console.error(err); showToast("โหลดเพลงแนะนำไม่สำเร็จ", "error"); })
                 .finally(() => {
                     if (btn) { btn.disabled = false; btn.textContent = "รีเฟรชเพลง"; }
                 });
@@ -239,6 +239,7 @@
                 .catch(err => {
                     document.getElementById("loading").classList.add("hidden");
                     console.error(err);
+                    showToast("ค้นหาไม่สำเร็จ ลองใหม่นะ", "error");
                 });
         }
 
@@ -289,7 +290,14 @@
             })
             .catch(err => {
                 console.error("Request error:", err);
-                showToast(err.message.includes("เล่นไม่ได้") ? err.message : "เกิดข้อผิดพลาด: " + err.message, "error");
+                const msg = err.message || "";
+                if (msg.includes("เล่นไม่ได้") || msg.includes("อยู่ในคิว") || msg.includes("ครบ 5") || msg.includes("เร็วเกิน") || msg.includes("กรุณาใส่")) {
+                    showToast(msg, "error");
+                } else if (msg.includes("HTTP")) {
+                    showToast("เกิดข้อผิดพลาด ลองใหม่นะ", "error");
+                } else {
+                    showToast("เกิดข้อผิดพลาด ลองใหม่นะ", "error");
+                }
             });
         }
 

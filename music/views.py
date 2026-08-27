@@ -261,15 +261,16 @@ def add_to_queue(request):
         
         # Validate required fields
         video_id = data.get('video_id')
-        if not video_id:
-            return JsonResponse({'status': 'failed', 'error': 'Missing video_id'}, status=400)
+        title_raw = str(data.get('title', '')).strip()
+        if not video_id or not title_raw:
+            return JsonResponse({'status': 'failed', 'error': 'กรุณาใส่ชื่อเพลง'}, status=400)
         
         # Check if video is blocked
         if _is_blocked(video_id):
             return JsonResponse({'status': 'failed', 'error': 'เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) ลองเลือกเพลงอื่นนะ'}, status=400)
         
         if not _check_rate_limit(request):
-            return JsonResponse({'status': 'failed', 'error': 'Too many requests, please wait'}, status=429)
+            return JsonResponse({'status': 'failed', 'error': 'ส่งคำขอเร็วเกินไป รอสักครู่'}, status=429)
         # Dedup: same video_id already in queue
         if SongQueue.objects.filter(video_id=video_id, is_played=False).exists():
             return JsonResponse({'status': 'failed', 'error': 'เพลงนี้อยู่ในคิวแล้ว'}, status=400)
