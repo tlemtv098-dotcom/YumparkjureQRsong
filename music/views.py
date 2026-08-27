@@ -14,16 +14,22 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.cache import cache
 from django.db.models import Count
-from .models import SongQueue
+from .models import SongQueue, BlockedVideo
 
 # Video IDs with embedding disabled (Error 153) - filtered server-side
 # Many Thai songs from GMM, etc. have embedding disabled
 BLOCKED_VIDEO_IDS = {
-    'jNQXAC9IVRw',   # Me at the zoo
-    'dQw4w9WgXcQ',   # Never Gonna Give You Up
-    'qguo-j5PxBE',   # ซ่อน(ไม่)หา - Jeff Satur
-    # Add more known blocked Thai songs here as discovered
+    'jNQXAC9IVRw',
+    'dQw4w9WgXcQ',
+    'qguo-j5PxBE',
 }
+def _is_blocked(video_id):
+    if video_id in BLOCKED_VIDEO_IDS:
+        return True
+    return BlockedVideo.objects.filter(video_id=video_id).exists()
+def _get_blocked_ids():
+    db_ids = set(BlockedVideo.objects.values_list('video_id', flat=True))
+    return BLOCKED_VIDEO_IDS | db_ids
 
 _rate_limit_store = defaultdict(list)
 def _check_rate_limit(request, limit=30, window=10):
@@ -68,7 +74,7 @@ def youtube_api_search(query, max_results=8):
     for item in payload.get('items', []):
         video_id = item.get('id', {}).get('videoId')
         snippet = item.get('snippet', {})
-        if not video_id or video_id in BLOCKED_VIDEO_IDS:
+        if not video_id or _is_blocked(video_id):
             continue
         thumbnails = snippet.get('thumbnails', {})
         thumbnail = (thumbnails.get('medium') or thumbnails.get('default') or {}).get('url')
@@ -99,7 +105,7 @@ def search_youtube(query, max_results=8):
             info = ydl.extract_info(f'ytsearch{max_results}:{query}', download=False)
             for entry in info.get('entries', []):
                 video_id = entry.get('id')
-                if not video_id or video_id in BLOCKED_VIDEO_IDS:
+                if not video_id or _is_blocked(video_id):
                     continue
                 results.append({
                     'id': video_id,
@@ -215,7 +221,7 @@ def add_to_queue(request):
             return JsonResponse({'status': 'failed', 'error': 'Missing video_id'}, status=400)
         
         # Check if video is blocked
-        if video_id in BLOCKED_VIDEO_IDS:
+        if _is_blocked(video_id):
             return JsonResponse({'status': 'failed', 'error': 'This video cannot be embedded'}, status=400)
         
         if not _check_rate_limit(request):
@@ -280,6 +286,13 @@ def remove_my_song(request, song_id):
         deleted = SongQueue.objects.filter(id=song_id, client_id=client_id).delete()[0]
         return JsonResponse({'status': 'deleted' if deleted else 'not_found'})
     return JsonResponse({'status': 'failed'}, status=400)
+
+@csrf_exempt
+def block_video(request, video_id):
+    if request.method == 'POST':
+        BlockedVideo.objects.get_or_create(video_id=video_id, defaults={'reason': 'Error 153'})
+        return JsonResponse({'status': 'blocked', 'video_id': video_id})
+    return JsonResponse({'status': 'failed'}, status=405)
 
 def healthz(request):
     return JsonResponse({"status": "ok"})

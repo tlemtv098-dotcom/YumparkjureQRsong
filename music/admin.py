@@ -1,5 +1,11 @@
 from django.contrib import admin
-from .models import SongQueue
+from .models import SongQueue, BlockedVideo
+
+@admin.register(BlockedVideo)
+class BlockedVideoAdmin(admin.ModelAdmin):
+    list_display = ('video_id', 'reason', 'created_at')
+    search_fields = ('video_id',)
+    readonly_fields = ('created_at',)
 
 @admin.register(SongQueue)
 class SongQueueAdmin(admin.ModelAdmin):
