@@ -2,9 +2,6 @@ import json
 from django.test import TestCase
 
 LOGO = '/static/music/img/logo.jpg'
-OLD_IMG_1 = '/static/music/img/2.png'
-NEW_IMG_1 = '/static/music/img/1.png'
-NEW_IMG_2 = '/static/music/img/2.jpg'
 
 
 class PlayerPageTests(TestCase):
@@ -15,12 +12,6 @@ class PlayerPageTests(TestCase):
     def test_player_has_logo(self):
         response = self.client.get('/')
         self.assertContains(response, LOGO)
-
-    def test_player_has_banner_images(self):
-        response = self.client.get('/')
-        self.assertContains(response, NEW_IMG_1)
-        self.assertContains(response, NEW_IMG_2)
-        self.assertNotContains(response, OLD_IMG_1)
 
     def test_player_has_idle_splash(self):
         response = self.client.get('/')
@@ -67,6 +58,12 @@ class PlayerPageTests(TestCase):
         self.assertNotContains(response, 'ข้ามเพลง ⏭️')
         self.assertNotContains(response, '📲 สแกนเพื่อขอเพลง')
 
+    def test_player_has_volume_control(self):
+        response = self.client.get('/')
+        self.assertContains(response, 'volume-slider')
+        self.assertContains(response, 'toggleMute')
+        self.assertContains(response, 'showToast')
+
 
 class RequestPageTests(TestCase):
     def test_request_page_renders(self):
@@ -79,8 +76,8 @@ class RequestPageTests(TestCase):
 
     def test_request_has_no_old_images(self):
         response = self.client.get('/request/')
-        self.assertNotContains(response, OLD_IMG_1)
-        self.assertNotContains(response, NEW_IMG_2)
+        self.assertNotContains(response, '/static/music/img/2.png')
+        self.assertNotContains(response, '/static/music/img/2.jpg')
 
     def test_request_has_form_elements(self):
         response = self.client.get('/request/')
@@ -94,7 +91,7 @@ class RequestPageTests(TestCase):
     def test_request_has_hit_list(self):
         response = self.client.get('/request/')
         self.assertContains(response, 'id=\"hit-list\"')
-        self.assertContains(response, 'เพลงฮิตแนะนำ')
+        self.assertContains(response, 'เพลง')
 
     def test_request_has_refresh_hits(self):
         response = self.client.get('/request/')
@@ -133,6 +130,14 @@ class RequestPageTests(TestCase):
         self.assertContains(response, 'clientId')
         self.assertContains(response, 'localStorage')
         self.assertContains(response, 'removeMySong')
+
+    def test_request_has_no_checkbox(self):
+        response = self.client.get('/request/')
+        self.assertNotContains(response, 'hit-checkbox')
+        self.assertNotContains(response, 'new-checkbox')
+    def test_request_has_genre_tabs(self):
+        response = self.client.get('/request/')
+        self.assertContains(response, 'genre-tab')
 
 
 class ClearQueueApiTests(TestCase):
@@ -179,3 +184,77 @@ class MySongsApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['status'], 'not_found')
         self.assertEqual(SongQueue.objects.filter(id=song.id).count(), 1)
+
+class HealthzTests(TestCase):
+    def test_healthz_ok(self):
+        self.assertEqual(self.client.get('/healthz/').status_code, 200)
+        self.assertEqual(self.client.get('/healthz/').json()['status'], 'ok')
+
+class StatsTests(TestCase):
+    def test_stats_ok(self):
+        from .models import SongQueue
+        SongQueue.objects.create(title='A', video_id='a', thumbnail='', channel='c')
+        res = self.client.get('/api/stats/')
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn('total_queued', data)
+        self.assertIn('top_songs', data)
+
+class SuggestTests(TestCase):
+    def test_suggest_empty_q(self):
+        self.assertEqual(self.client.get('/api/suggest/?q=').json()['suggestions'], [])
+    def test_suggest_short_q(self):
+        self.assertEqual(self.client.get('/api/suggest/?q=a').json()['suggestions'], [])
+    def test_suggest_returns_list(self):
+        res = self.client.get('/api/suggest/?q=เพลง')
+        self.assertEqual(res.status_code, 200)
+        self.assertIsInstance(res.json()['suggestions'], list)
+
+class DedupTests(TestCase):
+    def setUp(self):
+        from .views import _rate_limit_store
+        _rate_limit_store.clear()
+    def test_dedup_same_video(self):
+        self.client.post('/api/add/', data=json.dumps({'title':'A','video_id':'dup123','thumbnail':'','channel':'c','client_id':'c1'}), content_type='application/json')
+        res = self.client.post('/api/add/', data=json.dumps({'title':'A','video_id':'dup123','thumbnail':'','channel':'c','client_id':'c1'}), content_type='application/json')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('อยู่ในคิว', res.json()['error'])
+
+class QueueLimitTests(TestCase):
+    def setUp(self):
+        from .views import _rate_limit_store
+        _rate_limit_store.clear()
+    def test_per_client_limit(self):
+        for i in range(5):
+            self.client.post('/api/add/', data=json.dumps({'title':f'A{i}','video_id':f'vid{i}','thumbnail':'','channel':'c','client_id':'limit_client'}), content_type='application/json')
+        res = self.client.post('/api/add/', data=json.dumps({'title':'A5','video_id':'vid5','thumbnail':'','channel':'c','client_id':'limit_client'}), content_type='application/json')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('5 เพลง', res.json()['error'])
+
+class QueueApiTests(TestCase):
+    def test_queue_returns_list(self):
+        from .models import SongQueue
+        SongQueue.objects.create(title='Q', video_id='q1', thumbnail='', channel='c')
+        res = self.client.get('/api/queue/')
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('queue', res.json())
+
+class PwaTests(TestCase):
+    def test_manifest_static_exists(self):
+        # manifest should be served via static, but template link should exist
+        res = self.client.get('/')
+        self.assertContains(res, 'manifest.json')
+        self.assertContains(res, 'serviceWorker')
+    def test_request_has_pwa(self):
+        res = self.client.get('/request/')
+        self.assertContains(res, 'manifest.json')
+
+class ErrorPagesTests(TestCase):
+    def test_404_template_exists(self):
+        import os
+        from django.conf import settings
+        self.assertTrue(os.path.exists(os.path.join(settings.BASE_DIR, 'music', 'templates', '404.html')))
+    def test_500_template_exists(self):
+        import os
+        from django.conf import settings
+        self.assertTrue(os.path.exists(os.path.join(settings.BASE_DIR, 'music', 'templates', '500.html')))

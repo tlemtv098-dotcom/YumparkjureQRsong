@@ -32,4 +32,13 @@ htmlcov/
 
 # Temp
 *.tmp
-*.temp
+*.temp# Env local
+.env.local
+.env
+# Node
+node_modules/
+# Build
+staticfiles/
+# Temp from editor
+line88.txt
+test_write.txt

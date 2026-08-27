@@ -4,10 +4,16 @@ import json
 import random
 import socket
 import qrcode
+import urllib.parse
+import urllib.request
+import time
+from collections import defaultdict
 from yt_dlp import YoutubeDL
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.core.cache import cache
+from django.db.models import Count
 from .models import SongQueue
 
 # Video IDs with embedding disabled (Error 153) - filtered server-side
@@ -18,6 +24,92 @@ BLOCKED_VIDEO_IDS = {
     'qguo-j5PxBE',   # ซ่อน(ไม่)หา - Jeff Satur
     # Add more known blocked Thai songs here as discovered
 }
+
+_rate_limit_store = defaultdict(list)
+def _check_rate_limit(request, limit=30, window=10):
+    ip = request.META.get('REMOTE_ADDR', 'unknown')
+    now = time.time()
+    _rate_limit_store[ip] = [t for t in _rate_limit_store[ip] if now - t < window]
+    if len(_rate_limit_store[ip]) >= limit:
+        return False
+    _rate_limit_store[ip].append(now)
+    return True
+
+
+def youtube_api_search(query, max_results=8):
+    """Search YouTube through the official API when a key is configured."""
+    # Accept the correctly named variable and the temporary `key` name
+    # currently used in some local .env files.
+    api_key = (os.environ.get('YOUTUBE_API_KEY') or os.environ.get('key', '')).strip()
+    if not api_key:
+        return []
+
+    params = urllib.parse.urlencode({
+        'part': 'snippet',
+        'q': query,
+        'type': 'video',
+        'maxResults': min(max_results, 50),
+        'regionCode': 'TH',
+        'videoEmbeddable': 'true',
+        'videoSyndicated': 'true',
+        'key': api_key,
+    })
+    try:
+        with urllib.request.urlopen(
+            f'https://www.googleapis.com/youtube/v3/search?{params}',
+            timeout=15,
+        ) as response:
+            payload = json.loads(response.read().decode('utf-8'))
+    except Exception as exc:
+        print('YouTube API Error:', exc)
+        return []
+
+    results = []
+    for item in payload.get('items', []):
+        video_id = item.get('id', {}).get('videoId')
+        snippet = item.get('snippet', {})
+        if not video_id or video_id in BLOCKED_VIDEO_IDS:
+            continue
+        thumbnails = snippet.get('thumbnails', {})
+        thumbnail = (thumbnails.get('medium') or thumbnails.get('default') or {}).get('url')
+        results.append({
+            'id': video_id,
+            'title': snippet.get('title', 'Unknown Title'),
+            'channel': snippet.get('channelTitle', 'YouTube'),
+            'thumbnail': thumbnail or f'https://img.youtube.com/vi/{video_id}/mqdefault.jpg',
+        })
+    return results
+
+
+def search_youtube(query, max_results=8):
+    """Use the official API first, retaining yt-dlp as a local fallback."""
+    api_results = youtube_api_search(query, max_results)
+    if api_results:
+        return api_results
+
+    ydl_opts = {
+        'quiet': True,
+        'skip_download': True,
+        'extract_flat': True,
+        'default_search': f'ytsearch{max_results}',
+    }
+    results = []
+    try:
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f'ytsearch{max_results}:{query}', download=False)
+            for entry in info.get('entries', []):
+                video_id = entry.get('id')
+                if not video_id or video_id in BLOCKED_VIDEO_IDS:
+                    continue
+                results.append({
+                    'id': video_id,
+                    'title': entry.get('title', 'Unknown Title'),
+                    'channel': entry.get('uploader') or entry.get('channel', 'YouTube'),
+                    'thumbnail': f'https://img.youtube.com/vi/{video_id}/mqdefault.jpg',
+                })
+    except Exception as exc:
+        print('Search Error:', exc)
+    return results
 
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -42,64 +134,60 @@ def search_song(request):
     query = request.GET.get('q', '').strip()
     if not query:
         return JsonResponse({'results': []})
+    return JsonResponse({'results': search_youtube(query, 5)})
+
+def suggest_song(request):
+    query = request.GET.get('q', '').strip().lower()
+    if not query or len(query) < 2:
+        return JsonResponse({'suggestions': []})
+    cache_key = f"suggest:{query}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse({'suggestions': cached})
     
-    ydl_opts = {
-        'quiet': True,
-        'skip_download': True,
-        'extract_flat': True,
-        'default_search': 'ytsearch5'
-    }
+    # Common Thai song/artist suggestions
+    suggestions_pool = [
+        "เพลงไทยฮิต", "เพลงรัก", "เพลงเศร้า", "เพลงแดนซ์", "เพลงอกหัก",
+        "เพลงสนุก", "เพลงเพราะๆ", "เพลงใหม่", "เพลงเก่า",
+        "Three Man Down", "Tilly Birds", "Polycat", "Scrubb", "Paradox",
+        "Bodyslam", "Cocktail", "Slot Machine", "Potato", "Instinct",
+        "Jeff Satur", "SLAPKISS", "Tattoo Colour", "Nont Tanont",
+        "Palmy", "Bird Thongchai", "Ice Sarunyu", "Stamp Apiwat",
+        "ลิปسودา", "getsunova", "Carnival", "Safeplanet", "Whal & Dolph",
+        "Musketeers", "Klear", "Sweet Mullet", "Bodyslam",
+        "Ying Likit", "Ter", "album", "cover", "live",
+        "รักแรกพบ", "แค่เธอ", "ข้างกัน", "ถ้าเธอ", "คนไม่สำคัญ",
+        "แฟนเก่าคนโปรด", "แค่คนโทรผิด", "ซ่อนไม่หา",
+    ]
     
-    results = []
-    with YoutubeDL(ydl_opts) as ydl:
-        try:
-            info = ydl.extract_info(f'ytsearch5:{query}', download=False)
-            for entry in info.get('entries', []):
-                vid_id = entry.get('id')
-                if not vid_id:
-                    continue
-                if vid_id in BLOCKED_VIDEO_IDS:
-                    continue
-                results.append({
-                    'id': vid_id,
-                    'title': entry.get('title', 'Unknown Title'),
-                    'channel': entry.get('uploader') or entry.get('channel', 'YouTube'),
-                    'thumbnail': f'https://img.youtube.com/vi/{vid_id}/mqdefault.jpg'
-                })
-        except Exception as e:
-            print('Search Error:', e)
-            
-    return JsonResponse({'results': results})
+    results = [s for s in suggestions_pool if query in s.lower()]
+    results = results[:8]
+    cache.set(cache_key, results, 30)
+    return JsonResponse({'suggestions': results})
 
 def hits(request):
-    queries = ['เพลงไทยฮิต', 'เพลงฮิต 2025', 'เพลงดัง', 'เพลงใหม่ 2025', 'เพลงไทยเพราะๆ', 'เพลงฮิตติดชาร์ต']
-    query = random.choice(queries)
-    ydl_opts = {
-        'quiet': True,
-        'skip_download': True,
-        'extract_flat': True,
-        'default_search': 'ytsearch10'
+    genre = request.GET.get('genre', '').strip().lower()
+    genre_queries = {
+        'pop': ['เพลงป๊อปฮิต', 'เพลงป๊อป 2025'],
+        'rock': ['เพลงร็อกฮิต', 'เพลงร็อกไทย'],
+        'lukthung': ['เพลงลูกทุ่งฮิต', 'เพลงลูกทุ่ง 2025'],
+        'tiktok': ['เพลงฮิต tiktok', 'เพลง tiktok 2025'],
+        'old': ['เพลงเก่าฮิต 90', 'เพลงยุค 90'],
     }
-    results = []
-    with YoutubeDL(ydl_opts) as ydl:
-        try:
-            info = ydl.extract_info(f'ytsearch10:{query}', download=False)
-            for entry in info.get('entries', []):
-                vid_id = entry.get('id')
-                if not vid_id:
-                    continue
-                if vid_id in BLOCKED_VIDEO_IDS:
-                    continue
-                results.append({
-                    'id': vid_id,
-                    'title': entry.get('title', 'Unknown Title'),
-                    'channel': entry.get('uploader') or entry.get('channel', 'YouTube'),
-                    'thumbnail': f'https://img.youtube.com/vi/{vid_id}/mqdefault.jpg'
-                })
-        except Exception as e:
-            print('Hits Error:', e)
+    if genre in genre_queries:
+        queries = genre_queries[genre]
+    else:
+        queries = ['เพลงไทยฮิต', 'เพลงฮิต 2025', 'เพลงดัง', 'เพลงใหม่ 2025', 'เพลงไทยเพราะๆ', 'เพลงฮิตติดชาร์ต']
+    query = random.choice(queries)
+    cache_key = f"hits:{genre}:{query}"
+    cached = cache.get(cache_key)
+    if cached:
+        return JsonResponse({'results': cached})
+    results = search_youtube(query, 10)
     random.shuffle(results)
-    return JsonResponse({'results': results[:8]})
+    out = results[:8]
+    cache.set(cache_key, out, 60)
+    return JsonResponse({'results': out})
 
 @csrf_exempt
 def add_to_queue(request):
@@ -118,20 +206,40 @@ def add_to_queue(request):
         if video_id in BLOCKED_VIDEO_IDS:
             return JsonResponse({'status': 'failed', 'error': 'This video cannot be embedded'}, status=400)
         
+        if not _check_rate_limit(request):
+            return JsonResponse({'status': 'failed', 'error': 'Too many requests, please wait'}, status=429)
+        # Dedup: same video_id already in queue
+        if SongQueue.objects.filter(video_id=video_id, is_played=False).exists():
+            return JsonResponse({'status': 'failed', 'error': 'เพลงนี้อยู่ในคิวแล้ว'}, status=400)
+        # Limit per client (max 5 queued per client_id)
+        client_id = data.get('client_id', '')
+        if client_id:
+            if SongQueue.objects.filter(client_id=client_id, is_played=False).count() >= 5:
+                return JsonResponse({'status': 'failed', 'error': 'คุณมีเพลงในคิวครบ 5 เพลงแล้ว รอให้เล่นก่อนนะ'}, status=400)
+        # Also sanitize title length
+        title = data.get('title', 'Unknown Title')[:255]
+        title = title.strip()[:255]
+        channel = str(data.get('channel', 'YouTube')).strip()[:255]
+        requested_by = str(data.get('requested_by', 'ลูกค้าในร้าน')).strip()[:100]
+        thumbnail = str(data.get('thumbnail', f'https://img.youtube.com/vi/{video_id}/mqdefault.jpg')).strip()[:500]
+        audio_url = str(data.get('audio_url', '')).strip()[:1000]
+        client_id = str(client_id).strip()[:64]
+        
         song = SongQueue.objects.create(
-            title=data.get('title', 'Unknown Title'),
+            title=title,
             video_id=video_id,
-            thumbnail=data.get('thumbnail', f'https://img.youtube.com/vi/{video_id}/mqdefault.jpg'),
-            channel=data.get('channel', 'YouTube'),
-            requested_by=data.get('requested_by', 'ลูกค้าในร้าน'),
-            client_id=data.get('client_id', '')
+            thumbnail=thumbnail,
+            channel=channel,
+            audio_url=audio_url,
+            requested_by=requested_by,
+            client_id=client_id
         )
         return JsonResponse({'status': 'success', 'song_id': song.id})
     return JsonResponse({'status': 'failed', 'error': 'Method not allowed'}, status=405)
 
 def get_queue(request):
     songs = SongQueue.objects.filter(is_played=False).values(
-        'id', 'title', 'video_id', 'thumbnail', 'channel', 'requested_by'
+        'id', 'title', 'video_id', 'thumbnail', 'channel', 'requested_by', 'audio_url'
     )
     return JsonResponse({'queue': list(songs)})
 
@@ -148,7 +256,7 @@ def clear_queue(request):
 def my_songs(request):
     client_id = request.GET.get('client_id', '')
     songs = SongQueue.objects.filter(client_id=client_id, is_played=False).values(
-        'id', 'title', 'video_id', 'thumbnail', 'channel'
+        'id', 'title', 'video_id', 'thumbnail', 'channel', 'audio_url'
     )
     return JsonResponse({'songs': list(songs)})
 
@@ -160,6 +268,15 @@ def remove_my_song(request, song_id):
         deleted = SongQueue.objects.filter(id=song_id, client_id=client_id).delete()[0]
         return JsonResponse({'status': 'deleted' if deleted else 'not_found'})
     return JsonResponse({'status': 'failed'}, status=400)
+
+def healthz(request):
+    return JsonResponse({"status": "ok"})
+
+def stats(request):
+    total_queued = SongQueue.objects.filter(is_played=False).count()
+    total_played = SongQueue.objects.filter(is_played=True).count()
+    top = list(SongQueue.objects.values('video_id', 'title', 'channel').annotate(count=Count('id')).order_by('-count')[:5])
+    return JsonResponse({"total_queued": total_queued, "total_played": total_played, "top_songs": top})
 
 def generate_qr(request):
     # Use public URL from env var, fallback to request host

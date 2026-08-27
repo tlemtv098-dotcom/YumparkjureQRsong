@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ขอเพลง - ร้านยำปากเจ่อ</title>
+    <link rel="manifest" href="{% static 'music/manifest.json' %}">
+    <meta name="theme-color" content="#f59e0b">
+    <link rel="apple-touch-icon" href="{% static 'music/img/logo.jpg' %}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,9 +45,12 @@
 
         <div class="bg-slate-50 shadow-md border border-slate-200 rounded-2xl p-4 sm:p-5 mb-4">
             <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 mb-3">ค้นหาเพลง</h2>
-            <div class="flex gap-2 sm:gap-3 mb-3">
-                <input type="text" id="searchInput" placeholder="พิมพ์ชื่อเพลงหรือศิลปิน..."
-                       class="flex-1 min-w-0 border border-slate-300 bg-white text-slate-900 placeholder-slate-400 rounded-xl px-3 sm:px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+            <div class="flex gap-2 sm:gap-3 mb-1">
+                <div class="relative flex-1 min-w-0">
+                    <input type="text" id="searchInput" placeholder="พิมพ์ชื่อเพลงหรือศิลปิน..."
+                           class="w-full border border-slate-300 bg-white text-slate-900 placeholder-slate-400 rounded-xl px-3 sm:px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+                    <div id="search-suggestions" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"></div>
+                </div>
                 <button onclick="searchSong()"
                         class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-4 sm:px-5 py-3 rounded-xl font-bold text-sm shadow transition flex-shrink-0">
                     ค้นหา
@@ -56,11 +62,18 @@
 
         <div class="bg-slate-50 shadow-md border border-slate-200 rounded-2xl p-4 sm:p-5 mb-4">
             <div class="flex items-center justify-between mb-3">
-                <h2 class="font-extrabold text-lg sm:text-xl text-slate-900">เพลงฮิตแนะนำ</h2>
+                <h2 class="font-extrabold text-lg sm:text-xl text-slate-900">เพลงแนะนำ / เพลงฮิต</h2>
                 <button id="refresh-hits" onclick="fetchHits()"
                         class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-sm shadow transition">
                     รีเฟรชเพลง
                 </button>
+            </div>
+            <div class="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+                <button onclick="fetchHits('')" data-genre="" class="genre-tab active bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">ทั้งหมด</button>
+                <button onclick="fetchHits('pop')" data-genre="pop" class="genre-tab bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">ป๊อป</button>
+                <button onclick="fetchHits('rock')" data-genre="rock" class="genre-tab bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">ร็อก</button>
+                <button onclick="fetchHits('lukthung')" data-genre="lukthung" class="genre-tab bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">ลูกทุ่ง</button>
+                <button onclick="fetchHits('tiktok')" data-genre="tiktok" class="genre-tab bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">TikTok</button>
             </div>
             <div id="hit-list" class="space-y-2"></div>
         </div>
@@ -78,6 +91,19 @@
             localStorage.setItem("jukebox_client_id", clientId);
         }
 
+        // --- Toast ---
+        function showToast(msg, type="info") {
+            const t = document.getElementById('toast');
+            if (!t) return;
+            t.textContent = msg;
+            t.className = "fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2 rounded-xl shadow-lg text-sm font-medium";
+            if (type === "error") t.className += " !bg-red-600";
+            if (type === "success") t.className += " !bg-green-600";
+            t.classList.remove('hidden');
+            clearTimeout(t._timer);
+            t._timer = setTimeout(() => t.classList.add('hidden'), 3000);
+        }
+
         // Known video IDs that have embedding disabled (Error 153)
         // Many Thai songs from GMM, etc. have embedding disabled
         const blockedVideoIds = new Set([
@@ -89,15 +115,16 @@
 
         let searchResults = [];
         let searchTimer = null;
+        const searchInput = document.getElementById("searchInput");
         let hitSongs = [
-            { id: "qguo-j5PxBE", title: "ซ่อน(ไม่)หา", channel: "Jeff Satur", thumbnail: "https://img.youtube.com/vi/qguo-j5PxBE/mqdefault.jpg" },
-            { id: "ks7p6DA0dKk", title: "ข้างกัน", channel: "Three Man Down", thumbnail: "https://img.youtube.com/vi/ks7p6DA0dKk/mqdefault.jpg" },
-            { id: "zwvv71slEYc", title: "ถ้าเธอ", channel: "Tilly Birds", thumbnail: "https://img.youtube.com/vi/zwvv71slEYc/mqdefault.jpg" },
-            { id: "L1k0wkQ6uww", title: "แฟนเก่าคนโปรด", channel: "SLAPKISS", thumbnail: "https://img.youtube.com/vi/L1k0wkQ6uww/mqdefault.jpg" },
-            { id: "yEbv0QiI1Ns", title: "คนไม่สำคัญ", channel: "GMM", thumbnail: "https://img.youtube.com/vi/yEbv0QiI1Ns/mqdefault.jpg" },
-            { id: "s-MZid-59Hc", title: "แค่เธอ", channel: "Jeff Satur", thumbnail: "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg" },
-            { id: "rc7KnQAh_1I", title: "รักแรกพบ", channel: "Tattoo Colour", thumbnail: "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg" },
-            { id: "I9ZIq7ynvdU", title: "แค่คนโทรผิด", channel: "GMM", thumbnail: "https://img.youtube.com/vi/I9ZIq7ynvdU/mqdefault.jpg" }
+            { id: "qguo-j5PxBE", title: "ซ่อน(ไม่)หา", channel: "Jeff Satur", thumbnail: "https://img.youtube.com/vi/qguo-j5PxBE/mqdefault.jpg", type: "hit" },
+            { id: "ks7p6DA0dKk", title: "ข้างกัน", channel: "Three Man Down", thumbnail: "https://img.youtube.com/vi/ks7p6DA0dKk/mqdefault.jpg", type: "hit" },
+            { id: "zwvv71slEYc", title: "ถ้าเธอ", channel: "Tilly Birds", thumbnail: "https://img.youtube.com/vi/zwvv71slEYc/mqdefault.jpg", type: "new" },
+            { id: "L1k0wkQ6uww", title: "แฟนเก่าคนโปรด", channel: "SLAPKISS", thumbnail: "https://img.youtube.com/vi/L1k0wkQ6uww/mqdefault.jpg", type: "hit" },
+            { id: "yEbv0QiI1Ns", title: "คนไม่สำคัญ", channel: "GMM", thumbnail: "https://img.youtube.com/vi/yEbv0QiI1Ns/mqdefault.jpg", type: "new" },
+            { id: "s-MZid-59Hc", title: "แค่เธอ", channel: "Jeff Satur", thumbnail: "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg", type: "hit" },
+            { id: "rc7KnQAh_1I", title: "รักแรกพบ", channel: "Tattoo Colour", thumbnail: "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg", type: "new" },
+            { id: "I9ZIq7ynvdU", title: "แค่คนโทรผิด", channel: "GMM", thumbnail: "https://img.youtube.com/vi/I9ZIq7ynvdU/mqdefault.jpg", type: "hit" }
         ];
 
         function filterBlockedSongs(songs) {
@@ -107,13 +134,22 @@
         function renderHitList() {
             const container = document.getElementById("hit-list");
             container.innerHTML = "";
-            const filteredHits = filterBlockedSongs(hitSongs);
+            const hits = hitSongs;
+            const filteredHits = filterBlockedSongs(hits);
+            if (filteredHits.length === 0) {
+                container.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">ยังไม่มีเพลงแนะนำ กดรีเฟรชเพลงเพื่อลองใหม่</p>';
+                return;
+            }
             filteredHits.forEach((song, idx) => {
+                const originalIdx = hitSongs.indexOf(song);
                 container.innerHTML += `
                     <div class="bg-white shadow-md p-3 rounded-xl border border-slate-200 flex items-center gap-3">
                         <img src="${song.thumbnail}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
                         <div class="flex-1 overflow-hidden">
-                            <p class="font-semibold text-sm truncate text-slate-900">${song.title}</p>
+                            <div class="flex items-center gap-2 mb-1">
+                                <p class="font-semibold text-sm truncate text-slate-900">${song.title}</p>
+                                <span class="bg-amber-100 text-amber-800 text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0">เพลงฮิต</span>
+                            </div>
                             <p class="text-xs text-slate-500 truncate">${song.channel}</p>
                         </div>
                         <div class="flex gap-2">
@@ -121,7 +157,7 @@
                                     class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
                                 ฟังตัวอย่าง
                             </button>
-                            <button onclick="requestHit(${hitSongs.indexOf(song)})"
+                            <button onclick="requestHit(${originalIdx})"
                                     class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
                                 ขอเพลง
                             </button>
@@ -131,11 +167,18 @@
             });
         }
 
-        function fetchHits() {
+        function fetchHits(genre) {
+            if (genre === undefined) genre = currentGenre || "";
+            currentGenre = genre;
+            // update active tab styling
+            document.querySelectorAll('.genre-tab').forEach(b => {
+                if (b.dataset.genre === genre) { b.className = "genre-tab active bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"; }
+                else { b.className = "genre-tab bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"; }
+            });
             const btn = document.getElementById("refresh-hits");
-            btn.disabled = true;
-            btn.textContent = "กำลังโหลด...";
-            fetch("/api/hits/")
+            if (btn) { btn.disabled = true; btn.textContent = "กำลังโหลด..."; }
+            const url = genre ? "/api/hits/?genre=" + encodeURIComponent(genre) : "/api/hits/";
+            fetch(url)
                 .then(res => res.json())
                 .then(data => {
                     if (data.results && data.results.length > 0) {
@@ -145,10 +188,10 @@
                 })
                 .catch(err => console.error(err))
                 .finally(() => {
-                    btn.disabled = false;
-                    btn.textContent = "รีเฟรชเพลง";
+                    if (btn) { btn.disabled = false; btn.textContent = "รีเฟรชเพลง"; }
                 });
         }
+        let currentGenre = "";
 
         function requestHit(idx) {
             const song = hitSongs[idx];
@@ -159,6 +202,7 @@
             const query = document.getElementById("searchInput").value.trim();
             if (!query) return;
             document.getElementById("loading").classList.remove("hidden");
+            document.getElementById("results").innerHTML = '<p class="text-sm text-slate-400 text-center py-3">กำลังค้นหา...</p>';
             fetch("/api/search/?q=" + encodeURIComponent(query))
                 .then(res => res.json())
                 .then(data => {
@@ -167,7 +211,7 @@
                     const container = document.getElementById("results");
                     container.innerHTML = "";
                     if (searchResults.length === 0) {
-                        container.innerHTML = "<p class="text-sm text-slate-500 text-center py-3">ไม่พบเพลงที่ค้นหา</p>";
+                        container.innerHTML = '<p class="text-sm text-slate-500 text-center py-3">ไม่พบเพลงที่ค้นหา</p>';
                         return;
                     }
                     searchResults.forEach((song, idx) => {
@@ -233,6 +277,7 @@
                     document.getElementById("searchInput").value = "";
                     document.getElementById("results").innerHTML = "";
                     fetchMySongs();
+                    showToast("ส่งคำขอเพลงแล้ว!", "success");
                 } else {
                     alert("เพิ่มเพลงไม่สำเร็จ: " + (data.error || "Unknown error"));
                     console.error("Add song failed:", data);
@@ -241,6 +286,7 @@
             .catch(err => {
                 console.error("Request error:", err);
                 alert("เกิดข้อผิดพลาด: " + err.message);
+                showToast("เกิดข้อผิดพลาด", "error");
             });
         }
 
@@ -300,7 +346,7 @@
                 .then(data => {
                     const container = document.getElementById("my-songs-list");
                     if (!data.songs || data.songs.length === 0) {
-                        container.innerHTML = "<p class="text-xs text-slate-400 text-center py-3">ยังไม่มีเพลงที่ขอไว้</p>";
+                        container.innerHTML = '<p class="text-xs text-slate-400 text-center py-3">ยังไม่มีเพลงที่ขอไว้</p>';
                         return;
                     }
                     container.innerHTML = "";
@@ -355,48 +401,63 @@
         document.addEventListener("touchstart", function() {}, { once: true });
         document.addEventListener("click", function() {}, { once: true });
 
-        const searchInput = document.getElementById("searchInput");
+        let suggestTimer = null;
+
         searchInput.addEventListener("input", function () {
             clearTimeout(searchTimer);
+            clearTimeout(suggestTimer);
+            const q = this.value.trim();
+            suggestTimer = setTimeout(() => fetchSuggestions(q), 300);
             searchTimer = setTimeout(searchSong, 500);
-        function playNowHit(idx) {
-            const song = hitSongs[idx];
-            playNow(song);
-        }
+        });
 
-        function playNowSearch(idx) {
-            const song = searchResults[idx];
-            playNow(song);
-        }
+        searchInput.addEventListener("keypress", function (e) {
+            if (e.key === "Enter") { hideSuggestions(); searchSong(); }
+        });
 
-        function playNow(song) {
-            // Add to queue and play immediately
-            fetch("/api/add/", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    title: song.title,
-                    video_id: song.id,
-                    thumbnail: song.thumbnail,
-                    channel: song.channel,
-                    requested_by: "เจ้าของร้าน (เล่นทันที)",
-                    client_id: "playnow_" + Date.now()
-                })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === "success") {
-                    alert("เพิ่มเพลงสำเร็จ! กำลังเล่นบนหน้าจอหลัก...");
-                    // The player page will pick it up via polling
-                } else {
-                    alert("เพิ่มเพลงไม่สำเร็จ: " + (data.error || "Unknown error"));
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                alert("เกิดข้อผิดพลาด: " + err.message);
+        searchInput.addEventListener("blur", () => setTimeout(hideSuggestions, 200));
+
+        function showSuggestions(suggestions) {
+            const container = document.getElementById("search-suggestions");
+            if (!suggestions || suggestions.length === 0) {
+                container.classList.add("hidden");
+                return;
+            }
+            container.innerHTML = suggestions.map(s =>
+                '<div class="px-3 py-2 text-sm text-slate-700 hover:bg-amber-50 cursor-pointer border-b border-slate-100 last:border-0">' + s + '</div>'
+            ).join("");
+            container.classList.remove("hidden");
+            // Bind click on each suggestion
+            container.querySelectorAll("div").forEach(el => {
+                el.addEventListener("mousedown", function(e) {
+                    e.preventDefault();
+                    document.getElementById("searchInput").value = this.textContent;
+                    hideSuggestions();
+                    searchSong();
+                });
             });
         }
+
+        function hideSuggestions() {
+            const el = document.getElementById("search-suggestions");
+            if (el) el.classList.add("hidden");
+        }
+
+        function fetchSuggestions(query) {
+            if (!query || query.length < 2) { hideSuggestions(); return; }
+            fetch("/api/suggest/?q=" + encodeURIComponent(query))
+                .then(res => res.json())
+                .then(data => { showSuggestions(data.suggestions || []); })
+                .catch(() => hideSuggestions());
+        }
+    </script>
+    <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 text-white px-4 py-2 rounded-xl shadow-lg text-sm font-medium"></div>
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register("{% static 'music/sw.js' %}").catch(()=>{});
+        });
+    }
     </script>
 </body>
 </html>

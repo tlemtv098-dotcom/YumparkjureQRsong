@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ร้านยำปากเจ่อ - Music Player</title>
+    <link rel="manifest" href="{% static 'music/manifest.json' %}">
+    <meta name="theme-color" content="#f59e0b">
+    <link rel="apple-touch-icon" href="{% static 'music/img/logo.jpg' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -43,8 +46,12 @@
                     <!-- Queue overlay: shows when queue exists but no current song -->
                     <div id="queue-overlay" class="absolute inset-0 z-10 hidden flex-col items-center justify-center bg-white p-4">
                         <p class="text-2xl md:text-4xl font-extrabold text-amber-700 text-center">
-                            ยำปากเจ่อกำแพงเพชรอร่อยถูกดีอันดับ1
+                            ยำปากเจ่อKPP
                         </p>
+                        <button onclick="ensurePlaying()"
+                                class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-5 py-2.5 rounded-xl font-bold shadow">
+                            เริ่มเล่นเพลง
+                        </button>
                     </div>
 
                     <!-- Idle splash: shows when no queue AND no current song -->
@@ -56,17 +63,22 @@
                 </div>
 
                 <div class="bg-white shadow-md p-3 sm:p-4 rounded-xl flex items-center justify-between border border-slate-200">
-                    <div class="overflow-hidden pr-2">
+                    <div class="overflow-hidden pr-2 flex-1">
                         <span class="text-[10px] sm:text-xs text-amber-600 font-bold tracking-wider">กำลังเล่น</span>
                         <h2 id="now-playing-title" class="text-sm sm:text-base md:text-lg font-bold truncate text-slate-900">รอเพลงจากลูกค้า...</h2>
                     </div>
-                    <button onclick="skipSong()" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow transition flex-shrink-0">
-                        ข้ามเพลง
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <input type="range" id="volume-slider" min="0" max="100" value="80" class="w-20 accent-amber-500" title="ระดับเสียง">
+                        <button onclick="toggleMute()" id="mute-btn" class="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg border">🔊</button>
+                        <button onclick="shareCurrentSong()" class="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg border" title="แชร์เพลง">🔗</button>
+                        <button onclick="skipSong()" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow transition flex-shrink-0">
+                            ข้ามเพลง
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- ฝั่ง QR Code และ คิวเพลง -->
+            <!-- ฝั่ง QR Code, คิวเพลง, ค้นหา, เพลงแนะนำ -->
             <div class="space-y-3 sm:space-y-4">
                 <div class="bg-white shadow-md p-4 sm:p-5 rounded-2xl text-center border border-slate-200">
                     <h3 class="font-bold text-base sm:text-lg text-slate-900 mb-2">สแกนเพื่อขอเพลง</h3>
@@ -84,8 +96,39 @@
                     </div>
                     <div id="queue-list" class="space-y-2 max-h-60 sm:max-h-80 overflow-y-auto pr-1"></div>
                 </div>
+
+                <!-- ปุ่มเปิด/ปิด ค้นหาเพลง + เพลงแนะนำ -->
+                <div id="search-toggle-btn" onclick="toggleSearchPanel()" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 shadow-md p-3 rounded-2xl cursor-pointer transition text-white text-center font-bold text-sm">
+                    ค้นหาเพลง / เลือกเพลงแนะนำ
+                </div>
+
+                <!-- แผงค้นหา + เพลงแนะนำ (ซ่อนไว้ กดเปิด) -->
+                <div id="search-panel" class="space-y-3">
+                    <!-- ค้นหาเพลง -->
+                    <div class="bg-white shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200 relative">
+                        <h3 class="font-bold text-base sm:text-lg text-slate-900 mb-2">ค้นหาเพลง</h3>
+                        <div class="relative">
+                            <input type="text" id="manual-search" placeholder="พิมพ์ชื่อเพลงหรือศิลปิน..."
+                                   class="w-full border border-slate-300 bg-white text-slate-900 placeholder-slate-400 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+                            <div id="search-suggestions" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"></div>
+                        </div>
+                        <p id="manual-loading" class="hidden text-xs text-slate-500 text-center py-2">กำลังค้นหา...</p>
+                        <div id="manual-results" class="space-y-2 mt-2"></div>
+                    </div>
+
+                    <!-- เพลงแนะนำ -->
+                    <div class="bg-white shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-bold text-base sm:text-lg text-slate-900">เพลงแนะนำ</h3>
+                            <button onclick="fetchHits()" class="text-[10px] sm:text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-2 py-1 rounded-lg font-bold border border-amber-200 transition">รีเฟรช</button>
+                        </div>
+                        <div id="hit-list" class="space-y-2 max-h-60 overflow-y-auto pr-1"><p class="text-xs text-slate-400 text-center py-2">กำลังโหลดเพลงแนะนำ...</p></div>
+                    </div>
+                </div>
             </div>
         </div>
+    <!-- Toast container -->
+    <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 text-white px-4 py-2 rounded-xl shadow-lg text-sm font-medium"></div>
     </div>
 
     <!-- YouTube IFrame API -->
@@ -97,17 +140,22 @@
         let isPlayerReady = false;
         let wakeLock = null;
         let lastPlayedVideoId = null;
-        // Prevent duplicate skip/end requests and stale responses from
-        // resetting the song that is currently playing.
         const finishingSongIds = new Set();
 
-        // กันจอหลับ / พับจอแล้วเพลงยังเล่นต่อ
+        // Video IDs with embedding disabled
+        const blockedVideoIds = new Set([
+            "jNQXAC9IVRw",
+            "dQw4w9WgXcQ",
+            "qguo-j5PxBE",
+        ]);
+
+        // Recommended hits data
+        let hitSongs = [];
+
+        // --- Wake Lock ---
         async function requestWakeLock() {
-            try {
-                wakeLock = await navigator.wakeLock.request('screen');
-            } catch (err) {
-                console.warn('Wake Lock error:', err);
-            }
+            try { wakeLock = await navigator.wakeLock.request('screen'); }
+            catch (err) { console.warn('Wake Lock error:', err); }
         }
         requestWakeLock();
         document.addEventListener('visibilitychange', () => {
@@ -131,12 +179,51 @@
         document.addEventListener('click', ensurePlaying);
         document.addEventListener('touchstart', ensurePlaying);
 
+        // --- Toast ---
+        function showToast(msg, type="info") {
+            const t = document.getElementById('toast');
+            if (!t) return;
+            t.textContent = msg;
+            t.className = "fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2 rounded-xl shadow-lg text-sm font-medium";
+            if (type === "error") t.className += " !bg-red-600";
+            if (type === "success") t.className += " !bg-green-600";
+            t.classList.remove('hidden');
+            clearTimeout(t._timer);
+            t._timer = setTimeout(() => t.classList.add('hidden'), 3000);
+        }
+
+        function shareCurrentSong() {
+            if (!currentSong) { showToast("ยังไม่มีเพลงเล่นอยู่", "error"); return; }
+            const url = window.location.origin + "/request/?q=" + encodeURIComponent(currentSong.title);
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(url).then(() => showToast("คัดลอกลิงก์แล้ว!", "success"));
+            } else {
+                prompt("คัดลอกลิงก์:", url);
+            }
+        }
+
+        // --- Volume ---
+        let isMuted = false;
+        function toggleMute() {
+            if (!player || !player.isMuted) return;
+            if (player.isMuted()) { player.unMute(); isMuted=false; document.getElementById('mute-btn').textContent='🔊'; }
+            else { player.mute(); isMuted=true; document.getElementById('mute-btn').textContent='🔇'; }
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const vol = document.getElementById('volume-slider');
+            if (vol) vol.addEventListener('input', () => {
+                if (player && player.setVolume) player.setVolume(parseInt(vol.value));
+            });
+        });
+
+        // --- YouTube Player (IFrame API only) ---
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
                 height: '100%',
                 width: '100%',
                 playerVars: {
                     'autoplay': 1,
+                    'mute': 1,
                     'controls': 1,
                     'enablejsapi': 1,
                     'playsinline': 1,
@@ -144,32 +231,27 @@
                     'origin': window.location.origin
                 },
                 events: {
-                    'onReady': () => {
-                        isPlayerReady = true;
-                        fetchQueue();
-                    },
+                    'onReady': () => { isPlayerReady = true; fetchQueue(); fetchHits(); },
                     'onStateChange': onPlayerStateChange,
                     'onError': (event) => {
-                      // Error 153 = embedding disabled by video owner
-                      // Other codes (2, 5, 100, 101, 150) may be transient
-                      if (event.data === 153) {
-                          console.warn('Video embedding disabled (Error 153), skipping:', currentSong?.title);
-                          // Show user-friendly message
-                          const titleEl = document.getElementById('now-playing-title');
-                          if (titleEl) titleEl.innerText = 'เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) - ข้ามไปเพลงถัดไป...';
-                          setTimeout(() => skipSong(), 1500);
-                      } else {
-                          console.warn('YouTube player error:', event.data, 'retrying once...');
-                          // Retry once by reloading the same video
-                          if (currentSong && !window._retryCount) {
-                              window._retryCount = 1;
-                              player.loadVideoById(currentSong.video_id);
-                          } else {
-                              window._retryCount = 0;
-                              skipSong();
-                          }
-                      }
-                  }
+                        // Embedding disabled / video unavailable errors
+                        if ([2, 5, 100, 101, 150, 153].includes(event.data)) {
+                            console.warn('YouTube video cannot be embedded (Error ' + event.data + '), skipping:', currentSong?.title);
+                            const titleEl = document.getElementById('now-playing-title');
+                            if (titleEl) titleEl.innerText = 'เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) - ข้ามไปเพลงถัดไป...';
+                            setTimeout(() => skipSong(), 500);
+                        } else {
+                            // Transient errors - retry once
+                            console.warn('YouTube player error:', event.data, 'retrying once...');
+                            if (currentSong && !window._retryCount) {
+                                window._retryCount = 1;
+                                player.loadVideoById(currentSong.video_id);
+                            } else {
+                                window._retryCount = 0;
+                                skipSong();
+                            }
+                        }
+                    }
                 }
             });
         }
@@ -180,8 +262,8 @@
             }
         }
 
+        // --- Queue ---
         let lastQueueLength = 0;
-        let fastPollTimer = null;
 
         function fetchQueue(onDone) {
             fetch('/api/queue/')
@@ -195,14 +277,12 @@
                     const queueOverlay = document.getElementById('queue-overlay');
                     const idleSplash = document.getElementById('idle-splash');
 
-                    // Detect new songs added to queue
                     const hasNewSongs = queue.length > lastQueueLength;
                     lastQueueLength = queue.length;
 
                     if (isPlayerReady && !currentSong && queue.length > 0) {
                         playNext();
                     } else if (!currentSong) {
-                        // No current song, update overlays based on queue
                         if (queue.length > 0) {
                             idleSplash.classList.add('hidden');
                             queueOverlay.classList.remove('hidden');
@@ -215,19 +295,17 @@
                             videoContainer.classList.add('bg-black');
                         }
                     }
-                    
-                    // If new songs added, trigger immediate play
+
                     if (hasNewSongs && isPlayerReady && !currentSong) {
                         playNext();
-                        setFastPoll();  // Switch to fast polling for 10 seconds
+                        setFastPoll();
                     }
-                    
+
                     if (onDone) onDone();
                 })
-                .catch(err => console.error(err));
+                .catch(err => { console.error(err); showToast("เกิดข้อผิดพลาด", "error"); });
         }
 
-        // เล่นเพลงแรกในคิว (เล่นอัตโนมัติเมื่อมีคนขอเพลง / เพลงจบ / กดข้าม)
         function playNext() {
             const next = queue.find(song => !finishingSongIds.has(song.id));
             const videoContainer = document.getElementById('video-container');
@@ -235,7 +313,6 @@
             const idleSplash = document.getElementById('idle-splash');
 
             if (next) {
-                // กัน race: polling อาจเจอเพลงเดิมที่เพิ่งจบยังไม่ถูกตัดออกจากคิว -> ไม่เล่นซ้ำ
                 if (currentSong && currentSong.id === next.id) return;
                 currentSong = next;
                 lastPlayedVideoId = next.video_id;
@@ -245,9 +322,10 @@
                 videoContainer.classList.remove('bg-white');
                 videoContainer.classList.add('bg-black');
                 player.loadVideoById(currentSong.video_id);
-                player.mute();      // เริ่มแบบปิดเสียงก่อน (browser อนุญาต autoplay แบบ muted เสมอ)
+                // Browser autoplay policy: start muted, unmute after user interaction
+                player.mute();
                 player.playVideo();
-                player.unMute();    // เปิดเสียงทันที
+                if (userInteracted) player.unMute();
             } else {
                 currentSong = null;
                 lastPlayedVideoId = null;
@@ -271,15 +349,12 @@
         }
 
         function printQR() {
-            // Get QR URL from the QR code image src (rendered by template)
-            const qrImg = document.querySelector('#idle-splash img[alt="QR Code"]') || 
+            const qrImg = document.querySelector('#idle-splash img[alt="QR Code"]') ||
                           document.querySelector('.space-y-3 img[alt="QR Code"]');
             const qrUrl = qrImg ? qrImg.src : '/qr.png';
             const printWindow = window.open(qrUrl, '_blank');
             if (printWindow) {
-                printWindow.onload = function() {
-                    printWindow.print();
-                };
+                printWindow.onload = function() { printWindow.print(); };
             } else {
                 window.location.href = qrUrl;
             }
@@ -292,17 +367,15 @@
                     currentSong = null;
                     lastPlayedVideoId = null;
                     fetchQueue();
-                });
+                    showToast("ล้างคิวแล้ว", "success");
+                })
+                .catch(err => { console.error(err); showToast("เกิดข้อผิดพลาด", "error"); });
         }
 
         function removePlayedSong(songId) {
             if (!songId || finishingSongIds.has(songId)) return;
-
             finishingSongIds.add(songId);
-            // Release the current slot immediately. The old request must not
-            // race a poll or a second YouTube event.
             if (currentSong && currentSong.id === songId) currentSong = null;
-
             fetch(`/api/played/${songId}/`)
                 .then(() => fetchQueue())
                 .catch(err => console.error('Unable to finish song:', err))
@@ -315,12 +388,10 @@
         function renderQueue() {
             const container = document.getElementById('queue-list');
             container.innerHTML = '';
-
             if (queue.length === 0) {
                 container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">ไม่มีคิวเพลงในระบบ</p>';
                 return;
             }
-
             queue.forEach((song, idx) => {
                 const isPlayingNow = currentSong && song.id === currentSong.id;
                 container.innerHTML += `
@@ -336,16 +407,32 @@
             });
         }
 
-        // Manual search/play functions for player page
+        // --- Search Panel Toggle ---
+        function toggleSearchPanel() {
+            const panel = document.getElementById('search-panel');
+            const btn = document.getElementById('search-toggle-btn');
+            if (panel.classList.contains('hidden')) {
+                panel.classList.remove('hidden');
+                btn.textContent = 'ปิดค้นหาเพลง';
+                fetchHits();
+            } else {
+                panel.classList.add('hidden');
+                btn.textContent = 'ค้นหาเพลง / เลือกเพลงแนะนำ';
+            }
+        }
+
+        // --- Manual Search ---
         let manualSearchResults = [];
         let manualSearchTimer = null;
+        let suggestTimer = null;
 
         function manualSearch() {
             const query = document.getElementById("manual-search").value.trim();
             if (!query) return;
             document.getElementById("manual-loading").classList.remove("hidden");
             document.getElementById("manual-results").innerHTML = "";
-            
+            hideSuggestions();
+
             fetch("/api/search/?q=" + encodeURIComponent(query))
                 .then(res => res.json())
                 .then(data => {
@@ -354,7 +441,7 @@
                     const container = document.getElementById("manual-results");
                     container.innerHTML = "";
                     if (manualSearchResults.length === 0) {
-                        container.innerHTML = "<p class="text-xs text-slate-500 text-center py-2">ไม่พบเพลงที่ค้นหา</p>";
+                        container.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">ไม่พบเพลงที่ค้นหา</p>';
                         return;
                     }
                     manualSearchResults.forEach((song, idx) => {
@@ -376,12 +463,12 @@
                 .catch(err => {
                     document.getElementById("manual-loading").classList.add("hidden");
                     console.error(err);
+                    showToast("เกิดข้อผิดพลาด", "error");
                 });
         }
 
         function manualPlay(idx) {
             const song = manualSearchResults[idx];
-            // Add to queue and play immediately
             fetch("/api/add/", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -397,19 +484,15 @@
             .then(res => res.json())
             .then(data => {
                 if (data.status === "success") {
-                    // Trigger immediate play on player
                     fetchQueue(() => {
-                        // Force play the newly added song
                         setTimeout(() => {
-                            if (queue.length > 0 && !currentSong) {
-                                playNext();
-                            }
+                            if (queue.length > 0 && !currentSong) playNext();
                         }, 100);
                     });
-                    // Hide manual section, show player
-                    document.getElementById("manual-play-section").classList.add("hidden");
                     document.getElementById("manual-search").value = "";
                     document.getElementById("manual-results").innerHTML = "";
+                    toggleSearchPanel();
+                    showToast("เพิ่มเพลงเข้าคิวแล้ว", "success");
                 } else {
                     alert("เพิ่มเพลงไม่สำเร็จ: " + (data.error || "Unknown error"));
                 }
@@ -417,24 +500,134 @@
             .catch(err => {
                 console.error(err);
                 alert("เกิดข้อผิดพลาด: " + err.message);
+                showToast("เกิดข้อผิดพลาด", "error");
             });
         }
 
-        // Debounce manual search
+        // --- Search Suggestions (autocomplete) ---
+        function showSuggestions(suggestions) {
+            const container = document.getElementById("search-suggestions");
+            if (!suggestions || suggestions.length === 0) {
+                container.classList.add("hidden");
+                return;
+            }
+            container.innerHTML = suggestions.map(s =>
+                '<div class="px-3 py-2 text-sm text-slate-700 hover:bg-amber-50 cursor-pointer border-b border-slate-100 last:border-0" onclick="selectSuggestion(\'' + s.replace(/'/g, "\\'") + '\')">' + s + '</div>'
+            ).join("");
+            container.classList.remove("hidden");
+        }
+
+        function hideSuggestions() {
+            const el = document.getElementById("search-suggestions");
+            if (el) el.classList.add("hidden");
+        }
+
+        function selectSuggestion(text) {
+            document.getElementById("manual-search").value = text;
+            hideSuggestions();
+            manualSearch();
+        }
+
+        function fetchSuggestions(query) {
+            if (!query || query.length < 2) { hideSuggestions(); return; }
+            fetch("/api/suggest/?q=" + encodeURIComponent(query))
+                .then(res => res.json())
+                .then(data => { showSuggestions(data.suggestions || []); })
+                .catch(() => hideSuggestions());
+        }
+
+        // --- Hits / Recommended ---
+        function fetchHits() {
+            fetch("/api/hits/")
+                .then(res => res.json())
+                .then(data => {
+                    if (data.results && data.results.length > 0) {
+                        hitSongs = data.results.filter(s => !blockedVideoIds.has(s.id));
+                        renderHitList();
+                    }
+                })
+                .catch(err => { console.error(err); showToast("เกิดข้อผิดพลาด", "error"); });
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            // Load recommendations independently of the YouTube iframe state.
+            fetchHits();
+        });
+
+        function renderHitList() {
+            const container = document.getElementById("hit-list");
+            if (!container) return;
+            container.innerHTML = "";
+            if (hitSongs.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-2">ไม่มีเพลงแนะนำ</p>';
+                return;
+            }
+            hitSongs.forEach((song, idx) => {
+                container.innerHTML += `
+                    <div class="bg-white shadow-md p-2 rounded-xl border border-slate-200 flex items-center gap-2">
+                        <img src="${song.thumbnail}" class="w-10 h-10 object-cover rounded-lg flex-shrink-0">
+                        <div class="flex-1 overflow-hidden">
+                            <p class="font-semibold text-xs truncate text-slate-900">${song.title}</p>
+                            <p class="text-[10px] text-slate-500 truncate">${song.channel}</p>
+                        </div>
+                        <button onclick="hitPlay(${idx})"
+                                class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
+                            เล่น
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        function hitPlay(idx) {
+            const song = hitSongs[idx];
+            fetch("/api/add/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: song.title,
+                    video_id: song.id,
+                    thumbnail: song.thumbnail,
+                    channel: song.channel,
+                    requested_by: "เจ้าของร้าน (เล่นเอง)",
+                    client_id: "manual_" + Date.now()
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "success") {
+                    fetchQueue(() => {
+                        setTimeout(() => {
+                            if (queue.length > 0 && !currentSong) playNext();
+                        }, 100);
+                    });
+                    showToast("เพิ่มเพลงเข้าคิวแล้ว", "success");
+                } else {
+                    alert("เพิ่มเพลงไม่สำเร็จ: " + (data.error || "Unknown error"));
+                }
+            })
+            .catch(err => { console.error(err); alert("เกิดข้อผิดพลาด: " + err.message); showToast("เกิดข้อผิดพลาด", "error"); });
+        }
+
+        // --- DOMContentLoaded: bind events ---
         document.addEventListener("DOMContentLoaded", function() {
             const manualSearchInput = document.getElementById("manual-search");
             if (manualSearchInput) {
                 manualSearchInput.addEventListener("input", function() {
                     clearTimeout(manualSearchTimer);
+                    clearTimeout(suggestTimer);
+                    const q = this.value.trim();
+                    suggestTimer = setTimeout(() => fetchSuggestions(q), 300);
                     manualSearchTimer = setTimeout(manualSearch, 500);
                 });
                 manualSearchInput.addEventListener("keypress", function(e) {
-                    if (e.key === "Enter") manualSearch();
+                    if (e.key === "Enter") { hideSuggestions(); manualSearch(); }
                 });
+                manualSearchInput.addEventListener("blur", () => setTimeout(hideSuggestions, 200));
             }
         });
 
-        // Dynamic polling: fast (1s) when queue has changes, normal (3s) otherwise
+        // --- Polling ---
         let pollInterval = 3000;
         let pollTimer = null;
 
@@ -446,15 +639,17 @@
         function setFastPoll() {
             pollInterval = 1000;
             startPolling();
-            // Revert to normal after 10 seconds
-            setTimeout(() => {
-                pollInterval = 3000;
-                startPolling();
-            }, 10000);
+            setTimeout(() => { pollInterval = 3000; startPolling(); }, 10000);
         }
 
-        // Start initial polling
         startPolling();
+    </script>
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register("{% static 'music/sw.js' %}").catch(()=>{});
+        });
+    }
     </script>
 </body>
 </html>
