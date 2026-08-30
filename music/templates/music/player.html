@@ -49,7 +49,7 @@
                     <div id="player" class="w-full h-full" playsinline webkit-playsinline></div>
 
                     <!-- Queue overlay: shows when queue exists but no current song -->
-                    <div id="queue-overlay" class="absolute inset-0 z-10 hidden flex-col items-center justify-center bg-white/95 p-4 gap-3">
+                    <div id="queue-overlay" onclick="handleOverlayTap()" class="absolute inset-0 z-10 hidden flex-col items-center justify-center bg-white/95 p-4 gap-3 cursor-pointer">
                         <p class="text-xl md:text-2xl font-extrabold text-amber-700 text-center">
                             แตะเพื่อเปิดเสียง
                         </p>
