@@ -115,7 +115,29 @@ def search_youtube(query, max_results=8):
     """Use the official API first, retaining yt-dlp as a local fallback."""
     api_results = youtube_api_search(query, max_results)
     if api_results:
-        return api_results
+        filtered = []
+        for r in api_results[:8]:
+            cache_key = f"embed:{r['id']}"
+            cached = cache.get(cache_key)
+            if cached is True or cached is False:
+                embed = cached
+            else:
+                embed = _is_embeddable(r['id'])
+                if embed is not None:
+                    cache.set(cache_key, embed, 3600)
+                else:
+                    cache.set(cache_key, True, 60)
+            if embed is False:
+                try:
+                    BlockedVideo.objects.get_or_create(video_id=r['id'], defaults={'reason': 'Not embeddable'})
+                except:
+                    pass
+                continue
+            # embed is True or None (network) -> keep
+            filtered.append(r)
+            if len(filtered) >= 5:
+                break
+        return filtered if filtered else []
 
     ydl_opts = {'quiet': True, 'skip_download': True, 'extract_flat': True, 'default_search': f'ytsearch{max_results}'}
     raw = []
@@ -133,17 +155,23 @@ def search_youtube(query, max_results=8):
     # Now check embeddable per video (slow but accurate) — limit to first 8 to keep time <5s
     filtered = []
     for r in raw[:8]:
-        embed = _is_embeddable(r['id'])
-        if embed is True:
+        cache_key = f"embed:{r['id']}"
+        cached = cache.get(cache_key)
+        if cached is True or cached is False:
+            embed = cached
+        else:
+            embed = _is_embeddable(r['id'])
+            if embed is not None:
+                cache.set(cache_key, embed, 3600)
+            else:
+                cache.set(cache_key, True, 60)
+        if embed is True or embed is None:
             filtered.append(r)
         elif embed is False:
-            # truly not embeddable -> auto-block
             try:
                 BlockedVideo.objects.get_or_create(video_id=r['id'], defaults={'reason': 'Not embeddable'})
-            except: pass
-        else:
-            # None = network error, don't block, keep as fallback candidate
-            filtered.append(r)  # keep it, player will handle
+            except:
+                pass
         if len(filtered) >= 5:
             break
     return filtered[:5] if filtered else []
