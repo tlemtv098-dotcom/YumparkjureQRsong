@@ -75,7 +75,7 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <input type="range" id="volume-slider" min="0" max="100" value="80" class="w-20 accent-amber-500" title="ระดับเสียง">
-                        <button onclick="toggleMute()" id="mute-btn" class="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg border">🔊</button>
+                        <button onclick="toggleAutoRandom()" id="auto-random-btn" class="text-xs bg-amber-100 hover:bg-amber-200 px-2 py-1 rounded-lg border border-amber-200 font-bold" title="เล่นอัตโนมัติแบบสุ่ม">🔀 ออโต้: เปิด</button>
                         <button onclick="shareCurrentSong()" class="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg border" title="แชร์เพลง">🔗</button>
                         <button onclick="skipSong()" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow transition flex-shrink-0">
                             ข้ามเพลง
@@ -242,18 +242,36 @@
         }
 
         // --- Volume ---
-        let isMuted = false;
-        function toggleMute() {
-            if (!player || !player.isMuted) return;
-            if (player.isMuted()) { player.unMute(); isMuted=false; document.getElementById('mute-btn').textContent='🔊'; }
-            else { player.mute(); isMuted=true; document.getElementById('mute-btn').textContent='🔇'; }
-        }
         document.addEventListener('DOMContentLoaded', () => {
             const vol = document.getElementById('volume-slider');
             if (vol) vol.addEventListener('input', () => {
                 if (player && player.setVolume) player.setVolume(parseInt(vol.value));
             });
         });
+
+        // --- Auto Random ---
+        let autoRandomEnabled = localStorage.getItem('auto_random') !== 'off';
+        function toggleAutoRandom(){
+          autoRandomEnabled = !autoRandomEnabled;
+          localStorage.setItem('auto_random', autoRandomEnabled ? 'on' : 'off');
+          updateAutoRandomBtn();
+          if(autoRandomEnabled && !currentSong && queue.length===0) playRandomHit();
+          showToast(autoRandomEnabled ? "เปิดเล่นอัตโนมัติแบบสุ่ม" : "ปิดเล่นอัตโนมัติ", "info");
+        }
+        function updateAutoRandomBtn(){
+          const b=document.getElementById('auto-random-btn');
+          if(b) b.textContent = autoRandomEnabled ? '🔀 ออโต้: เปิด' : '🔀 ออโต้: ปิด';
+          if(b) b.className = autoRandomEnabled ? 'text-xs bg-amber-500 text-white px-2 py-1 rounded-lg border font-bold' : 'text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg border font-bold';
+        }
+        function playRandomHit(){
+          if(!autoRandomEnabled || currentSong || queue.length>0) return;
+          if(hitSongs.length===0) { fetchHits(); return; }
+          const song = hitSongs[Math.floor(Math.random()*hitSongs.length)];
+          if(!song) return;
+          // create queue entry via /api/add then playNext will be triggered via fetchQueue
+          fetch("/api/add/", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({title:song.title, video_id:song.id, thumbnail:song.thumbnail, channel:song.channel, requested_by:"ระบบ (ออโต้สุ่ม)", client_id:"auto_random_"+Date.now()})}).then(()=>fetchQueue()).catch(()=>{});
+        }
+        document.addEventListener('DOMContentLoaded', () => { updateAutoRandomBtn(); });
 
         // --- YouTube Player (IFrame API only) ---
         function onYouTubeIframeAPIReady() {
@@ -354,6 +372,7 @@
                             queueOverlay.classList.add('hidden');
                             videoContainer.classList.remove('bg-white');
                             videoContainer.classList.add('bg-black');
+                            if (autoRandomEnabled && isPlayerReady) playRandomHit();
                         }
                     }
 
@@ -410,6 +429,7 @@
                     queueOverlay.classList.add('hidden');
                     videoContainer.classList.remove('bg-white');
                     videoContainer.classList.add('bg-black');
+                    if (autoRandomEnabled && isPlayerReady) playRandomHit();
                 }
             }
         }

@@ -61,7 +61,8 @@ class PlayerPageTests(TestCase):
     def test_player_has_volume_control(self):
         response = self.client.get('/')
         self.assertContains(response, 'volume-slider')
-        self.assertContains(response, 'toggleMute')
+        self.assertContains(response, 'auto-random-btn')
+        self.assertContains(response, 'toggleAutoRandom')
         self.assertContains(response, 'showToast')
 
 
