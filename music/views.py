@@ -115,21 +115,7 @@ def search_youtube(query, max_results=8):
     """Use the official API first, retaining yt-dlp as a local fallback."""
     api_results = youtube_api_search(query, max_results)
     if api_results:
-        filtered = []
-        for r in api_results[:8]:
-            embed = _is_embeddable(r['id'])
-            if embed is True:
-                filtered.append(r)
-            elif embed is False:
-                try:
-                    BlockedVideo.objects.get_or_create(video_id=r['id'], defaults={'reason': 'Not embeddable'})
-                except:
-                    pass
-            else:
-                filtered.append(r)
-            if len(filtered) >= 5:
-                break
-        return filtered if filtered else []
+        return api_results
 
     ydl_opts = {'quiet': True, 'skip_download': True, 'extract_flat': True, 'default_search': f'ytsearch{max_results}'}
     raw = []
