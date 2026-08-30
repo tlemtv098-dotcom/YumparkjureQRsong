@@ -201,8 +201,8 @@
             if (player.isMuted && player.isMuted()) player.unMute();
             if (player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo();
         }
-        document.addEventListener('touchstart', () => { userInteracted = true; ensurePlaying(); }, {once: true});
-        document.addEventListener('click', () => { userInteracted = true; ensurePlaying(); }, {once: true});
+        document.addEventListener('touchstart', () => { userInteracted = true; ensurePlaying(); });
+        document.addEventListener('click', () => { userInteracted = true; ensurePlaying(); });
 
         // --- Toast ---
         function showToast(msg, type="info") {
@@ -255,10 +255,19 @@
                     'playsinline': 1,
                     'iv_load_policy': 3,
                     'rel': 0,
-                    'origin': window.location.origin
+                    'origin': window.location.origin,
+                    'widget_referrer': window.location.origin
                 },
                 events: {
-                    'onReady': () => { isPlayerReady = true; fetchQueue(); fetchHits(); },
+                    'onReady': () => {
+                        isPlayerReady = true; fetchQueue(); fetchHits();
+                        const iframe = document.querySelector('#player iframe');
+                        if (iframe) {
+                            iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
+                            iframe.setAttribute('playsinline', '1');
+                            iframe.setAttribute('webkit-playsinline', '1');
+                        }
+                    },
                     'onStateChange': onPlayerStateChange,
                     'onError': (event) => {
                         // Embedding disabled / video unavailable errors
