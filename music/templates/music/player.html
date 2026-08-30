@@ -329,25 +329,21 @@
 
                     if (isPlayerReady && !currentSong && queue.length > 0) {
                         if (!userInteracted) {
+                            // Uniform tap-gate: show tap overlay on all platforms, don't auto-play
                             idleSplash.classList.add('hidden');
                             queueOverlay.classList.remove('hidden');
-                            videoContainer.classList.remove('bg-white');
-                            videoContainer.classList.add('bg-black');
-                            try { playNext(); } catch(e) {}
-                            // keep overlay as unmute hint over muted video
-                            queueOverlay.classList.remove('hidden');
-                            idleSplash.classList.add('hidden');
-                            videoContainer.classList.remove('bg-white');
-                            videoContainer.classList.add('bg-black');
+                            videoContainer.classList.remove('bg-black');
+                            videoContainer.classList.add('bg-white');
                         } else {
                             playNext();
                         }
                     } else if (!currentSong) {
                         if (queue.length > 0 && !userInteracted) {
+                            // keep queueOverlay visible as "tap to unmute" hint
                             idleSplash.classList.add('hidden');
                             queueOverlay.classList.remove('hidden');
-                            videoContainer.classList.remove('bg-white');
-                            videoContainer.classList.add('bg-black');
+                            videoContainer.classList.remove('bg-black');
+                            videoContainer.classList.add('bg-white');
                         } else if (queue.length > 0) {
                             idleSplash.classList.add('hidden');
                             queueOverlay.classList.add('hidden');
@@ -363,16 +359,11 @@
 
                     if (hasNewSongs && isPlayerReady && !currentSong) {
                         if (!userInteracted) {
+                            // Uniform tap-gate: show overlay, don't auto-play
                             idleSplash.classList.add('hidden');
                             queueOverlay.classList.remove('hidden');
-                            videoContainer.classList.remove('bg-white');
-                            videoContainer.classList.add('bg-black');
-                            try { playNext(); } catch(e) {}
-                            queueOverlay.classList.remove('hidden');
-                            idleSplash.classList.add('hidden');
-                            videoContainer.classList.remove('bg-white');
-                            videoContainer.classList.add('bg-black');
-                            setFastPoll();
+                            videoContainer.classList.remove('bg-black');
+                            videoContainer.classList.add('bg-white');
                         } else {
                             playNext();
                             setFastPoll();
