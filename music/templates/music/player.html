@@ -181,12 +181,26 @@
 
         function handleOverlayTap() {
             userInteracted = true;
+            const queueOverlay = document.getElementById('queue-overlay');
+            const idleSplash = document.getElementById('idle-splash');
+            const videoContainer = document.getElementById('video-container');
+            if (queueOverlay) queueOverlay.classList.add('hidden');
+            if (idleSplash) idleSplash.classList.add('hidden');
+            if (videoContainer) { videoContainer.classList.remove('bg-white'); videoContainer.classList.add('bg-black'); }
             if (!currentSong && queue.length > 0) {
                 playNext();
+            } else if (currentSong) {
+                if (player && player.isMuted && player.isMuted()) player.unMute();
+                if (player && player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo();
+            } else {
+                if (player && player.isMuted && player.isMuted()) player.unMute();
+                if (player && player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo();
             }
-            if (player && player.isMuted && player.isMuted()) player.unMute();
-            if (player && player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo();
-            document.getElementById('queue-overlay').classList.add('hidden');
+            // Fallback for iPhone Chrome (CriOS): force muted play then unmute
+            if (!isLineWebView && /CriOS/i.test(navigator.userAgent)) {
+                try { if (player && player.mute) player.mute(); if (player && player.playVideo) player.playVideo(); } catch(e) {}
+                setTimeout(()=>{if(userInteracted && player && player.unMute) player.unMute();}, 500);
+            }
             showToast("เปิดเสียงแล้ว", "success");
         }
 
@@ -261,12 +275,7 @@
                 events: {
                     'onReady': () => {
                         isPlayerReady = true; fetchQueue(); fetchHits();
-                        const iframe = document.querySelector('#player iframe');
-                        if (iframe) {
-                            iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
-                            iframe.setAttribute('playsinline', '1');
-                            iframe.setAttribute('webkit-playsinline', '1');
-                        }
+                        setTimeout(()=>{const iframe=document.querySelector('#player iframe'); if(iframe){iframe.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture'); iframe.setAttribute('allowFullscreen',''); iframe.setAttribute('playsinline','1'); iframe.setAttribute('webkit-playsinline','1');}}, 100);
                     },
                     'onStateChange': onPlayerStateChange,
                     'onError': (event) => {
