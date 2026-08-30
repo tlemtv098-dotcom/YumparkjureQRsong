@@ -258,3 +258,95 @@ class ErrorPagesTests(TestCase):
         import os
         from django.conf import settings
         self.assertTrue(os.path.exists(os.path.join(settings.BASE_DIR, 'music', 'templates', '500.html')))
+
+
+# --- Task 4: Regression tests for universal platform support ---
+class UniversalHitsRegressionTests(TestCase):
+    def test_api_hits_never_returns_blocked_ids(self):
+        from unittest.mock import patch
+        from django.core.cache import cache
+        from music.views import BLOCKED_VIDEO_IDS
+        cache.clear()
+        blocked_id = next(iter(BLOCKED_VIDEO_IDS))
+        # Case 1: fallback path (search_youtube returns [] -> static fallback)
+        with patch('music.views.search_youtube', return_value=[]):
+            cache.clear()
+            res = self.client.get('/api/hits/')
+            self.assertEqual(res.status_code, 200)
+            ids = [r['id'] for r in res.json().get('results', [])]
+            for bid in BLOCKED_VIDEO_IDS:
+                self.assertNotIn(bid, ids, f'blocked id {bid} leaked in hits fallback')
+        # Case 2: live results containing blocked id should be filtered (defense in depth)
+        mixed = [
+            {'id': blocked_id, 'title': 'Blocked', 'channel': 'X', 'thumbnail': 'https://img.youtube.com/vi/%s/mqdefault.jpg' % blocked_id},
+            {'id': 'ks7p6DA0dKk', 'title': 'Good', 'channel': 'Y', 'thumbnail': 'https://img.youtube.com/vi/ks7p6DA0dKk/mqdefault.jpg'},
+        ]
+        with patch('music.views.search_youtube', return_value=mixed):
+            cache.clear()
+            res = self.client.get('/api/hits/')
+            self.assertEqual(res.status_code, 200)
+            ids = [r['id'] for r in res.json().get('results', [])]
+            self.assertNotIn(blocked_id, ids)
+            for bid in BLOCKED_VIDEO_IDS:
+                self.assertNotIn(bid, ids)
+
+
+class UniversalSearchRegressionTests(TestCase):
+    def test_api_search_never_returns_blocked_ids(self):
+        from unittest.mock import patch
+        from django.core.cache import cache
+        from music.views import BLOCKED_VIDEO_IDS
+        cache.clear()
+        # Fallback path when search_youtube returns [] — should return filtered static list
+        with patch('music.views.search_youtube', return_value=[]):
+            res = self.client.get('/api/search/?q=เพลง')
+            self.assertEqual(res.status_code, 200)
+            ids = [r['id'] for r in res.json().get('results', [])]
+            for bid in BLOCKED_VIDEO_IDS:
+                self.assertNotIn(bid, ids, f'blocked id {bid} leaked in search fallback')
+            # also test arbitrary query that triggers fallback[:3]
+            res2 = self.client.get('/api/search/?q=xyz-no-match-123')
+            ids2 = [r['id'] for r in res2.json().get('results', [])]
+            for bid in BLOCKED_VIDEO_IDS:
+                self.assertNotIn(bid, ids2)
+        # Also test search_youtube itself filters blocked even when raw has blocked
+        # mock yt-dlp path: youtube_api_search returns [] and raw contains blocked
+        from unittest.mock import MagicMock
+        blocked_id = next(iter(BLOCKED_VIDEO_IDS))
+        mock_info = {
+            'entries': [
+                {'id': blocked_id, 'title': 'Blocked Song', 'uploader': 'GMM'},
+                {'id': 'ks7p6DA0dKk', 'title': 'Good Song', 'uploader': 'GeneLab'},
+            ]
+        }
+        mock_ydl_instance = MagicMock()
+        mock_ydl_instance.extract_info.return_value = mock_info
+        mock_ydl_class = MagicMock()
+        mock_ydl_class.return_value.__enter__.return_value = mock_ydl_instance
+        mock_ydl_class.return_value.__exit__.return_value = False
+        with patch('music.views.youtube_api_search', return_value=[]), \
+             patch('music.views.YoutubeDL', mock_ydl_class), \
+             patch('music.views._is_embeddable', return_value=True):
+            from music.views import search_youtube
+            results = search_youtube('test', 5)
+            ids = [r['id'] for r in results]
+            self.assertNotIn(blocked_id, ids)
+
+
+class UniversalPlayerRegressionTests(TestCase):
+    def test_player_no_autoplay_without_tap_gate(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        content = res.content.decode()
+        self.assertIn('queue-overlay', content)
+        self.assertIn('isLineWebView', content)
+        self.assertIn('เปิดในเบราว์เซอร์', content)
+        self.assertNotIn('isMobile && !userInteracted', content)
+
+    def test_player_has_uniform_tap_gate(self):
+        res = self.client.get('/')
+        content = res.content.decode()
+        self.assertIn('queue-overlay', content)
+        self.assertIn('isLineWebView', content)
+        self.assertIn('เปิดในเบราว์เซอร์', content)
+        self.assertNotIn('isMobile && !userInteracted', content)

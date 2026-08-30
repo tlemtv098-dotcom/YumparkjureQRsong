@@ -36,6 +36,11 @@
             </div>
         </header>
 
+        <div id="webview-banner" class="hidden bg-amber-100 border border-amber-300 text-amber-800 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
+            <span class="text-sm font-medium">เปิดในเบราว์เซอร์ภายนอกเพื่อประสบการณ์ที่ดีขึ้น</span>
+            <button onclick="window.open(location.href,'_blank')" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex-shrink-0">เปิด</button>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
 
             <!-- เครื่องเล่นวิดีโอ YouTube -->
@@ -51,7 +56,7 @@
                         <p class="text-xs text-slate-500 text-center">เพลงเล่นแบบปิดเสียงอยู่</p>
                         <button onclick="handleOverlayTap()"
                                 class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg text-base">
-                            ▶ เริ่มเล่นเพลง
+                            เริ่มเล่นเพลง
                         </button>
                     </div>
 
@@ -140,6 +145,7 @@
         let queue = [];
         let isPlayerReady = false;
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isLineWebView = /Line\/|FBAN|FBAV|Messenger/i.test(navigator.userAgent);
         let wakeLock = null;
         let lastPlayedVideoId = null;
         const finishingSongIds = new Set();
@@ -165,6 +171,13 @@
         });
 
         let userInteracted = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (isLineWebView) {
+                const b = document.getElementById('webview-banner');
+                if (b) b.classList.remove('hidden');
+            }
+        });
 
         function handleOverlayTap() {
             userInteracted = true;
@@ -297,8 +310,8 @@
                     lastQueueLength = queue.length;
 
                     if (isPlayerReady && !currentSong && queue.length > 0) {
-                        if (isMobile && !userInteracted) {
-                            // Mobile: show tap overlay, don't auto-play
+                        if (!userInteracted) {
+                            // Uniform tap-gate: show tap overlay on all platforms, don't auto-play
                             idleSplash.classList.add('hidden');
                             queueOverlay.classList.remove('hidden');
                             videoContainer.classList.remove('bg-black');
@@ -327,8 +340,8 @@
                     }
 
                     if (hasNewSongs && isPlayerReady && !currentSong) {
-                        if (isMobile && !userInteracted) {
-                            // show overlay, don't auto-play
+                        if (!userInteracted) {
+                            // Uniform tap-gate: show overlay, don't auto-play
                             idleSplash.classList.add('hidden');
                             queueOverlay.classList.remove('hidden');
                             videoContainer.classList.remove('bg-black');
@@ -732,7 +745,7 @@
         startPolling();
     </script>
     <script>
-    if ('serviceWorker' in navigator) {
+    if ('serviceWorker' in navigator && !isLineWebView) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register("{% static 'music/sw.js' %}").catch(()=>{});
         });

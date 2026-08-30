@@ -34,6 +34,11 @@
             </div>
         </div>
 
+        <div id="webview-banner" class="hidden bg-amber-100 border border-amber-300 text-amber-800 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
+            <span class="text-sm font-medium">เปิดในเบราว์เซอร์ภายนอกเพื่อประสบการณ์ที่ดีขึ้น</span>
+            <button onclick="window.open(location.href,'_blank')" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex-shrink-0">เปิดในเบราว์เซอร์ภายนอก</button>
+        </div>
+
         <div id="now-playing-card" class="bg-amber-50 shadow-md border border-amber-200 rounded-2xl p-4 sm:p-5 mb-4">
             <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 mb-2">เพลงถัดไปในคิว</h2>
             <div id="now-playing-content" class="text-sm text-slate-600">กำลังโหลด...</div>
@@ -85,6 +90,7 @@
     </div>
 
     <script>
+        const isLineWebView = /Line\/|FBAN|FBAV|Messenger/i.test(navigator.userAgent);
         let clientId = localStorage.getItem("jukebox_client_id");
         if (!clientId) {
             clientId = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
@@ -152,16 +158,10 @@
                             </div>
                             <p class="text-xs text-slate-500 truncate">${song.channel}</p>
                         </div>
-                        <div class="flex gap-2">
-                            <button onclick="previewSong('${song.id}')" 
-                                    class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
-                                ฟังตัวอย่าง
-                            </button>
                             <button onclick="requestHit(${originalIdx})"
                                     class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
                                 ขอเพลง
                             </button>
-                        </div>
                     </div>
                 `;
             });
@@ -211,7 +211,7 @@
                     const container = document.getElementById("results");
                     container.innerHTML = "";
                     if (searchResults.length === 0) {
-                        container.innerHTML = '<p class="text-sm text-slate-500 text-center py-3">ไม่พบเพลงที่ค้นหา</p>';
+                        container.innerHTML = '<p class="text-sm text-slate-500 text-center py-3">ไม่พบเพลงที่เล่นได้ ลองคำค้นอื่น</p>';
                         return;
                     }
                     searchResults.forEach((song, idx) => {
@@ -222,16 +222,10 @@
                                     <p class="font-semibold text-sm truncate text-slate-900">${song.title}</p>
                                     <p class="text-xs text-slate-500 truncate">${song.channel}</p>
                                 </div>
-                                <div class="flex gap-2">
-                                    <button onclick="previewSong('${song.id}')" 
-                                            class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
-                                        ฟังตัวอย่าง
-                                    </button>
                                     <button onclick="requestSong(${idx})"
                                             class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
                                         ขอเพลง
                                     </button>
-                                </div>
                             </div>
                         `;
                     });
@@ -246,11 +240,6 @@
         function requestSong(idx) {
             const song = searchResults[idx];
             requestSongData(song);
-        }
-
-        function previewSong(videoId) {
-            // Open YouTube video in new tab for preview
-            window.open("https://www.youtube.com/watch?v=" + videoId, "_blank");
         }
 
         function requestSongData(song) {
@@ -396,6 +385,10 @@
         }
 
         document.addEventListener("DOMContentLoaded", function () {
+            if (isLineWebView) {
+                const b = document.getElementById('webview-banner');
+                if (b) b.classList.remove('hidden');
+            }
             renderHitList();
             fetchNowPlaying();
             fetchMySongs();
@@ -464,7 +457,7 @@
     </script>
     <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 text-white px-4 py-2 rounded-xl shadow-lg text-sm font-medium"></div>
     <script>
-    if ('serviceWorker' in navigator) {
+    if ('serviceWorker' in navigator && !isLineWebView) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register("{% static 'music/sw.js' %}").catch(()=>{});
         });

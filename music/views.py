@@ -115,7 +115,21 @@ def search_youtube(query, max_results=8):
     """Use the official API first, retaining yt-dlp as a local fallback."""
     api_results = youtube_api_search(query, max_results)
     if api_results:
-        return api_results
+        filtered = []
+        for r in api_results[:8]:
+            embed = _is_embeddable(r['id'])
+            if embed is True:
+                filtered.append(r)
+            elif embed is False:
+                try:
+                    BlockedVideo.objects.get_or_create(video_id=r['id'], defaults={'reason': 'Not embeddable'})
+                except:
+                    pass
+            else:
+                filtered.append(r)
+            if len(filtered) >= 5:
+                break
+        return filtered if filtered else []
 
     ydl_opts = {'quiet': True, 'skip_download': True, 'extract_flat': True, 'default_search': f'ytsearch{max_results}'}
     raw = []
@@ -146,7 +160,7 @@ def search_youtube(query, max_results=8):
             filtered.append(r)  # keep it, player will handle
         if len(filtered) >= 5:
             break
-    return filtered if filtered else raw[:5]
+    return filtered[:5] if filtered else []
 
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -250,6 +264,11 @@ def hits(request):
             {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/I9ZIq7ynvdU/mqdefault.jpg"},
             {"id": "yEbv0QiI1Ns", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://img.youtube.com/vi/yEbv0QiI1Ns/mqdefault.jpg"},
         ]
+        # filter blocked before return — never serve Error 153 to UI
+        results = [r for r in results if not _is_blocked(r['id'])]
+    else:
+        # also ensure live search results are filtered (defense in depth)
+        results = [r for r in results if not _is_blocked(r['id'])]
     random.shuffle(results)
     out = results[:8]
     cache.set(cache_key, out, 60)
