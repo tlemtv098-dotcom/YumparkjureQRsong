@@ -594,7 +594,7 @@
         });
 
         // --- Auto Random ---
-        let autoRandomEnabled = localStorage.getItem('auto_random') !== 'off';
+        let autoRandomEnabled = localStorage.getItem('auto_random') === 'on';
         function toggleAutoRandom(){
           autoRandomEnabled = !autoRandomEnabled;
           localStorage.setItem('auto_random', autoRandomEnabled ? 'on' : 'off');
