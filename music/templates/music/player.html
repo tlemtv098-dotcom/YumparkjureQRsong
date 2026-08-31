@@ -10,6 +10,8 @@
     <title>ร้านยำปากเจ่อ - Music Player</title>
     <link rel="manifest" href="{% static 'music/manifest.json' %}">
     <meta name="theme-color" content="#f59e0b">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <meta name="player-token" content="{{ PLAYER_TOKEN }}">
     <link rel="apple-touch-icon" href="{% static 'music/img/logo.jpg' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -79,7 +81,7 @@
            iOS requires user gesture to unmute; this overlay captures
            the first tap anywhere on video and unmutes + plays
            ============================================================ */
-        #sound-overlay, #queue-overlay {
+        #sound-overlay {
             /* Ensure overlays respect safe area */
             padding-top: var(--sat);
             padding-bottom: var(--sab);
@@ -91,12 +93,7 @@
             user-select: none;
             /* Ensure high z-index above iframe */
             touch-action: manipulation;
-        }
-        #sound-overlay {
             background: rgba(255,255,255,0.96);
-        }
-        #queue-overlay {
-            background: rgba(255,255,255,0.95);
         }
         /* Idle splash: hidden when playing, respects safe area */
         #idle-splash {
@@ -222,24 +219,12 @@
                 <div class="aspect-video bg-black rounded-2xl overflow-hidden shadow-xl relative border border-slate-200" id="video-container">
                     <div id="player" class="w-full h-full"></div>
 
-                    <!-- Sound overlay: unified tap-to-unmute for mobile Safari + all platforms -->
+                    <!-- Sound overlay: single tap-to-unmute layer for mobile Safari + all platforms -->
                     <div id="sound-overlay" onclick="handleOverlayTap()" class="absolute inset-0 z-10 hidden flex-col items-center justify-center bg-white/96 p-4 gap-3 cursor-pointer">
                         <p class="text-xl md:text-2xl font-extrabold text-amber-700 text-center">
                             แตะเพื่อเปิดเสียง
                         </p>
                         <p class="text-xs text-slate-500 text-center">เพลงเล่นแบบปิดเสียงอยู่ — แตะเพื่อเปิดเสียง</p>
-                        <button onclick="handleOverlayTap()"
-                                class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg text-base w-full max-w-[200px] mx-auto block">
-                            เริ่มเล่นเพลง
-                        </button>
-                    </div>
-
-                    <!-- Queue overlay: legacy id kept for tests + backward compat, also acts as sound-overlay -->
-                    <div id="queue-overlay" onclick="handleOverlayTap()" class="absolute inset-0 z-10 hidden flex-col items-center justify-center bg-white/95 p-4 gap-3 cursor-pointer">
-                        <p class="text-xl md:text-2xl font-extrabold text-amber-700 text-center">
-                            แตะเพื่อเปิดเสียง
-                        </p>
-                        <p class="text-xs text-slate-500 text-center">เพลงเล่นแบบปิดเสียงอยู่</p>
                         <button onclick="handleOverlayTap()"
                                 class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg text-base w-full max-w-[200px] mx-auto block">
                             เริ่มเล่นเพลง
@@ -334,7 +319,7 @@
         // ============================================================
         // Mobile Safari & viewport-fit=cover - extensive fixes
         // - iOS requires user gesture to unmute; we start muted then
-        //   unmute on first tap via sound-overlay / queue-overlay
+        //   unmute on first tap via sound-overlay
         // - Use 100dvh and safe-area-insets to avoid notch clipping
         // - Prevent double-tap zoom and overscroll
         // - Handle LINE WebView vs Safari vs Chrome on iOS
@@ -348,6 +333,9 @@
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         const isMobileSafari = isIOS && isSafari;
         const isLineWebView = /Line\/|FBAN|FBAV|Messenger/i.test(navigator.userAgent);
+        function getCSRFToken(){return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')||'';}
+        function getPlayerToken(){return document.querySelector('meta[name="player-token"]')?.getAttribute('content')||'dev-player-token';}
+        function escapeHtml(str){if(!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
         let wakeLock = null;
         let lastPlayedVideoId = null;
         const finishingSongIds = new Set();
@@ -390,7 +378,7 @@
             const now = Date.now();
             if (now - lastTouchEnd <= 300) {
                 // Allow tap on overlay buttons, prevent double-tap zoom elsewhere
-                if (!event.target.closest('#sound-overlay, #queue-overlay, button')) {
+                if (!event.target.closest('#sound-overlay, button')) {
                     event.preventDefault();
                 }
             }
@@ -466,18 +454,13 @@
             setTimeout(setVh, 500);
         });
 
-        // --- Unified overlay tap handler (sound-overlay + queue-overlay) ---
+        // --- Sound overlay tap handler (single overlay) ---
         function handleOverlayTap() {
             userInteracted = true;
             unlockAudio();
-            const queueOverlay = document.getElementById('queue-overlay');
             const soundOverlay = document.getElementById('sound-overlay');
             const idleSplash = document.getElementById('idle-splash');
             const videoContainer = document.getElementById('video-container');
-            if (queueOverlay) {
-                queueOverlay.classList.add('hidden');
-                queueOverlay.style.display = 'none';
-            }
             if (soundOverlay) {
                 soundOverlay.classList.add('hidden');
                 soundOverlay.style.display = 'none';
@@ -524,16 +507,11 @@
             if (player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) {
                 try { player.playVideo(); } catch(e) {}
             }
-            // Hide overlays once user has interacted
+            // Hide overlay once user has interacted
             const so = document.getElementById('sound-overlay');
-            const qo = document.getElementById('queue-overlay');
             if (so && !so.classList.contains('hidden')) {
                 so.classList.add('hidden');
                 so.style.display = 'none';
-            }
-            if (qo && !qo.classList.contains('hidden')) {
-                qo.classList.add('hidden');
-                qo.style.display = 'none';
             }
         }
         // Global tap listeners for iOS: any tap should try to ensure playing
@@ -600,7 +578,7 @@
           if(hitSongs.length===0) { fetchHits(); return; }
           const song = hitSongs[Math.floor(Math.random()*hitSongs.length)];
           if(!song) return;
-          fetch("/api/add/", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({title:song.title, video_id:song.id, thumbnail:song.thumbnail, channel:song.channel, requested_by:"ระบบ (ออโต้สุ่ม)", client_id:"auto_random_"+Date.now()})}).then(()=>fetchQueue()).catch(()=>{});
+          fetch("/api/add/", {method:"POST", headers:{"Content-Type":"application/json","X-CSRFToken": getCSRFToken()}, credentials: 'same-origin', body: JSON.stringify({title:song.title, video_id:song.id, thumbnail:song.thumbnail, channel:song.channel, requested_by:"ระบบ (ออโต้สุ่ม)", client_id:"auto_random_"+Date.now()})}).then(()=>fetchQueue()).catch(()=>{});
         }
         document.addEventListener('DOMContentLoaded', () => { updateAutoRandomBtn(); });
 
@@ -652,7 +630,7 @@
                             console.warn('YouTube video cannot be embedded (Error ' + event.data + '), skipping:', currentSong?.title);
                             if (currentSong) blockedVideoIds.add(currentSong.video_id);
                             // persist so /api/hits/search won't return it again
-                            if (currentSong) fetch('/api/block/' + encodeURIComponent(currentSong.video_id) + '/', {method: 'POST'}).catch(()=>{});
+                            if (currentSong) fetch('/api/block/' + encodeURIComponent(currentSong.video_id) + '/', {method: 'POST', headers: {"X-CSRFToken": getCSRFToken()}, credentials: 'same-origin'}).catch(()=>{});
                             showToast("เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) → ข้ามไปเพลงถัดไป", "warning");
                             skipSong();
                         } else {
@@ -693,9 +671,7 @@
                 window._retryCount = 0;
                 if (userInteracted) {
                     const so = document.getElementById('sound-overlay');
-                    const qo = document.getElementById('queue-overlay');
                     if (so) { so.classList.add('hidden'); so.style.display = 'none'; }
-                    if (qo) { qo.classList.add('hidden'); qo.style.display = 'none'; }
                 }
                 // Ensure unmuted if user interacted
                 if (userInteracted && player && player.isMuted && player.isMuted()) {
@@ -720,20 +696,17 @@
                     renderQueue();
 
                     const videoContainer = document.getElementById('video-container');
-                    const queueOverlay = document.getElementById('queue-overlay');
                     const soundOverlay = document.getElementById('sound-overlay');
                     const idleSplash = document.getElementById('idle-splash');
 
                     const hasNewSongs = queue.length > lastQueueLength;
                     lastQueueLength = queue.length;
 
-                    // Helper to show overlay (both for compat)
+                    // Helper to show/hide single sound overlay
                     function showSoundOverlay() {
-                        if (queueOverlay) { queueOverlay.classList.remove('hidden'); queueOverlay.style.display = 'flex'; }
                         if (soundOverlay) { soundOverlay.classList.remove('hidden'); soundOverlay.style.display = 'flex'; }
                     }
                     function hideSoundOverlay() {
-                        if (queueOverlay) { queueOverlay.classList.add('hidden'); queueOverlay.style.display = 'none'; }
                         if (soundOverlay) { soundOverlay.classList.add('hidden'); soundOverlay.style.display = 'none'; }
                     }
 
@@ -797,7 +770,6 @@
         function playNext() {
             const next = queue.find(song => !finishingSongIds.has(song.id));
             const videoContainer = document.getElementById('video-container');
-            const queueOverlay = document.getElementById('queue-overlay');
             const soundOverlay = document.getElementById('sound-overlay');
             const idleSplash = document.getElementById('idle-splash');
 
@@ -807,7 +779,6 @@
                 lastPlayedVideoId = next.video_id;
                 document.getElementById('now-playing-title').innerText = currentSong.title;
                 idleSplash.classList.add('hidden');
-                if (queueOverlay) { queueOverlay.classList.add('hidden'); queueOverlay.style.display = 'none'; }
                 // Keep sound-overlay visible until user taps, unless already interacted
                 if (userInteracted && soundOverlay) {
                     soundOverlay.classList.add('hidden');
@@ -816,7 +787,6 @@
                     // Show sound overlay as unmute hint even while playing muted
                     soundOverlay.classList.remove('hidden');
                     soundOverlay.style.display = 'flex';
-                    if (queueOverlay) { queueOverlay.classList.remove('hidden'); queueOverlay.style.display = 'flex'; }
                 }
                 videoContainer.classList.remove('bg-white');
                 videoContainer.classList.add('bg-black');
@@ -853,7 +823,6 @@
                 } else {
                     // Show overlay as hint that tap will unmute
                     if (soundOverlay) { soundOverlay.classList.remove('hidden'); soundOverlay.style.display = 'flex'; }
-                    if (queueOverlay) { queueOverlay.classList.remove('hidden'); queueOverlay.style.display = 'flex'; }
                 }
             } else {
                 currentSong = null;
@@ -861,12 +830,10 @@
                 document.getElementById('now-playing-title').innerText = 'รอเพลงจากลูกค้า...';
                 idleSplash.classList.remove('hidden');
                 if (queue.length > 0) {
-                    if (queueOverlay) { queueOverlay.classList.remove('hidden'); queueOverlay.style.display = 'flex'; }
                     if (soundOverlay) { soundOverlay.classList.remove('hidden'); soundOverlay.style.display = 'flex'; }
                     videoContainer.classList.remove('bg-black');
                     videoContainer.classList.add('bg-white');
                 } else {
-                    if (queueOverlay) { queueOverlay.classList.add('hidden'); queueOverlay.style.display = 'none'; }
                     if (soundOverlay) { soundOverlay.classList.add('hidden'); soundOverlay.style.display = 'none'; }
                     videoContainer.classList.remove('bg-white');
                     videoContainer.classList.add('bg-black');
@@ -894,7 +861,7 @@
 
         function clearQueue() {
             if (!confirm('ล้างคิวเพลงทั้งหมด?')) return;
-            fetch('/api/clear/', { method: 'POST' })
+            fetch('/api/clear/', { method: 'POST', headers: {"X-CSRFToken": getCSRFToken(), "X-Player-Token": getPlayerToken()}, credentials: 'same-origin' })
                 .then(() => {
                     currentSong = null;
                     lastPlayedVideoId = null;
@@ -908,7 +875,7 @@
             if (!songId || finishingSongIds.has(songId)) return;
             finishingSongIds.add(songId);
             if (currentSong && currentSong.id === songId) currentSong = null;
-            fetch(`/api/played/${songId}/`)
+            fetch(`/api/played/${songId}/`, { headers: {"X-Player-Token": getPlayerToken()} })
                 .then(() => fetchQueue())
                 .catch(err => console.error('Unable to finish song:', err))
                 .finally(() => {
@@ -931,8 +898,8 @@
                         <span class="font-bold text-amber-600">#${idx+1}</span>
                         <img src="${song.thumbnail}" class="w-10 h-10 object-cover rounded flex-shrink-0">
                         <div class="overflow-hidden">
-                            <p class="font-semibold truncate text-slate-900">${song.title}</p>
-                            <p class="text-xs text-slate-500 truncate">ขอโดย: ${song.requested_by}</p>
+                            <p class="font-semibold truncate text-slate-900">${escapeHtml(song.title)}</p>
+                            <p class="text-xs text-slate-500 truncate">ขอโดย: ${escapeHtml(song.requested_by)}</p>
                         </div>
                     </div>
                 `;
@@ -981,8 +948,8 @@
                             <div class="bg-white shadow-md p-2 rounded-xl border border-slate-200 flex items-center gap-2">
                                 <img src="${song.thumbnail}" class="w-10 h-10 object-cover rounded-lg flex-shrink-0">
                                 <div class="flex-1 overflow-hidden">
-                                    <p class="font-semibold text-xs truncate text-slate-900">${song.title}</p>
-                                    <p class="text-[10px] text-slate-500 truncate">${song.channel}</p>
+                                    <p class="font-semibold text-xs truncate text-slate-900">${escapeHtml(song.title)}</p>
+                                    <p class="text-[10px] text-slate-500 truncate">${escapeHtml(song.channel)}</p>
                                 </div>
                                 <button onclick="manualPlay(${idx})"
                                         class="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
@@ -1007,7 +974,8 @@
             const song = manualSearchResults[idx];
             fetch("/api/add/", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     title: song.title,
                     video_id: song.id,
@@ -1047,7 +1015,7 @@
                 return;
             }
             container.innerHTML = suggestions.map(s =>
-                '<div class="px-3 py-2 text-sm text-slate-700 hover:bg-amber-50 cursor-pointer border-b border-slate-100 last:border-0" onclick="selectSuggestion(\'' + s.replace(/'/g, "\\'") + '\')">' + s + '</div>'
+                '<div class="px-3 py-2 text-sm text-slate-700 hover:bg-amber-50 cursor-pointer border-b border-slate-100 last:border-0" onclick="selectSuggestion(\'' + s.replace(/'/g, "\\'") + '\')">' + escapeHtml(s) + '</div>'
             ).join("");
             container.classList.remove("hidden");
         }
@@ -1106,8 +1074,8 @@
                     <div class="bg-white shadow-md p-2 rounded-xl border border-slate-200 flex items-center gap-2">
                         <img src="${song.thumbnail}" class="w-10 h-10 object-cover rounded-lg flex-shrink-0">
                         <div class="flex-1 overflow-hidden">
-                            <p class="font-semibold text-xs truncate text-slate-900">${song.title}</p>
-                            <p class="text-[10px] text-slate-500 truncate">${song.channel}</p>
+                            <p class="font-semibold text-xs truncate text-slate-900">${escapeHtml(song.title)}</p>
+                            <p class="text-[10px] text-slate-500 truncate">${escapeHtml(song.channel)}</p>
                         </div>
                         <button onclick="hitPlay(${idx})"
                                 class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
@@ -1126,7 +1094,8 @@
             const song = hitSongs[idx];
             fetch("/api/add/", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     title: song.title,
                     video_id: song.id,
@@ -1156,7 +1125,8 @@
         function playPriority(song) {
             fetch("/api/add-front/", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     title: song.title,
                     video_id: song.id,
@@ -1218,11 +1188,9 @@
                     if (isIOS) setTimeout(setVh, 300);
                 });
             }
-            // Ensure overlays are hidden initially, will be shown by fetchQueue if needed
+            // Ensure overlay is hidden initially, will be shown by fetchQueue if needed
             const so = document.getElementById('sound-overlay');
-            const qo = document.getElementById('queue-overlay');
             if (so) { so.classList.add('hidden'); so.style.display = 'none'; }
-            // qo also hidden initially via class
         });
 
         // --- Polling ---

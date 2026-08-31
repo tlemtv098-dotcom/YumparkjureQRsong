@@ -7,6 +7,7 @@
     <title>ขอเพลง - ร้านยำปากเจ่อ</title>
     <link rel="manifest" href="{% static 'music/manifest.json' %}">
     <meta name="theme-color" content="#f59e0b">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <link rel="apple-touch-icon" href="{% static 'music/img/logo.jpg' %}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -91,6 +92,8 @@
 
     <script>
         const isLineWebView = /Line\/|FBAN|FBAV|Messenger/i.test(navigator.userAgent);
+        function getCSRFToken(){return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')||'';}
+        function escapeHtml(str){if(!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
         let clientId = localStorage.getItem("jukebox_client_id");
         if (!clientId) {
             clientId = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
@@ -153,10 +156,10 @@
                         <img src="${song.thumbnail}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
                         <div class="flex-1 overflow-hidden">
                             <div class="flex items-center gap-2 mb-1">
-                                <p class="font-semibold text-sm truncate text-slate-900">${song.title}</p>
+                                <p class="font-semibold text-sm truncate text-slate-900">${escapeHtml(song.title)}</p>
                                 <span class="bg-amber-100 text-amber-800 text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0">เพลงฮิต</span>
                             </div>
-                            <p class="text-xs text-slate-500 truncate">${song.channel}</p>
+                            <p class="text-xs text-slate-500 truncate">${escapeHtml(song.channel)}</p>
                         </div>
                             <button onclick="requestHit(${originalIdx})"
                                     class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
@@ -219,8 +222,8 @@
                             <div class="bg-white shadow-md p-3 rounded-xl border border-slate-200 flex items-center gap-3">
                                 <img src="${song.thumbnail}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
                                 <div class="flex-1 overflow-hidden">
-                                    <p class="font-semibold text-sm truncate text-slate-900">${song.title}</p>
-                                    <p class="text-xs text-slate-500 truncate">${song.channel}</p>
+                                    <p class="font-semibold text-sm truncate text-slate-900">${escapeHtml(song.title)}</p>
+                                    <p class="text-xs text-slate-500 truncate">${escapeHtml(song.channel)}</p>
                                 </div>
                                     <button onclick="requestSong(${idx})"
                                             class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
@@ -245,7 +248,8 @@
         function requestSongData(song) {
             fetch("/api/add/", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     title: song.title,
                     video_id: song.id,
@@ -328,8 +332,8 @@
                             <div class="flex items-center gap-3">
                                 <img src="${song.thumbnail}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
                                 <div class="overflow-hidden">
-                                    <p class="font-semibold text-sm truncate text-slate-900">${song.title}</p>
-                                    <p class="text-xs text-slate-500 truncate">${song.channel}</p>
+                                    <p class="font-semibold text-sm truncate text-slate-900">${escapeHtml(song.title)}</p>
+                                    <p class="text-xs text-slate-500 truncate">${escapeHtml(song.channel)}</p>
                                 </div>
                             </div>
                         `;
@@ -355,8 +359,8 @@
                             <div class="bg-white shadow-md p-3 rounded-xl border border-slate-200 flex items-center gap-3">
                                 <img src="${song.thumbnail}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
                                 <div class="flex-1 overflow-hidden">
-                                    <p class="font-semibold text-sm truncate text-slate-900">${song.title}</p>
-                                    <p class="text-xs text-slate-500 truncate">${song.channel}</p>
+                                    <p class="font-semibold text-sm truncate text-slate-900">${escapeHtml(song.title)}</p>
+                                    <p class="text-xs text-slate-500 truncate">${escapeHtml(song.channel)}</p>
                                 </div>
                                 <button onclick="removeMySong(${song.id})"
                                         class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
@@ -373,7 +377,8 @@
             if (!confirm("ลบเพลงนี้ออกจากคิว?")) return;
             fetch("/api/my-songs/" + songId + "/delete/", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
+                credentials: 'same-origin',
                 body: JSON.stringify({ client_id: clientId })
             })
             .then(res => res.json())
@@ -428,7 +433,7 @@
                 return;
             }
             container.innerHTML = suggestions.map(s =>
-                '<div class="px-3 py-2 text-sm text-slate-700 hover:bg-amber-50 cursor-pointer border-b border-slate-100 last:border-0">' + s + '</div>'
+                '<div class="px-3 py-2 text-sm text-slate-700 hover:bg-amber-50 cursor-pointer border-b border-slate-100 last:border-0">' + escapeHtml(s) + '</div>'
             ).join("");
             container.classList.remove("hidden");
             // Bind click on each suggestion

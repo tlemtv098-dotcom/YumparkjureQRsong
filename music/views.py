@@ -10,12 +10,16 @@ import time
 from collections import defaultdict
 from datetime import timedelta
 from yt_dlp import YoutubeDL
+from django.conf import settings
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.core.cache import cache
 from django.db.models import Count
 from .models import SongQueue, BlockedVideo
+
+def _is_owner(request):
+    return request.headers.get('X-Player-Token') == settings.PLAYER_TOKEN or (request.user.is_authenticated and request.user.is_staff)
 
 # Video IDs with embedding disabled (Error 153) - filtered server-side
 # Many Thai songs from GMM, etc. have embedding disabled
@@ -187,11 +191,13 @@ def get_local_ip():
         s.close()
     return ip
 
+@ensure_csrf_cookie
 def player_view(request):
     local_ip = get_local_ip()
     request_url = f'http://{local_ip}:8000/request/'
-    return render(request, 'music/player.html', {'request_url': request_url})
+    return render(request, 'music/player.html', {'request_url': request_url, 'PLAYER_TOKEN': settings.PLAYER_TOKEN})
 
+@ensure_csrf_cookie
 def request_view(request):
     return render(request, 'music/request.html')
 
@@ -288,7 +294,6 @@ def hits(request):
     cache.set(cache_key, out, 60)
     return JsonResponse({'results': out})
 
-@csrf_exempt
 def add_to_queue(request):
     if request.method == 'POST':
         try:
@@ -338,7 +343,6 @@ def add_to_queue(request):
     return JsonResponse({'status': 'failed', 'error': 'Method not allowed'}, status=405)
 
 
-@csrf_exempt
 def add_to_queue_front(request):
     """Add song to FRONT of queue (priority play for owner)"""
     if request.method == 'POST':
@@ -416,11 +420,14 @@ def get_queue(request):
 
 @csrf_exempt
 def mark_played(request, song_id):
+    if not _is_owner(request):
+        return JsonResponse({'error':'forbidden'}, status=403)
     SongQueue.objects.filter(id=song_id).update(is_played=True)
     return JsonResponse({'status': 'updated'})
 
-@csrf_exempt
 def clear_queue(request):
+    if not _is_owner(request):
+        return JsonResponse({'error':'forbidden'}, status=403)
     SongQueue.objects.all().delete()
     return JsonResponse({'status': 'cleared'})
 
@@ -431,7 +438,6 @@ def my_songs(request):
     )
     return JsonResponse({'songs': list(songs)})
 
-@csrf_exempt
 def remove_my_song(request, song_id):
     if request.method == 'POST':
         data = json.loads(request.body)
@@ -440,7 +446,6 @@ def remove_my_song(request, song_id):
         return JsonResponse({'status': 'deleted' if deleted else 'not_found'})
     return JsonResponse({'status': 'failed'}, status=400)
 
-@csrf_exempt
 def block_video(request, video_id):
     if request.method == 'POST':
         BlockedVideo.objects.get_or_create(video_id=video_id, defaults={'reason': 'Error 153'})

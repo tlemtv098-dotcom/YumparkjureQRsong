@@ -1,4 +1,5 @@
 import json
+from django.conf import settings
 from django.test import TestCase
 
 LOGO = '/static/music/img/logo.jpg'
@@ -142,13 +143,51 @@ class RequestPageTests(TestCase):
 
 
 class ClearQueueApiTests(TestCase):
+    def test_clear_queue_requires_owner(self):
+        from .models import SongQueue
+        SongQueue.objects.create(title='A', video_id='a', thumbnail='', channel='', requested_by='x')
+        response = self.client.post('/api/clear/')
+        self.assertEqual(response.status_code, 403)
+        response = self.client.post('/api/clear/', headers={'X-Player-Token': 'wrong-token'})
+        self.assertEqual(response.status_code, 403)
+
     def test_clear_queue_empties_songs(self):
         from .models import SongQueue
         SongQueue.objects.create(title='A', video_id='a', thumbnail='', channel='', requested_by='x')
         SongQueue.objects.create(title='B', video_id='b', thumbnail='', channel='', requested_by='y')
-        response = self.client.post('/api/clear/')
+        response = self.client.post('/api/clear/', headers={'X-Player-Token': settings.PLAYER_TOKEN})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(SongQueue.objects.count(), 0)
+
+    def test_clear_queue_with_csrf_and_owner(self):
+        from django.test import Client
+        from .models import SongQueue
+        SongQueue.objects.create(title='C', video_id='c', thumbnail='', channel='', requested_by='z')
+        client = Client(enforce_csrf_checks=True)
+        # without csrf and without owner -> 403 (csrf or forbidden, both deny)
+        res = client.post('/api/clear/')
+        self.assertEqual(res.status_code, 403)
+        # get csrf token
+        client.get('/')
+        csrf_token = client.cookies['csrftoken'].value
+        # with csrf but without owner -> 403 forbidden
+        res = client.post('/api/clear/', headers={'X-CSRFToken': csrf_token, 'X-Player-Token': 'wrong'})
+        self.assertEqual(res.status_code, 403)
+        # with csrf and correct owner -> 200
+        res = client.post('/api/clear/', headers={'X-CSRFToken': csrf_token, 'X-Player-Token': settings.PLAYER_TOKEN})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(SongQueue.objects.count(), 0)
+
+class MarkPlayedApiTests(TestCase):
+    def test_mark_played_requires_owner(self):
+        from .models import SongQueue
+        song = SongQueue.objects.create(title='A', video_id='a', thumbnail='', channel='', requested_by='x')
+        response = self.client.get(f'/api/played/{song.id}/')
+        self.assertEqual(response.status_code, 403)
+        response = self.client.get(f'/api/played/{song.id}/', headers={'X-Player-Token': settings.PLAYER_TOKEN})
+        self.assertEqual(response.status_code, 200)
+        song.refresh_from_db()
+        self.assertTrue(song.is_played)
 
 
 class MySongsApiTests(TestCase):
@@ -339,7 +378,8 @@ class UniversalPlayerRegressionTests(TestCase):
         res = self.client.get('/')
         self.assertEqual(res.status_code, 200)
         content = res.content.decode()
-        self.assertIn('queue-overlay', content)
+        self.assertIn('sound-overlay', content)
+        self.assertNotIn('queue-overlay', content)
         self.assertIn('isLineWebView', content)
         self.assertIn('เปิดในเบราว์เซอร์', content)
         self.assertNotIn('isMobile && !userInteracted', content)
@@ -347,7 +387,16 @@ class UniversalPlayerRegressionTests(TestCase):
     def test_player_has_uniform_tap_gate(self):
         res = self.client.get('/')
         content = res.content.decode()
-        self.assertIn('queue-overlay', content)
+        self.assertIn('sound-overlay', content)
+        self.assertNotIn('queue-overlay', content)
         self.assertIn('isLineWebView', content)
         self.assertIn('เปิดในเบราว์เซอร์', content)
         self.assertNotIn('isMobile && !userInteracted', content)
+
+
+class SingleSoundOverlayTests(TestCase):
+    def test_only_sound_overlay_exists(self):
+        res = self.client.get('/')
+        content = res.content.decode()
+        self.assertIn('id="sound-overlay"', content)
+        self.assertNotIn('id="queue-overlay"', content)
