@@ -289,8 +289,9 @@
                         // Embedding disabled / video unavailable errors
                         if ([2, 5, 100, 101, 150, 153].includes(event.data)) {
                             console.warn('YouTube video cannot be embedded (Error ' + event.data + '), skipping:', currentSong?.title);
-                            // Soft skip: memory-only block, no DB persistence
                             blockedVideoIds.add(currentSong.video_id);
+                            // persist so /api/hits/search won't return it again
+                            fetch('/api/block/' + encodeURIComponent(currentSong.video_id) + '/', {method: 'POST'}).catch(()=>{});
                             showToast("เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) → ข้ามไปเพลงถัดไป", "warning");
                             skipSong();
                         } else {
