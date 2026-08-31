@@ -46,7 +46,7 @@
             <!-- เครื่องเล่นวิดีโอ YouTube -->
             <div class="md:col-span-2 space-y-4">
                 <div class="aspect-video bg-black rounded-2xl overflow-hidden shadow-xl relative border border-slate-200" id="video-container">
-                    <div id="player" class="w-full h-full" playsinline webkit-playsinline></div>
+                    <div id="player" class="w-full h-full"></div>
 
                     <!-- Queue overlay: shows when queue exists but no current song -->
                     <div id="queue-overlay" onclick="handleOverlayTap()" ontouchend="handleOverlayTap(); event.preventDefault();" class="absolute inset-0 z-10 hidden flex-col items-center justify-center bg-white/95 p-4 gap-3 cursor-pointer">
@@ -196,11 +196,6 @@
                 if (player && player.isMuted && player.isMuted()) player.unMute();
                 if (player && player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo();
             }
-            // Fallback for iPhone Chrome (CriOS): force muted play then unmute
-            if (!isLineWebView && /CriOS/i.test(navigator.userAgent)) {
-                try { if (player && player.mute) player.mute(); if (player && player.playVideo) player.playVideo(); } catch(e) {}
-                setTimeout(()=>{if(userInteracted && player && player.unMute) player.unMute();}, 500);
-            }
             showToast("เปิดเสียงแล้ว", "success");
         }
 
@@ -278,23 +273,16 @@
             player = new YT.Player('player', {
                 height: '100%',
                 width: '100%',
-                host: 'https://www.youtube.com',
                 playerVars: {
                     'autoplay': 1,
-                    'mute': 1,
                     'controls': 1,
-                    'enablejsapi': 1,
-                    'playsinline': 1,
-                    'iv_load_policy': 3,
+                    'modestbranding': 1,
                     'rel': 0,
                     'origin': window.location.origin,
-                    'widget_referrer': window.location.origin
+                    'enablejsapi': 1
                 },
                 events: {
-                    'onReady': () => {
-                        isPlayerReady = true; fetchQueue(); fetchHits();
-                        setTimeout(()=>{const iframe=document.querySelector('#player iframe'); if(iframe){iframe.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture'); iframe.setAttribute('allowFullscreen',''); iframe.setAttribute('playsinline','1'); iframe.setAttribute('webkit-playsinline','1');}}, 100);
-                    },
+                    'onReady': () => { isPlayerReady = true; fetchQueue(); fetchHits(); },
                     'onStateChange': onPlayerStateChange,
                     'onError': (event) => {
                         // Embedding disabled / video unavailable errors
