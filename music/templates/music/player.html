@@ -337,11 +337,13 @@
 
                     if (isPlayerReady && !currentSong && queue.length > 0) {
                         if (!userInteracted) {
-                            // Uniform tap-gate: show tap overlay on all platforms, don't auto-play
                             idleSplash.classList.add('hidden');
                             queueOverlay.classList.remove('hidden');
-                            videoContainer.classList.remove('bg-black');
-                            videoContainer.classList.add('bg-white');
+                            videoContainer.classList.remove('bg-white');
+                            videoContainer.classList.add('bg-black');
+                            // try muted autoplay on phone, keep overlay as tap to unmute
+                            try { playNext(); } catch(e) {}
+                            // keep overlay visible as unmute hint even though video playing muted behind
                         } else {
                             playNext();
                         }
@@ -368,11 +370,13 @@
 
                     if (hasNewSongs && isPlayerReady && !currentSong) {
                         if (!userInteracted) {
-                            // Uniform tap-gate: show overlay, don't auto-play
                             idleSplash.classList.add('hidden');
                             queueOverlay.classList.remove('hidden');
-                            videoContainer.classList.remove('bg-black');
-                            videoContainer.classList.add('bg-white');
+                            videoContainer.classList.remove('bg-white');
+                            videoContainer.classList.add('bg-black');
+                            // try muted autoplay on phone, keep overlay as tap to unmute
+                            try { playNext(); } catch(e) {}
+                            // keep overlay visible as unmute hint even though video playing muted behind
                         } else {
                             playNext();
                             setFastPoll();
