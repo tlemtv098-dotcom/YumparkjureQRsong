@@ -402,6 +402,7 @@
                 videoContainer.classList.remove('bg-white');
                 videoContainer.classList.add('bg-black');
                 player.loadVideoById(currentSong.video_id);
+                setTimeout(()=>{const f=document.querySelector('#player iframe'); if(f){f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture'); f.setAttribute('allowFullscreen','');}}, 100);
                 // Browser autoplay policy: start muted, unmute after user interaction
                 player.mute();
                 player.playVideo();
