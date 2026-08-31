@@ -214,10 +214,6 @@
             <span class="text-sm font-medium">เปิดในเบราว์เซอร์ภายนอกเพื่อประสบการณ์ที่ดีขึ้น</span>
             <button onclick="window.open(location.href,'_blank')" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex-shrink-0">เปิด</button>
         </div>
-        <!-- iOS hint: if inside LINE, show open externally -->
-        <div id="ios-safari-hint" class="hidden bg-blue-50 border border-blue-200 text-blue-800 px-4 py-2 rounded-xl mb-4 text-xs">
-            บน iPhone: <span class="font-bold">เพลง</span> → เปิดใน Safari เพื่อเสียงที่ดีที่สุด
-        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
 
@@ -459,19 +455,11 @@
             }
         });
 
-        // --- Handle LINE WebView and iOS Safari hints ---
+        // --- Handle LINE WebView ---
         document.addEventListener('DOMContentLoaded', () => {
             if (isLineWebView) {
                 const b = document.getElementById('webview-banner');
                 if (b) b.classList.remove('hidden');
-            }
-            if (isMobileSafari) {
-                const hint = document.getElementById('ios-safari-hint');
-                if (hint && !isLineWebView) {
-                    // Show briefly then auto-hide
-                    hint.classList.remove('hidden');
-                    setTimeout(() => hint.classList.add('hidden'), 8000);
-                }
             }
             // Fix for iOS Safari: ensure safe area insets are applied after load
             setTimeout(setVh, 100);
