@@ -283,7 +283,7 @@
                     'enablejsapi': 1
                 },
                 events: {
-                    'onReady': () => { isPlayerReady = true; fetchQueue(); fetchHits(); },
+                    'onReady': () => { isPlayerReady = true; fetchQueue(); fetchHits(); setTimeout(()=>{const f=document.querySelector('#player iframe'); if(f){f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture'); f.setAttribute('allowFullscreen','');}}, 200); },
                     'onStateChange': onPlayerStateChange,
                     'onError': (event) => {
                         // Embedding disabled / video unavailable errors
