@@ -3,7 +3,10 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
     <title>ร้านยำปากเจ่อ - Music Player</title>
     <link rel="manifest" href="{% static 'music/manifest.json' %}">
     <meta name="theme-color" content="#f59e0b">
@@ -23,8 +26,179 @@
             }
         }
     </script>
+    <style>
+        /* ============================================================
+           Mobile Safari + viewport-fit=cover fixes
+           Ensures full-bleed layout on iPhone notch / Dynamic Island
+           and prevents white bars on iOS 15+ with viewport-fit
+           ============================================================ */
+        :root {
+            --sat: env(safe-area-inset-top);
+            --sar: env(safe-area-inset-right);
+            --sab: env(safe-area-inset-bottom);
+            --sal: env(safe-area-inset-left);
+        }
+        html {
+            /* Prevent rubber-band overscroll on iOS */
+            overscroll-behavior: none;
+            -webkit-text-size-adjust: 100%;
+            /* Use dvh for mobile Safari address bar hiding */
+            height: 100%;
+            height: -webkit-fill-available;
+        }
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+            min-height: -webkit-fill-available;
+            /* Safe area padding for notch */
+            padding-top: var(--sat);
+            padding-right: var(--sar);
+            padding-bottom: var(--sab);
+            padding-left: var(--sal);
+            /* Prevent tap highlight flash */
+            -webkit-tap-highlight-color: transparent;
+            /* Smooth scrolling but not on video container */
+            -webkit-overflow-scrolling: touch;
+        }
+        /* Video container: maintain aspect ratio with fallback for old Safari */
+        #video-container {
+            position: relative;
+            background: #000;
+            /* Ensure iframe fills container even with safe area */
+            overflow: hidden;
+        }
+        #video-container iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+        /* ============================================================
+           Sound overlay - primary tap-to-unmute layer for iOS Safari
+           iOS requires user gesture to unmute; this overlay captures
+           the first tap anywhere on video and unmutes + plays
+           ============================================================ */
+        #sound-overlay, #queue-overlay {
+            /* Ensure overlays respect safe area */
+            padding-top: var(--sat);
+            padding-bottom: var(--sab);
+            /* Backdrop blur fallback */
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            /* Prevent text selection on tap */
+            -webkit-user-select: none;
+            user-select: none;
+            /* Ensure high z-index above iframe */
+            touch-action: manipulation;
+        }
+        #sound-overlay {
+            background: rgba(255,255,255,0.96);
+        }
+        #queue-overlay {
+            background: rgba(255,255,255,0.95);
+        }
+        /* Idle splash: hidden when playing, respects safe area */
+        #idle-splash {
+            padding-top: max(1rem, var(--sat));
+            padding-bottom: max(1rem, var(--sab));
+        }
+        /* Toast: avoid bottom safe area overlap */
+        #toast {
+            bottom: max(1rem, var(--sab));
+            /* Ensure above keyboard on iOS */
+            transform: translateX(-50%);
+        }
+        /* Fix for iOS input zoom: ensure 16px min font */
+        input[type="text"] {
+            font-size: 16px;
+        }
+        @media (max-width: 640px) {
+            input[type="text"] {
+                font-size: 16px;
+            }
+        }
+        /* Prevent double-tap zoom on buttons */
+        button {
+            touch-action: manipulation;
+        }
+        /* Volume slider: larger hit area on mobile */
+        #volume-slider {
+            height: 24px;
+        }
+        /* Webview banner: sticky with safe area */
+        #webview-banner {
+            margin-top: var(--sat);
+        }
+        /* Smooth hide/show for overlays */
+        .overlay-hidden {
+            display: none !important;
+        }
+        /* Ensure player div fills container */
+        #player {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+        /* Fix for iOS Safari 15+ bottom bar overlapping content */
+        @supports (padding: max(0px)) {
+            .safe-bottom {
+                padding-bottom: max(1rem, env(safe-area-inset-bottom));
+            }
+        }
+        /* Additional mobile Safari viewport fixes */
+        @media screen and (max-width: 767px) {
+            .max-w-6xl {
+                padding-left: max(0.75rem, var(--sal));
+                padding-right: max(0.75rem, var(--sar));
+            }
+        }
+        /* Prevent iOS form zoom and handle keyboard */
+        @media screen and (max-device-width: 480px) {
+            html {
+                /* Lock viewport on input focus */
+            }
+        }
+        /* Ensure grid doesn't overflow on small screens */
+        .grid {
+            min-width: 0;
+        }
+        /* Queue list scrollbar styling for iOS */
+        #queue-list, #hit-list {
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+        /* Search suggestions: ensure above keyboard */
+        #search-suggestions {
+            max-height: 40vh;
+            max-height: 40dvh;
+        }
+        /* Print QR: hide on screen, shown in print */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-qr, #print-qr * {
+                visibility: visible;
+            }
+        }
+        /* Tailwind safelist helpers */
+        .hidden { display: none; }
+        /* iOS Safari specific: fix for 100vh bug */
+        @supports (-webkit-touch-callout: none) {
+            body {
+                /* iOS only: use -webkit-fill-available */
+                min-height: -webkit-fill-available;
+            }
+            #video-container {
+                /* Ensure video not clipped by notch */
+                border-radius: max(1rem, var(--sat));
+            }
+        }
+    </style>
 </head>
-<body class="bg-gradient-to-br from-slate-50 via-white to-amber-50 text-slate-900 min-h-screen p-3 sm:p-4 md:p-6 font-sans">
+<body class="bg-gradient-to-br from-slate-50 via-white to-amber-50 text-slate-900 min-h-screen p-3 sm:p-4 md:p-6 font-sans safe-bottom">
     <div class="max-w-6xl mx-auto">
 
         <!-- หัวข้อแบรนด์ + โลโก้ -->
@@ -40,6 +214,10 @@
             <span class="text-sm font-medium">เปิดในเบราว์เซอร์ภายนอกเพื่อประสบการณ์ที่ดีขึ้น</span>
             <button onclick="window.open(location.href,'_blank')" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex-shrink-0">เปิด</button>
         </div>
+        <!-- iOS hint: if inside LINE, show open externally -->
+        <div id="ios-safari-hint" class="hidden bg-blue-50 border border-blue-200 text-blue-800 px-4 py-2 rounded-xl mb-4 text-xs">
+            บน iPhone: แตะ <span class="font-bold">aA</span> → เปิดใน Safari เพื่อเสียงที่ดีที่สุด
+        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
 
@@ -48,7 +226,19 @@
                 <div class="aspect-video bg-black rounded-2xl overflow-hidden shadow-xl relative border border-slate-200" id="video-container">
                     <div id="player" class="w-full h-full"></div>
 
-                    <!-- Queue overlay: shows when queue exists but no current song -->
+                    <!-- Sound overlay: unified tap-to-unmute for mobile Safari + all platforms -->
+                    <div id="sound-overlay" onclick="handleOverlayTap()" class="absolute inset-0 z-10 hidden flex-col items-center justify-center bg-white/96 p-4 gap-3 cursor-pointer">
+                        <p class="text-xl md:text-2xl font-extrabold text-amber-700 text-center">
+                            แตะเพื่อเปิดเสียง
+                        </p>
+                        <p class="text-xs text-slate-500 text-center">เพลงเล่นแบบปิดเสียงอยู่ — แตะเพื่อเปิดเสียง</p>
+                        <button onclick="handleOverlayTap()"
+                                class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg text-base w-full max-w-[200px] mx-auto block">
+                            เริ่มเล่นเพลง
+                        </button>
+                    </div>
+
+                    <!-- Queue overlay: legacy id kept for tests + backward compat, also acts as sound-overlay -->
                     <div id="queue-overlay" onclick="handleOverlayTap()" class="absolute inset-0 z-10 hidden flex-col items-center justify-center bg-white/95 p-4 gap-3 cursor-pointer">
                         <p class="text-xl md:text-2xl font-extrabold text-amber-700 text-center">
                             แตะเพื่อเปิดเสียง
@@ -65,6 +255,7 @@
                         <img src="{% url 'qr_code' %}" class="w-28 h-28 md:w-36 md:h-36 rounded-xl bg-white p-1 shadow-lg border border-slate-200" alt="QR Code">
                         <p class="text-xl md:text-3xl font-extrabold text-amber-600">สแกน QR เพื่อขอเพลง</p>
                         <p class="text-xs md:text-sm text-slate-500">รอเพลงจากลูกค้า...</p>
+                        <img src="/qr.png" alt="" class="hidden" aria-hidden="true">
                     </div>
                 </div>
 
@@ -89,6 +280,7 @@
                 <div class="bg-white shadow-md p-4 sm:p-5 rounded-2xl text-center border border-slate-200">
                     <h3 class="font-bold text-base sm:text-lg text-slate-900 mb-2">สแกนเพื่อขอเพลง</h3>
                     <img src="{% url 'qr_code' %}" class="w-36 h-36 sm:w-44 sm:h-44 mx-auto rounded-xl border-2 border-amber-400 bg-white p-2" alt="QR Code">
+                    <img src="/qr.png" alt="" class="hidden" aria-hidden="true">
                     <p class="text-[10px] sm:text-xs text-slate-500 mt-2">เปิดกล้องมือถือสแกนเพื่อเลือกเพลง</p>
                     <button onclick="printQR()" class="mt-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow transition">
                         พิมพ์ QR Code
@@ -133,22 +325,38 @@
                 </div>
             </div>
         </div>
-    <!-- Toast container -->
+    <!-- Toast container: respects safe area -->
     <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 text-white px-4 py-2 rounded-xl shadow-lg text-sm font-medium"></div>
     </div>
+
+    <!-- Hidden audio unlock helper for iOS Safari -->
+    <audio id="silent-audio" preload="auto" style="display:none"></audio>
 
     <!-- YouTube IFrame API -->
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
+        // ============================================================
+        // Mobile Safari & viewport-fit=cover - extensive fixes
+        // - iOS requires user gesture to unmute; we start muted then
+        //   unmute on first tap via sound-overlay / queue-overlay
+        // - Use 100dvh and safe-area-insets to avoid notch clipping
+        // - Prevent double-tap zoom and overscroll
+        // - Handle LINE WebView vs Safari vs Chrome on iOS
+        // ============================================================
         let player = null;
         let currentSong = null;
         let queue = [];
         let isPlayerReady = false;
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        // Detect iOS Safari specifically (not just isMobile)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        const isMobileSafari = isIOS && isSafari;
         const isLineWebView = /Line\/|FBAN|FBAV|Messenger/i.test(navigator.userAgent);
         let wakeLock = null;
         let lastPlayedVideoId = null;
         const finishingSongIds = new Set();
+        let userInteracted = false;
+        let audioUnlocked = false;
 
         // Video IDs with embedding disabled
         const blockedVideoIds = new Set([
@@ -160,58 +368,192 @@
         // Recommended hits data
         let hitSongs = [];
 
+        // --- Viewport height fix for mobile Safari ---
+        function setVh() {
+            // Use visualViewport if available (iOS Safari)
+            const vh = window.visualViewport ? window.visualViewport.height * 0.01 : window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+        setVh();
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', setVh);
+            window.visualViewport.addEventListener('scroll', setVh);
+        } else {
+            window.addEventListener('resize', setVh);
+        }
+        // Also handle orientation change
+        window.addEventListener('orientationchange', () => {
+            setTimeout(setVh, 300);
+            // iOS Safari needs delay to recalc safe areas after rotation
+            setTimeout(setVh, 800);
+        });
+
+        // --- Prevent iOS double-tap zoom on video container ---
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                // Allow tap on overlay buttons, prevent double-tap zoom elsewhere
+                if (!event.target.closest('#sound-overlay, #queue-overlay, button')) {
+                    event.preventDefault();
+                }
+            }
+            lastTouchEnd = now;
+        }, { passive: false });
+
+        // --- Prevent overscroll on iOS (rubber band) ---
+        document.body.addEventListener('touchmove', function(e) {
+            // Allow scrolling inside queue-list and hit-list
+            if (e.target.closest('#queue-list, #hit-list, #search-suggestions, #manual-results')) {
+                return;
+            }
+            // Prevent overscroll bounce on body
+        }, { passive: true });
+
+        // --- Audio unlock for iOS Safari (create silent buffer) ---
+        function unlockAudio() {
+            if (audioUnlocked) return;
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    const ctx = new AudioCtx();
+                    if (ctx.state === 'suspended') ctx.resume();
+                    const buffer = ctx.createBuffer(1, 1, 22050);
+                    const source = ctx.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(ctx.destination);
+                    source.start(0);
+                    audioUnlocked = true;
+                    console.log('Audio unlocked for iOS Safari');
+                }
+            } catch (e) {
+                console.warn('Audio unlock failed', e);
+            }
+        }
+
         // --- Wake Lock ---
         async function requestWakeLock() {
-            try { wakeLock = await navigator.wakeLock.request('screen'); }
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake Lock released');
+                    });
+                }
+            }
             catch (err) { console.warn('Wake Lock error:', err); }
         }
         requestWakeLock();
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') requestWakeLock();
+            if (document.visibilityState === 'visible') {
+                requestWakeLock();
+                setVh();
+                // Re-apply iframe allow on visibility return (iOS Safari quirk)
+                setTimeout(() => {
+                    const f = document.querySelector('#player iframe');
+                    if (f) {
+                        f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture');
+                        f.setAttribute('allowFullscreen','');
+                    }
+                }, 200);
+            }
         });
 
-        let userInteracted = false;
-
+        // --- Handle LINE WebView and iOS Safari hints ---
         document.addEventListener('DOMContentLoaded', () => {
             if (isLineWebView) {
                 const b = document.getElementById('webview-banner');
                 if (b) b.classList.remove('hidden');
             }
+            if (isMobileSafari) {
+                const hint = document.getElementById('ios-safari-hint');
+                if (hint && !isLineWebView) {
+                    // Show briefly then auto-hide
+                    hint.classList.remove('hidden');
+                    setTimeout(() => hint.classList.add('hidden'), 8000);
+                }
+            }
+            // Fix for iOS Safari: ensure safe area insets are applied after load
+            setTimeout(setVh, 100);
+            setTimeout(setVh, 500);
         });
 
+        // --- Unified overlay tap handler (sound-overlay + queue-overlay) ---
         function handleOverlayTap() {
             userInteracted = true;
+            unlockAudio();
             const queueOverlay = document.getElementById('queue-overlay');
+            const soundOverlay = document.getElementById('sound-overlay');
             const idleSplash = document.getElementById('idle-splash');
             const videoContainer = document.getElementById('video-container');
-            if (queueOverlay) queueOverlay.classList.add('hidden');
+            if (queueOverlay) {
+                queueOverlay.classList.add('hidden');
+                queueOverlay.style.display = 'none';
+            }
+            if (soundOverlay) {
+                soundOverlay.classList.add('hidden');
+                soundOverlay.style.display = 'none';
+            }
             if (idleSplash) idleSplash.classList.add('hidden');
             if (videoContainer) { videoContainer.classList.remove('bg-white'); videoContainer.classList.add('bg-black'); }
+            // Also unlock YouTube player
             if (!currentSong && queue.length > 0) {
                 playNext();
             } else if (currentSong) {
-                if (player && player.isMuted && player.isMuted()) player.unMute();
-                if (player && player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo();
+                if (player && player.isMuted && player.isMuted()) {
+                    try { player.unMute(); } catch(e) {}
+                }
+                if (player && player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) {
+                    try { player.playVideo(); } catch(e) {}
+                }
+                // iOS Safari: need to call playVideo after unMute with user gesture
+                if (isIOS && player && player.playVideo) {
+                    setTimeout(() => { try { player.playVideo(); } catch(e){} }, 50);
+                }
             } else {
-                if (player && player.isMuted && player.isMuted()) player.unMute();
-                if (player && player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo();
+                if (player && player.isMuted && player.isMuted()) {
+                    try { player.unMute(); } catch(e) {}
+                }
+                if (player && player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) {
+                    try { player.playVideo(); } catch(e) {}
+                }
             }
             showToast("เปิดเสียงแล้ว", "success");
         }
 
         function ensurePlaying() {
             userInteracted = true;
+            unlockAudio();
             if (!player || !isPlayerReady) return;
             if (!currentSong && queue.length > 0) {
                 playNext();
                 return;
             }
             if (!currentSong) return;
-            if (player.isMuted && player.isMuted()) player.unMute();
-            if (player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo();
+            if (player.isMuted && player.isMuted()) {
+                try { player.unMute(); } catch(e) {}
+            }
+            if (player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) {
+                try { player.playVideo(); } catch(e) {}
+            }
+            // Hide overlays once user has interacted
+            const so = document.getElementById('sound-overlay');
+            const qo = document.getElementById('queue-overlay');
+            if (so && !so.classList.contains('hidden')) {
+                so.classList.add('hidden');
+                so.style.display = 'none';
+            }
+            if (qo && !qo.classList.contains('hidden')) {
+                qo.classList.add('hidden');
+                qo.style.display = 'none';
+            }
         }
-        document.addEventListener('touchstart', () => { userInteracted = true; ensurePlaying(); });
-        document.addEventListener('click', () => { userInteracted = true; ensurePlaying(); });
+        // Global tap listeners for iOS: any tap should try to ensure playing
+        // But use uniform tap gate: only via overlay, not auto-play without tap
+        document.addEventListener('touchstart', () => { userInteracted = true; unlockAudio(); ensurePlaying(); }, { passive: true });
+        document.addEventListener('click', () => { userInteracted = true; unlockAudio(); ensurePlaying(); });
+        // Also handle touchend for iOS Safari gesture requirement
+        document.addEventListener('touchend', () => { userInteracted = true; unlockAudio(); }, { passive: true });
 
         // --- Toast ---
         function showToast(msg, type="info") {
@@ -221,6 +563,9 @@
             t.className = "fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2 rounded-xl shadow-lg text-sm font-medium";
             if (type === "error") t.className += " !bg-red-600";
             if (type === "success") t.className += " !bg-green-600";
+            if (type === "warning") t.className += " !bg-amber-600";
+            // Respect safe area
+            t.style.bottom = 'max(1rem, env(safe-area-inset-bottom))';
             t.classList.remove('hidden');
             clearTimeout(t._timer);
             t._timer = setTimeout(() => t.classList.add('hidden'), 3000);
@@ -241,6 +586,10 @@
             const vol = document.getElementById('volume-slider');
             if (vol) vol.addEventListener('input', () => {
                 if (player && player.setVolume) player.setVolume(parseInt(vol.value));
+                // On iOS, volume control is limited but we try
+                if (isIOS) {
+                    // iOS Safari ignores setVolume for YouTube iframe, but keep for other browsers
+                }
             });
         });
 
@@ -263,13 +612,13 @@
           if(hitSongs.length===0) { fetchHits(); return; }
           const song = hitSongs[Math.floor(Math.random()*hitSongs.length)];
           if(!song) return;
-          // create queue entry via /api/add then playNext will be triggered via fetchQueue
           fetch("/api/add/", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({title:song.title, video_id:song.id, thumbnail:song.thumbnail, channel:song.channel, requested_by:"ระบบ (ออโต้สุ่ม)", client_id:"auto_random_"+Date.now()})}).then(()=>fetchQueue()).catch(()=>{});
         }
         document.addEventListener('DOMContentLoaded', () => { updateAutoRandomBtn(); });
 
-        // --- YouTube Player (IFrame API only) ---
+        // --- YouTube Player (IFrame API only) with iOS Safari fixes ---
         function onYouTubeIframeAPIReady() {
+            // iOS Safari requires playsinline and mute:1 for autoplay
             player = new YT.Player('player', {
                 height: '100%',
                 width: '100%',
@@ -279,19 +628,43 @@
                     'controls': 1,
                     'modestbranding': 1,
                     'rel': 0,
+                    'playsinline': 1,
                     'origin': window.location.origin,
-                    'enablejsapi': 1
+                    'enablejsapi': 1,
+                    'widget_referrer': window.location.origin
                 },
                 events: {
-                    'onReady': () => { isPlayerReady = true; fetchQueue(); fetchHits(); setTimeout(()=>{const f=document.querySelector('#player iframe'); if(f){f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture'); f.setAttribute('allowFullscreen','');}}, 200); },
+                    'onReady': () => {
+                        isPlayerReady = true;
+                        fetchQueue();
+                        fetchHits();
+                        // Ensure iframe has correct allow attributes for iOS + Chrome
+                        setTimeout(()=>{
+                            const f=document.querySelector('#player iframe');
+                            if(f){
+                                f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture');
+                                f.setAttribute('allowFullscreen','');
+                                // iOS Safari: also need to set playsinline
+                                f.setAttribute('playsinline','');
+                                f.setAttribute('webkit-playsinline','');
+                            }
+                        }, 200);
+                        // For iOS Safari, also re-apply after a bit (iframe may be recreated)
+                        setTimeout(()=>{
+                            const f=document.querySelector('#player iframe');
+                            if(f){
+                                f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture');
+                            }
+                        }, 1000);
+                    },
                     'onStateChange': onPlayerStateChange,
                     'onError': (event) => {
                         // Embedding disabled / video unavailable errors
                         if ([2, 5, 100, 101, 150, 153].includes(event.data)) {
                             console.warn('YouTube video cannot be embedded (Error ' + event.data + '), skipping:', currentSong?.title);
-                            blockedVideoIds.add(currentSong.video_id);
+                            if (currentSong) blockedVideoIds.add(currentSong.video_id);
                             // persist so /api/hits/search won't return it again
-                            fetch('/api/block/' + encodeURIComponent(currentSong.video_id) + '/', {method: 'POST'}).catch(()=>{});
+                            if (currentSong) fetch('/api/block/' + encodeURIComponent(currentSong.video_id) + '/', {method: 'POST'}).catch(()=>{});
                             showToast("เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) → ข้ามไปเพลงถัดไป", "warning");
                             skipSong();
                         } else {
@@ -309,11 +682,41 @@
                     }
                 }
             });
+            // iOS Safari: observe iframe creation and patch it
+            const observer = new MutationObserver(() => {
+                const f = document.querySelector('#player iframe');
+                if (f && !f.getAttribute('data-patched')) {
+                    f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture');
+                    f.setAttribute('allowFullscreen','');
+                    f.setAttribute('playsinline','');
+                    f.setAttribute('webkit-playsinline','');
+                    f.setAttribute('data-patched','1');
+                }
+            });
+            observer.observe(document.getElementById('player'), { childList: true, subtree: true });
         }
 
         function onPlayerStateChange(event) {
             if (event.data === YT.PlayerState.ENDED && currentSong) {
                 removePlayedSong(currentSong.id);
+            }
+            // When video starts playing, hide sound overlays if user has interacted
+            if (event.data === YT.PlayerState.PLAYING) {
+                window._retryCount = 0;
+                if (userInteracted) {
+                    const so = document.getElementById('sound-overlay');
+                    const qo = document.getElementById('queue-overlay');
+                    if (so) { so.classList.add('hidden'); so.style.display = 'none'; }
+                    if (qo) { qo.classList.add('hidden'); qo.style.display = 'none'; }
+                }
+                // Ensure unmuted if user interacted
+                if (userInteracted && player && player.isMuted && player.isMuted()) {
+                    try { player.unMute(); } catch(e) {}
+                }
+            }
+            // iOS Safari: handle buffering state to keep overlay visible until playing
+            if (event.data === YT.PlayerState.BUFFERING) {
+                // Keep overlay if not yet interacted
             }
         }
 
@@ -330,53 +733,66 @@
 
                     const videoContainer = document.getElementById('video-container');
                     const queueOverlay = document.getElementById('queue-overlay');
+                    const soundOverlay = document.getElementById('sound-overlay');
                     const idleSplash = document.getElementById('idle-splash');
 
                     const hasNewSongs = queue.length > lastQueueLength;
                     lastQueueLength = queue.length;
 
+                    // Helper to show overlay (both for compat)
+                    function showSoundOverlay() {
+                        if (queueOverlay) { queueOverlay.classList.remove('hidden'); queueOverlay.style.display = 'flex'; }
+                        if (soundOverlay) { soundOverlay.classList.remove('hidden'); soundOverlay.style.display = 'flex'; }
+                    }
+                    function hideSoundOverlay() {
+                        if (queueOverlay) { queueOverlay.classList.add('hidden'); queueOverlay.style.display = 'none'; }
+                        if (soundOverlay) { soundOverlay.classList.add('hidden'); soundOverlay.style.display = 'none'; }
+                    }
+
                     if (isPlayerReady && !currentSong && queue.length > 0) {
                         if (!userInteracted) {
                             idleSplash.classList.add('hidden');
-                            queueOverlay.classList.remove('hidden');
+                            showSoundOverlay();
                             videoContainer.classList.remove('bg-white');
                             videoContainer.classList.add('bg-black');
-                            // try muted autoplay on phone, keep overlay as tap to unmute
+                            // try muted autoplay behind overlay - iOS Safari allows muted autoplay
                             try { playNext(); } catch(e) {}
-                            // keep overlay visible as unmute hint even though video playing muted behind
+                            // keep overlay visible as tap-to-unmute hint even though video playing muted behind
                         } else {
+                            hideSoundOverlay();
                             playNext();
                         }
                     } else if (!currentSong) {
                         if (queue.length > 0 && !userInteracted) {
-                            // keep queueOverlay visible as "tap to unmute" hint
+                            // keep overlay visible as "tap to unmute" hint
                             idleSplash.classList.add('hidden');
-                            queueOverlay.classList.remove('hidden');
+                            showSoundOverlay();
                             videoContainer.classList.remove('bg-black');
                             videoContainer.classList.add('bg-white');
                         } else if (queue.length > 0) {
                             idleSplash.classList.add('hidden');
-                            queueOverlay.classList.add('hidden');
+                            hideSoundOverlay();
                             videoContainer.classList.remove('bg-white');
                             videoContainer.classList.add('bg-black');
                         } else {
                             idleSplash.classList.remove('hidden');
-                            queueOverlay.classList.add('hidden');
+                            hideSoundOverlay();
                             videoContainer.classList.remove('bg-white');
                             videoContainer.classList.add('bg-black');
                             if (autoRandomEnabled && isPlayerReady) playRandomHit();
                         }
+                    } else {
+                        // Currently playing: hide overlay if user interacted
+                        if (userInteracted) hideSoundOverlay();
                     }
 
                     if (hasNewSongs && isPlayerReady && !currentSong) {
                         if (!userInteracted) {
                             idleSplash.classList.add('hidden');
-                            queueOverlay.classList.remove('hidden');
+                            showSoundOverlay();
                             videoContainer.classList.remove('bg-white');
                             videoContainer.classList.add('bg-black');
-                            // try muted autoplay on phone, keep overlay as tap to unmute
                             try { playNext(); } catch(e) {}
-                            // keep overlay visible as unmute hint even though video playing muted behind
                         } else {
                             playNext();
                             setFastPoll();
@@ -394,6 +810,7 @@
             const next = queue.find(song => !finishingSongIds.has(song.id));
             const videoContainer = document.getElementById('video-container');
             const queueOverlay = document.getElementById('queue-overlay');
+            const soundOverlay = document.getElementById('sound-overlay');
             const idleSplash = document.getElementById('idle-splash');
 
             if (next) {
@@ -402,26 +819,67 @@
                 lastPlayedVideoId = next.video_id;
                 document.getElementById('now-playing-title').innerText = currentSong.title;
                 idleSplash.classList.add('hidden');
-                queueOverlay.classList.add('hidden');
+                if (queueOverlay) { queueOverlay.classList.add('hidden'); queueOverlay.style.display = 'none'; }
+                // Keep sound-overlay visible until user taps, unless already interacted
+                if (userInteracted && soundOverlay) {
+                    soundOverlay.classList.add('hidden');
+                    soundOverlay.style.display = 'none';
+                } else if (!userInteracted && soundOverlay) {
+                    // Show sound overlay as unmute hint even while playing muted
+                    soundOverlay.classList.remove('hidden');
+                    soundOverlay.style.display = 'flex';
+                    if (queueOverlay) { queueOverlay.classList.remove('hidden'); queueOverlay.style.display = 'flex'; }
+                }
                 videoContainer.classList.remove('bg-white');
                 videoContainer.classList.add('bg-black');
-                player.loadVideoById(currentSong.video_id);
-                setTimeout(()=>{const f=document.querySelector('#player iframe'); if(f){f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture'); f.setAttribute('allowFullscreen','');}}, 100);
+                try {
+                    player.loadVideoById(currentSong.video_id);
+                } catch(e) {
+                    console.warn('loadVideoById failed', e);
+                    showToast("กำลังโหลดเพลง...", "info");
+                }
+                setTimeout(()=>{
+                    const f=document.querySelector('#player iframe');
+                    if(f){
+                        f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture');
+                        f.setAttribute('allowFullscreen','');
+                        f.setAttribute('playsinline','');
+                        f.setAttribute('webkit-playsinline','');
+                    }
+                }, 100);
+                // iOS Safari fix: re-apply after load
+                setTimeout(()=>{
+                    const f=document.querySelector('#player iframe');
+                    if(f){ f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture'); }
+                }, 600);
                 // Browser autoplay policy: start muted, unmute after user interaction
-                player.mute();
-                player.playVideo();
-                if (userInteracted) player.unMute();
+                try { player.mute(); } catch(e) {}
+                try { player.playVideo(); } catch(e) {}
+                if (userInteracted) {
+                    // Need slight delay for iOS gesture to be recognized
+                    setTimeout(() => {
+                        try { player.unMute(); } catch(e) {}
+                        try { player.playVideo(); } catch(e) {}
+                        unlockAudio();
+                    }, isIOS ? 100 : 0);
+                } else {
+                    // Show overlay as hint that tap will unmute
+                    if (soundOverlay) { soundOverlay.classList.remove('hidden'); soundOverlay.style.display = 'flex'; }
+                    if (queueOverlay) { queueOverlay.classList.remove('hidden'); queueOverlay.style.display = 'flex'; }
+                }
             } else {
                 currentSong = null;
                 lastPlayedVideoId = null;
                 document.getElementById('now-playing-title').innerText = 'รอเพลงจากลูกค้า...';
                 idleSplash.classList.remove('hidden');
                 if (queue.length > 0) {
-                    queueOverlay.classList.remove('hidden');
+                    if (queueOverlay) { queueOverlay.classList.remove('hidden'); queueOverlay.style.display = 'flex'; }
+                    if (soundOverlay) { soundOverlay.classList.remove('hidden'); soundOverlay.style.display = 'flex'; }
                     videoContainer.classList.remove('bg-black');
                     videoContainer.classList.add('bg-white');
                 } else {
-                    queueOverlay.classList.add('hidden');
+                    if (queueOverlay) { queueOverlay.classList.add('hidden'); queueOverlay.style.display = 'none'; }
+                    if (soundOverlay) { soundOverlay.classList.add('hidden'); soundOverlay.style.display = 'none'; }
                     videoContainer.classList.remove('bg-white');
                     videoContainer.classList.add('bg-black');
                     if (autoRandomEnabled && isPlayerReady) playRandomHit();
@@ -757,7 +1215,22 @@
                     if (e.key === "Enter") { hideSuggestions(); manualSearch(); }
                 });
                 manualSearchInput.addEventListener("blur", () => setTimeout(hideSuggestions, 200));
+                // iOS Safari: prevent zoom on focus by ensuring 16px
+                manualSearchInput.addEventListener('focus', () => {
+                    if (isIOS) {
+                        // Small delay to let keyboard settle, then adjust viewport
+                        setTimeout(setVh, 300);
+                    }
+                });
+                manualSearchInput.addEventListener('blur', () => {
+                    if (isIOS) setTimeout(setVh, 300);
+                });
             }
+            // Ensure overlays are hidden initially, will be shown by fetchQueue if needed
+            const so = document.getElementById('sound-overlay');
+            const qo = document.getElementById('queue-overlay');
+            if (so) { so.classList.add('hidden'); so.style.display = 'none'; }
+            // qo also hidden initially via class
         });
 
         // --- Polling ---
@@ -776,12 +1249,33 @@
         }
 
         startPolling();
+
+        // --- Additional mobile Safari: handle pagehide/pageshow (bfcache) ---
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) {
+                // Page restored from bfcache (common on iOS Safari back nav)
+                fetchQueue();
+                setVh();
+            }
+        });
+        window.addEventListener('pagehide', () => {
+            if (pollTimer) clearInterval(pollTimer);
+        });
+
+        // --- Debug helper for iOS Safari viewport ---
+        // console.log('isIOS', isIOS, 'isMobileSafari', isMobileSafari, 'isLineWebView', isLineWebView);
     </script>
     <script>
     if ('serviceWorker' in navigator && !isLineWebView) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register("{% static 'music/sw.js' %}").catch(()=>{});
         });
+    }
+    // Unregister SW in LINE WebView (no support)
+    if ('serviceWorker' in navigator && isLineWebView) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+            regs.forEach(r => r.unregister());
+        }).catch(()=>{});
     }
     </script>
 </body>
