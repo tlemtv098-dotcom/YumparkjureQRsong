@@ -55,7 +55,7 @@
                         </p>
                         <p class="text-xs text-slate-500 text-center">เพลงเล่นแบบปิดเสียงอยู่</p>
                         <button onclick="handleOverlayTap()"
-                                class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg text-base">
+                                class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg text-base w-full max-w-[200px] mx-auto block">
                             เริ่มเล่นเพลง
                         </button>
                     </div>
@@ -75,7 +75,7 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <input type="range" id="volume-slider" min="0" max="100" value="80" class="w-20 accent-amber-500" title="ระดับเสียง">
-                        <button onclick="toggleAutoRandom()" id="auto-random-btn" class="text-xs bg-amber-100 hover:bg-amber-200 px-2 py-1 rounded-lg border border-amber-200 font-bold" title="เล่นอัตโนมัติแบบสุ่ม">🔀 ออโต้: เปิด</button>
+                        <button onclick="toggleAutoRandom()" id="auto-random-btn" class="text-xs bg-amber-100 hover:bg-amber-200 px-2 py-1 rounded-lg border border-amber-200 font-bold" title="เล่นอัตโนมัติแบบสุ่ม">ออโต้: เปิด</button>
                         <button onclick="shareCurrentSong()" class="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg border" title="แชร์เพลง">🔗</button>
                         <button onclick="skipSong()" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow transition flex-shrink-0">
                             ข้ามเพลง
@@ -255,7 +255,7 @@
         }
         function updateAutoRandomBtn(){
           const b=document.getElementById('auto-random-btn');
-          if(b) b.textContent = autoRandomEnabled ? '🔀 ออโต้: เปิด' : '🔀 ออโต้: ปิด';
+          if(b) b.textContent = autoRandomEnabled ? 'ออโต้: เปิด' : 'ออโต้: ปิด';
           if(b) b.className = autoRandomEnabled ? 'text-xs bg-amber-500 text-white px-2 py-1 rounded-lg border font-bold' : 'text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg border font-bold';
         }
         function playRandomHit(){
