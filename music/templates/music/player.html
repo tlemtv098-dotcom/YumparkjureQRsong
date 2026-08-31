@@ -216,7 +216,7 @@
         </div>
         <!-- iOS hint: if inside LINE, show open externally -->
         <div id="ios-safari-hint" class="hidden bg-blue-50 border border-blue-200 text-blue-800 px-4 py-2 rounded-xl mb-4 text-xs">
-            บน iPhone: แตะ <span class="font-bold">aA</span> → เปิดใน Safari เพื่อเสียงที่ดีที่สุด
+            บน iPhone: <span class="font-bold">เพลง</span> → เปิดใน Safari เพื่อเสียงที่ดีที่สุด
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
@@ -1089,8 +1089,12 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.results && data.results.length > 0) {
-                        hitSongs = data.results.filter(s => !blockedVideoIds.has(s.id));
-                        renderHitList();
+                        const filtered = data.results.filter(s => !blockedVideoIds.has(s.id));
+                        hitSongs = filtered; renderHitList();
+                        if (autoRandomEnabled && !currentSong && queue.length===0 && isPlayerReady) {
+                          // try to play random after hits loaded
+                          setTimeout(()=>playRandomHit(), 300);
+                        }
                     }
                 })
                 .catch(err => { console.error(err); showToast("โหลดเพลงแนะนำไม่สำเร็จ", "error"); });
