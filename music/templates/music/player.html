@@ -594,7 +594,7 @@
         });
 
         // --- Auto Random ---
-        let autoRandomEnabled = localStorage.getItem('auto_random') === 'on';
+        let autoRandomEnabled = localStorage.getItem('auto_random') === 'on'; // defaults OFF as user requested "เมื่อเข้าเว็บมาให้ปิดเล่นออโต้ไว้"
         function toggleAutoRandom(){
           autoRandomEnabled = !autoRandomEnabled;
           localStorage.setItem('auto_random', autoRandomEnabled ? 'on' : 'off');
