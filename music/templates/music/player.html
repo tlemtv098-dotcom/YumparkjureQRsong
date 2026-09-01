@@ -318,6 +318,7 @@
         </div>
     <!-- Toast container: respects safe area -->
     <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 dark:bg-slate-800 text-white dark:text-slate-100 border border-transparent dark:border-slate-700 px-4 py-2 rounded-xl shadow-lg text-sm font-medium"></div>
+<div id="debug-error" class="hidden fixed top-2 left-1/2 -translate-x-1/2 bg-red-600 text-white px-3 py-1 rounded-lg text-xs z-50"></div>
     </div>
 
     <!-- Hidden audio unlock helper for iOS Safari -->
@@ -649,6 +650,9 @@
                             if (currentSong) blockedVideoIds.add(currentSong.video_id);
                             // persist so /api/hits/search won't return it again
                             if (currentSong) fetch('/api/block/' + encodeURIComponent(currentSong.video_id) + '/', {method: 'POST', headers: {"X-CSRFToken": getCSRFToken(), "X-Player-Token": getPlayerToken()}, credentials: 'same-origin'}).catch(()=>{});
+                            const errorCode = event.data;
+                            const dbg = document.getElementById('debug-error');
+                            if (dbg) { dbg.textContent = 'Error ' + errorCode + ' id:' + (currentSong?.video_id||'') + ' ' + (currentSong?.title||'').slice(0,20); dbg.classList.remove('hidden'); setTimeout(()=>dbg.classList.add('hidden'), 5000); }
                             showToast("เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) → ข้ามไปเพลงถัดไป", "warning");
                             skipSong();
                             try { if (player && player.stopVideo) player.stopVideo(); } catch(e) {}
