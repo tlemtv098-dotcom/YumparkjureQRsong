@@ -121,6 +121,7 @@
             "qguo-j5PxBE",   // ซ่อน(ไม่)หา - Jeff Satur
             // Add more known blocked Thai songs here as discovered
         ]);
+        function isAlbumLike(t){return /longplay|รวมเพลง|ชั่วโมง|อัลบั้ม|60 minutes|playlist|ยาวๆ|ต่อเนื่อง/i.test(t||'');}
 
         let searchResults = [];
         let searchTimer = null;
@@ -137,7 +138,7 @@
         ];
 
         function filterBlockedSongs(songs) {
-            return songs.filter(song => !blockedVideoIds.has(song.id));
+            return songs.filter(song => !blockedVideoIds.has(song.id) && !isAlbumLike(song.title));
         }
 
         function renderHitList() {

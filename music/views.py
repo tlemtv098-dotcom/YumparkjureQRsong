@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import json
 import random
 import socket
@@ -35,6 +36,10 @@ def _is_blocked(video_id):
 def _get_blocked_ids():
     db_ids = set(BlockedVideo.objects.values_list('video_id', flat=True))
     return BLOCKED_VIDEO_IDS | db_ids
+
+ALBUM_RE = re.compile(r'longplay|รวมเพลง|ชั่วโมง|อัลบั้ม|60 minutes|playlist|ยาวๆ|ต่อเนื่อง', re.I)
+def _is_album_title(title):
+    return bool(ALBUM_RE.search(title or ''))
 
 def _is_embeddable(video_id):
     try:
@@ -104,11 +109,14 @@ def youtube_api_search(query, max_results=8):
         snippet = item.get('snippet', {})
         if not video_id or _is_blocked(video_id):
             continue
+        title = snippet.get('title', 'Unknown Title')
+        if _is_album_title(title):
+            continue
         thumbnails = snippet.get('thumbnails', {})
         thumbnail = (thumbnails.get('medium') or thumbnails.get('default') or {}).get('url')
         results.append({
             'id': video_id,
-            'title': snippet.get('title', 'Unknown Title'),
+            'title': title,
             'channel': snippet.get('channelTitle', 'YouTube'),
             'thumbnail': thumbnail or f'https://img.youtube.com/vi/{video_id}/mqdefault.jpg',
         })
@@ -121,6 +129,8 @@ def search_youtube(query, max_results=8):
     if api_results:
         filtered = []
         for r in api_results[:8]:
+            if _is_album_title(r.get('title', '')):
+                continue
             cache_key = f"embed:{r['id']}"
             cached = cache.get(cache_key)
             if cached is True or cached is False:
@@ -152,6 +162,8 @@ def search_youtube(query, max_results=8):
                 vid_id = entry.get('id')
                 if not vid_id or _is_blocked(vid_id):
                     continue
+                if _is_album_title(entry.get('title','')):
+                    continue
                 raw.append({'id': vid_id, 'title': entry.get('title','Unknown'), 'channel': entry.get('uploader') or entry.get('channel','YouTube'), 'thumbnail': f'https://img.youtube.com/vi/{vid_id}/mqdefault.jpg'})
         except Exception as e:
             print('Search Error:', e)
@@ -159,6 +171,8 @@ def search_youtube(query, max_results=8):
     # Now check embeddable per video (slow but accurate) — limit to first 8 to keep time <5s
     filtered = []
     for r in raw[:8]:
+        if _is_album_title(r.get('title', '')):
+            continue
         cache_key = f"embed:{r['id']}"
         cached = cache.get(cache_key)
         if cached is True or cached is False:
@@ -220,8 +234,11 @@ def search_song(request):
         results = [s for s in fallback if q_lower in s['title'].lower() or q_lower in s['channel'].lower()]
         if not results:
             results = fallback[:3]
-        # filter blocked
-        results = [r for r in results if not _is_blocked(r['id'])]
+        # filter blocked and album titles
+        results = [r for r in results if not _is_blocked(r['id']) and not _is_album_title(r.get('title',''))]
+    else:
+        # also filter live results (defense in depth) for album titles
+        results = [r for r in results if not _is_album_title(r.get('title','')) and not _is_blocked(r['id'])]
     return JsonResponse({'results': results})
 
 def suggest_song(request):
@@ -270,7 +287,9 @@ def hits(request):
     cache_key = f"hits:{genre}:{query}"
     cached = cache.get(cache_key)
     if cached:
-        return JsonResponse({'results': cached})
+        # ensure cached results also filtered (defense in depth)
+        filtered_cached = [r for r in cached if not _is_blocked(r['id']) and not _is_album_title(r.get('title',''))]
+        return JsonResponse({'results': filtered_cached})
     results = search_youtube(query, 10)
     if not results:
         # Fallback static hits for PythonAnywhere free (YouTube blocked)
@@ -284,11 +303,11 @@ def hits(request):
             {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/I9ZIq7ynvdU/mqdefault.jpg"},
             {"id": "yEbv0QiI1Ns", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://img.youtube.com/vi/yEbv0QiI1Ns/mqdefault.jpg"},
         ]
-        # filter blocked before return — never serve Error 153 to UI
-        results = [r for r in results if not _is_blocked(r['id'])]
+        # filter blocked and album titles before return — never serve Error 153 to UI
+        results = [r for r in results if not _is_blocked(r['id']) and not _is_album_title(r.get('title',''))]
     else:
         # also ensure live search results are filtered (defense in depth)
-        results = [r for r in results if not _is_blocked(r['id'])]
+        results = [r for r in results if not _is_blocked(r['id']) and not _is_album_title(r.get('title',''))]
     random.shuffle(results)
     out = results[:8]
     cache.set(cache_key, out, 60)

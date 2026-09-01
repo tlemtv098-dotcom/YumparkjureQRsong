@@ -348,6 +348,7 @@
             "dQw4w9WgXcQ",
             "qguo-j5PxBE",
         ]);
+        function isAlbumLike(t){return /longplay|รวมเพลง|ชั่วโมง|อัลบั้ม|60 minutes|playlist|ยาวๆ|ต่อเนื่อง/i.test(t||'');}
 
         // Recommended hits data
         let hitSongs = [];
@@ -630,7 +631,7 @@
                             console.warn('YouTube video cannot be embedded (Error ' + event.data + '), skipping:', currentSong?.title);
                             if (currentSong) blockedVideoIds.add(currentSong.video_id);
                             // persist so /api/hits/search won't return it again
-                            if (currentSong) fetch('/api/block/' + encodeURIComponent(currentSong.video_id) + '/', {method: 'POST', headers: {"X-CSRFToken": getCSRFToken()}, credentials: 'same-origin'}).catch(()=>{});
+                            if (currentSong) fetch('/api/block/' + encodeURIComponent(currentSong.video_id) + '/', {method: 'POST', headers: {"X-CSRFToken": getCSRFToken(), "X-Player-Token": getPlayerToken()}, credentials: 'same-origin'}).catch(()=>{});
                             showToast("เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) → ข้ามไปเพลงถัดไป", "warning");
                             skipSong();
                         } else {
@@ -875,12 +876,33 @@
             if (!songId || finishingSongIds.has(songId)) return;
             finishingSongIds.add(songId);
             if (currentSong && currentSong.id === songId) currentSong = null;
-            fetch(`/api/played/${songId}/`, { headers: {"X-Player-Token": getPlayerToken()} })
-                .then(() => fetchQueue())
-                .catch(err => console.error('Unable to finish song:', err))
+            let fallbackHandled = false;
+            fetch(`/api/played/${songId}/`, { headers: {"X-CSRFToken": getCSRFToken(), "X-Player-Token": getPlayerToken()}, credentials: 'same-origin' })
+                .then(res => {
+                    if (res.status === 403) {
+                        fallbackHandled = true;
+                        queue = queue.filter(s=>s.id!==songId);
+                        renderQueue();
+                        return null;
+                    }
+                    if (!res.ok) throw new Error('status ' + res.status);
+                    return res.json().catch(()=> ({}));
+                })
+                .then(data => {
+                    if (fallbackHandled) return;
+                    if (data !== null) return fetchQueue();
+                })
+                .catch(err => {
+                    if (fallbackHandled) return;
+                    console.error('Unable to finish song:', err);
+                    if (queue.some(s=>s.id===songId)) {
+                        queue = queue.filter(s=>s.id!==songId);
+                        renderQueue();
+                    }
+                })
                 .finally(() => {
                     finishingSongIds.delete(songId);
-                    if (!currentSong && isPlayerReady) fetchQueue();
+                    if (!fallbackHandled && !currentSong && isPlayerReady) fetchQueue();
                 });
         }
 
@@ -936,7 +958,7 @@
                 .then(res => res.json())
                 .then(data => {
                     document.getElementById("manual-loading").classList.add("hidden");
-                    manualSearchResults = data.results.filter(song => !blockedVideoIds.has(song.id));
+                    manualSearchResults = data.results.filter(song => !blockedVideoIds.has(song.id) && !isAlbumLike(song.title));
                     const container = document.getElementById("manual-results");
                     container.innerHTML = "";
                     if (manualSearchResults.length === 0) {
@@ -1045,7 +1067,7 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.results && data.results.length > 0) {
-                        const filtered = data.results.filter(s => !blockedVideoIds.has(s.id));
+                        const filtered = data.results.filter(s => !blockedVideoIds.has(s.id) && !isAlbumLike(s.title));
                         hitSongs = filtered; renderHitList();
                         if (autoRandomEnabled && !currentSong && queue.length===0 && isPlayerReady) {
                           // try to play random after hits loaded
