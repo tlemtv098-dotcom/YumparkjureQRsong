@@ -62,7 +62,7 @@
                     ค้นหา
                 </button>
             </div>
-            <p id="loading" class="hidden text-sm text-slate-500 text-center py-2">กำลังค้นหา...</p>
+            <p id="loading" class="hidden text-sm text-slate-500 text-center py-2">กำลังค้นหาโปรดรอสักครู่</p>
             <div id="results" class="space-y-2"></div>
         </div>
 
@@ -206,7 +206,6 @@
             const query = document.getElementById("searchInput").value.trim();
             if (!query) return;
             document.getElementById("loading").classList.remove("hidden");
-            document.getElementById("results").innerHTML = '<p class="text-sm text-slate-400 text-center py-3">กำลังค้นหา...</p>';
             fetch("/api/search/?q=" + encodeURIComponent(query))
                 .then(res => res.json())
                 .then(data => {

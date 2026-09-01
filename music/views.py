@@ -445,6 +445,37 @@ def mark_played(request, song_id):
     SongQueue.objects.filter(id=song_id).update(is_played=True)
     return JsonResponse({'status': 'updated'})
 
+@csrf_exempt
+def move_queue(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'method'}, status=405)
+    if not _is_owner(request):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+    try:
+        data = json.loads(request.body)
+    except:
+        return JsonResponse({'error': 'invalid'}, status=400)
+    song_id = data.get('song_id')
+    position = data.get('position')
+    if not song_id:
+        return JsonResponse({'error': 'missing song_id'}, status=400)
+    try:
+        song = SongQueue.objects.get(id=song_id, is_played=False)
+    except SongQueue.DoesNotExist:
+        return JsonResponse({'error': 'not_found'}, status=404)
+    first = SongQueue.objects.filter(is_played=False).order_by('created_at').first()
+    if not first or song.id == first.id:
+        return JsonResponse({'status': 'success'})
+    # For MVP: move to next/top by placing before first
+    if position in ('next', 'top', None):
+        song.created_at = first.created_at - timedelta(seconds=1)
+        song.save()
+        return JsonResponse({'status': 'success'})
+    song.created_at = first.created_at - timedelta(seconds=1)
+    song.save()
+    return JsonResponse({'status': 'success'})
+
+
 def clear_queue(request):
     if not _is_owner(request):
         return JsonResponse({'error':'forbidden'}, status=403)

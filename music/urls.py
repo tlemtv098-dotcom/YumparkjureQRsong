@@ -9,6 +9,7 @@ urlpatterns = [
     path('api/add/', views.add_to_queue, name='add_to_queue'),
     path('api/add-front/', views.add_to_queue_front, name='add_to_queue_front'),
     path('api/queue/', views.get_queue, name='get_queue'),
+    path('api/queue/move/', views.move_queue, name='move_queue'),
     path('api/played/<int:song_id>/', views.mark_played, name='mark_played'),
     path('api/clear/', views.clear_queue, name='clear_queue'),
     path('api/my-songs/', views.my_songs, name='my_songs'),

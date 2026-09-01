@@ -571,10 +571,12 @@
 
         // --- Auto Random ---
         let autoRandomEnabled = localStorage.getItem('auto_random') === 'on'; // defaults OFF as user requested "เมื่อเข้าเว็บมาให้ปิดเล่นออโต้ไว้"
+        let autoRandomTimer = null;
         function toggleAutoRandom(){
           autoRandomEnabled = !autoRandomEnabled;
           localStorage.setItem('auto_random', autoRandomEnabled ? 'on' : 'off');
           updateAutoRandomBtn();
+          if (!autoRandomEnabled) { clearTimeout(autoRandomTimer); autoRandomTimer = null; }
           if(autoRandomEnabled && !currentSong && queue.length===0) playRandomHit();
           showToast(autoRandomEnabled ? "เปิดเล่นอัตโนมัติแบบสุ่ม" : "ปิดเล่นอัตโนมัติ", "info");
         }
@@ -584,7 +586,8 @@
           if(b) b.className = autoRandomEnabled ? 'text-xs bg-amber-500 text-white px-2 py-1 rounded-lg border font-bold' : 'text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg border font-bold';
         }
         function playRandomHit(){
-          if(!autoRandomEnabled || currentSong || queue.length>0) return;
+          if (!autoRandomEnabled) return;
+          if (currentSong || queue.length>0) return;
           if(hitSongs.length===0) { fetchHits(); return; }
           const song = hitSongs[Math.floor(Math.random()*hitSongs.length)];
           if(!song) return;
@@ -614,6 +617,7 @@
                         isPlayerReady = true;
                         fetchQueue();
                         fetchHits();
+                        setTimeout(()=>{ if (autoRandomEnabled) playRandomHit(); }, 800);
                         // Ensure iframe has correct allow attributes for iOS + Chrome
                         setTimeout(()=>{
                             const f=document.querySelector('#player iframe');
@@ -750,7 +754,7 @@
                             hideSoundOverlay();
                             videoContainer.classList.remove('bg-white');
                             videoContainer.classList.add('bg-black');
-                            if (autoRandomEnabled && isPlayerReady) playRandomHit();
+                            if (autoRandomEnabled && isPlayerReady && !currentSong && queue.length===0) playRandomHit();
                         }
                     } else {
                         // Currently playing: hide overlay if user interacted
@@ -849,7 +853,7 @@
                     if (soundOverlay) { soundOverlay.classList.add('hidden'); soundOverlay.style.display = 'none'; }
                     videoContainer.classList.remove('bg-white');
                     videoContainer.classList.add('bg-black');
-                    if (autoRandomEnabled && isPlayerReady) playRandomHit();
+                    if (autoRandomEnabled && isPlayerReady && !currentSong && queue.length===0) playRandomHit();
                 }
             }
         }
@@ -930,14 +934,17 @@
                     <div class="flex items-center gap-3 p-2 rounded-lg text-sm ${isPlayingNow ? 'bg-amber-50 border border-amber-300' : 'bg-slate-50 border border-slate-100'}">
                         <span class="font-bold text-amber-600">#${idx+1}</span>
                         <img src="${song.thumbnail}" class="w-10 h-10 object-cover rounded flex-shrink-0">
-                        <div class="overflow-hidden">
+                        <div class="overflow-hidden flex-1">
                             <p class="font-semibold truncate text-slate-900">${escapeHtml(song.title)}</p>
                             <p class="text-xs text-slate-500 truncate">ขอโดย: ${escapeHtml(song.requested_by)}</p>
                         </div>
+                        ${!isPlayingNow ? `<button onclick="moveToNext(${song.id})" class="text-[10px] bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded-lg border flex-shrink-0">เล่นถัดไป</button>` : ''}
                     </div>
                 `;
             });
         }
+
+        function moveToNext(id){ fetch('/api/queue/move/', {method:'POST', headers:{"Content-Type":"application/json","X-CSRFToken":getCSRFToken(),"X-Player-Token":getPlayerToken()}, credentials:'same-origin', body:JSON.stringify({song_id:id, position:'next'})}).then(r=>r.json()).then(d=>{if(d.status==='success') fetchQueue(); else showToast(d.error||'ย้ายไม่สำเร็จ','error');}).catch(e=>showToast('ย้ายไม่สำเร็จ','error')); }
 
         // --- Search Panel Toggle ---
         function toggleSearchPanel() {
@@ -1081,8 +1088,8 @@
                         const filtered = data.results.filter(s => !blockedVideoIds.has(s.id) && !isAlbumLike(s.title));
                         hitSongs = filtered; renderHitList();
                         if (autoRandomEnabled && !currentSong && queue.length===0 && isPlayerReady) {
-                          // try to play random after hits loaded
-                          setTimeout(()=>playRandomHit(), 300);
+                          clearTimeout(autoRandomTimer);
+                          autoRandomTimer = setTimeout(()=>playRandomHit(), 300);
                         }
                     }
                 })
