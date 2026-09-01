@@ -127,11 +127,10 @@ class RequestPageTests(TestCase):
 
     def test_request_has_my_songs_section(self):
         response = self.client.get('/request/')
-        self.assertContains(response, 'id=\"my-songs-list\"')
-        self.assertContains(response, 'เพลงที่ฉันขอ')
-        self.assertContains(response, 'clientId')
-        self.assertContains(response, 'localStorage')
-        self.assertContains(response, 'removeMySong')
+        self.assertContains(response, 'id=\"now-playing-thumb\"')
+        self.assertContains(response, 'now-playing-card')
+        self.assertNotContains(response, 'id=\"my-songs-list\"')
+        self.assertNotContains(response, 'เพลงที่ฉันขอ')
 
     def test_request_has_no_checkbox(self):
         response = self.client.get('/request/')
