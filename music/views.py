@@ -284,8 +284,11 @@ def hits(request):
         queries = genre_queries[genre]
     else:
         queries = ['เพลงไทยฮิต', 'เพลงฮิต 2025', 'เพลงดัง', 'เพลงใหม่ 2025', 'เพลงไทยเพราะๆ', 'เพลงฮิตติดชาร์ต']
-    query = random.choice(queries)
-    cache_key = f"hits:{genre}:{query}"
+    # pick 2 random queries to broaden pool and avoid duplicate refresh
+    k = min(2, len(queries))
+    picked = random.sample(queries, k) if k else []
+    # cache key versioned to avoid stale single-query cache; keep 60s but shuffle on hit
+    cache_key = f"hits:{genre}:v2"
     cached = cache.get(cache_key)
     if cached:
         # ensure cached results also filtered (defense in depth)
@@ -296,33 +299,50 @@ def hits(request):
         for r in filtered_cached:
             if r['id'] not in seen_c:
                 dedup_c.append(r); seen_c.add(r['id'])
-        return JsonResponse({'results': dedup_c[:10]})
-    results = search_youtube(query, 10)
-    if not results:
-        # Fallback static hits for PythonAnywhere free (YouTube blocked)
-        results = [
-            {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/ks7p6DA0dKk/mqdefault.jpg"},
-            {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/zwvv71slEYc/mqdefault.jpg"},
-            {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://img.youtube.com/vi/L1k0wkQ6uww/mqdefault.jpg"},
-            {"id": "yEbv0QiI1Ns", "title": "คนไม่สำคัญ - Safeplanet", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/yEbv0QiI1Ns/mqdefault.jpg"},
-            {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg"},
-            {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
-            {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/I9ZIq7ynvdU/mqdefault.jpg"},
-            {"id": "o2NiIUFFd1M", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://img.youtube.com/vi/o2NiIUFFd1M/mqdefault.jpg"},
-            {"id": "VZoB0Vd9nQ", "title": "ซ่อนไม่หา - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/VZoB0Vd9nQ/mqdefault.jpg"},
-            {"id": "9bZkp7q19f0", "title": "ลืมไปแล้วว่ายังไง - Silly Fools", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/9bZkp7q19f0/mqdefault.jpg"},
-        ]
-        # filter blocked and album titles before return — never serve Error 153 to UI
-        results = [r for r in results if not _is_blocked(r['id']) and not _is_album_title(r.get('title',''))]
+        # shuffle a copy to avoid same order on refresh within 60s
+        out_cached = list(dedup_c)
+        random.shuffle(out_cached)
+        return JsonResponse({'results': out_cached[:10]})
+    # merge results from 2 queries (5 each)
+    merged = []
+    for q in picked:
+        try:
+            chunk = search_youtube(q, 5)
+        except Exception:
+            chunk = []
+        if chunk:
+            merged.extend(chunk)
+    _fallback_static = [
+        {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/ks7p6DA0dKk/mqdefault.jpg"},
+        {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/zwvv71slEYc/mqdefault.jpg"},
+        {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://img.youtube.com/vi/L1k0wkQ6uww/mqdefault.jpg"},
+        {"id": "yEbv0QiI1Ns", "title": "คนไม่สำคัญ - Safeplanet", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/yEbv0QiI1Ns/mqdefault.jpg"},
+        {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg"},
+        {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
+        {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/I9ZIq7ynvdU/mqdefault.jpg"},
+        {"id": "o2NiIUFFd1M", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://img.youtube.com/vi/o2NiIUFFd1M/mqdefault.jpg"},
+        {"id": "VZoB0Vd9nQ", "title": "ซ่อนไม่หา - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/VZoB0Vd9nQ/mqdefault.jpg"},
+        {"id": "9bZkp7q19f0", "title": "ลืมไปแล้วว่ายังไง - Silly Fools", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/9bZkp7q19f0/mqdefault.jpg"},
+    ]
+    if not merged:
+        # Fallback static hits for PythonAnywhere free (YouTube blocked) - shuffle and dedup
+        results = [r for r in _fallback_static if not _is_blocked(r['id']) and not _is_album_title(r.get('title',''))]
     else:
         # also ensure live search results are filtered (defense in depth)
-        results = [r for r in results if not _is_blocked(r['id']) and not _is_album_title(r.get('title',''))]
-    # dedup + shuffle second layer (search_youtube already filters but hits adds defense)
+        results = [r for r in merged if not _is_blocked(r['id']) and not _is_album_title(r.get('title',''))]
+    # dedup via seen set + shuffle
     seen = set()
     dedup = []
     for r in results:
         if r['id'] not in seen and not _is_album_title(r.get('title','')) and not _is_blocked(r['id']):
             dedup.append(r); seen.add(r['id'])
+    # if live results deduped to less than 10, pad with fallback to ensure 10 non-duplicate
+    if len(dedup) < 10 and merged:
+        for fb in _fallback_static:
+            if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_album_title(fb.get('title','')):
+                dedup.append(fb); seen.add(fb['id'])
+            if len(dedup) >= 10:
+                break
     random.shuffle(dedup)
     out = dedup[:10]
     cache.set(cache_key, out, 60)
