@@ -640,6 +640,14 @@
                             if (currentSong) fetch('/api/block/' + encodeURIComponent(currentSong.video_id) + '/', {method: 'POST', headers: {"X-CSRFToken": getCSRFToken(), "X-Player-Token": getPlayerToken()}, credentials: 'same-origin'}).catch(()=>{});
                             showToast("เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) → ข้ามไปเพลงถัดไป", "warning");
                             skipSong();
+                            try { if (player && player.stopVideo) player.stopVideo(); } catch(e) {}
+                            const idleSplash = document.getElementById('idle-splash');
+                            const videoContainer = document.getElementById('video-container');
+                            if (idleSplash) idleSplash.classList.remove('hidden');
+                            if (videoContainer) { videoContainer.classList.remove('bg-white'); videoContainer.classList.add('bg-black'); }
+                            // ensure sound-overlay hidden so QR clickable
+                            const so = document.getElementById('sound-overlay');
+                            if (so) { so.classList.add('hidden'); so.style.display='none'; }
                             setTimeout(()=>{ if (queue.length>0) playNext(soundEnabled); else fetchQueue(); }, 500);
                             fetchQueue();
                             setTimeout(()=>{ if(!currentSong && queue.length===0) { const idleSplash=document.getElementById('idle-splash'); const videoContainer=document.getElementById('video-container'); if(idleSplash) idleSplash.classList.remove('hidden'); if(videoContainer) videoContainer.classList.add('bg-black'); } }, 500);
@@ -813,6 +821,7 @@
                 }
                 videoContainer.classList.remove('bg-white');
                 videoContainer.classList.add('bg-black');
+                try { if (player && player.stopVideo) player.stopVideo(); } catch(e) {}
                 try {
                     player.loadVideoById(currentSong.video_id);
                 } catch(e) {
