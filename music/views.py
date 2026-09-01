@@ -341,6 +341,9 @@ def add_to_queue(request):
         if not video_id or not title_raw:
             return JsonResponse({'status': 'failed', 'error': 'กรุณาใส่ชื่อเพลง'}, status=400)
         
+        if _is_album_title(title_raw):
+            return JsonResponse({'status':'failed','error':'เพลงอัลบั้ม/รวมเพลงยาวเกินไป กรุณาเลือกเพลงเดี่ยว'}, status=400)
+
         # Check if video is blocked
         if _is_blocked(video_id):
             return JsonResponse({'status': 'failed', 'error': 'เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) ลองเลือกเพลงอื่นนะ'}, status=400)
@@ -390,6 +393,9 @@ def add_to_queue_front(request):
         if not video_id or not title_raw:
             return JsonResponse({'status': 'failed', 'error': 'กรุณาใส่ชื่อเพลง'}, status=400)
         
+        if _is_album_title(title_raw):
+            return JsonResponse({'status':'failed','error':'เพลงอัลบั้ม/รวมเพลงยาวเกินไป กรุณาเลือกเพลงเดี่ยว'}, status=400)
+
         if _is_blocked(video_id):
             return JsonResponse({'status': 'failed', 'error': 'เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) ลองเลือกเพลงอื่นนะ'}, status=400)
         
