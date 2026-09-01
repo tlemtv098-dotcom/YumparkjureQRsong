@@ -578,7 +578,9 @@
           if (!autoRandomEnabled) return;
           if (currentSong || queue.length>0) return;
           if(hitSongs.length===0) { fetchHits(); return; }
-          const song = hitSongs[Math.floor(Math.random()*hitSongs.length)];
+          let candidates = hitSongs.filter(s=>!isAlbumLike(s.title));
+          if (candidates.length===0) candidates = hitSongs; // fallback if all filtered
+          const song = candidates[Math.floor(Math.random()*candidates.length)];
           if(!song) return;
           fetch("/api/add/", {method:"POST", headers:{"Content-Type":"application/json","X-CSRFToken": getCSRFToken()}, credentials: 'same-origin', body: JSON.stringify({title:song.title, video_id:song.id, thumbnail:song.thumbnail, channel:song.channel, requested_by:"ระบบ (ออโต้สุ่ม)", client_id:"auto_random_"+Date.now()})}).then(()=>fetchQueue()).catch(()=>{});
         }
