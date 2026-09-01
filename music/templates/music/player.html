@@ -567,6 +567,7 @@
         // --- Auto Random ---
         let autoRandomEnabled = localStorage.getItem('auto_random') === 'on'; // defaults OFF as user requested "เมื่อเข้าเว็บมาให้ปิดเล่นออโต้ไว้"
         let autoRandomTimer = null;
+        let autoPlayedIds = new Set();
         function toggleAutoRandom(){
           autoRandomEnabled = !autoRandomEnabled;
           localStorage.setItem('auto_random', autoRandomEnabled ? 'on' : 'off');
@@ -584,10 +585,16 @@
           if (!autoRandomEnabled) return;
           if (currentSong || queue.length>0) return;
           if(hitSongs.length===0) { fetchHits(); return; }
-          let candidates = hitSongs.filter(s=>!isAlbumLike(s.title) && !isAI(s.title, s.channel));
-          if (candidates.length===0) candidates = hitSongs; // fallback if all filtered
+          let candidates = hitSongs.filter(s=>!isAlbumLike(s.title) && !isAI(s.title,s.channel) && !blockedVideoIds.has(s.id) && !autoPlayedIds.has(s.id) && !queue.some(q=>q.video_id===s.id));
+          if (candidates.length===0) {
+            // reset after all played
+            autoPlayedIds.clear();
+            candidates = hitSongs.filter(s=>!isAlbumLike(s.title) && !isAI(s.title,s.channel) && !blockedVideoIds.has(s.id) && !queue.some(q=>q.video_id===s.id));
+          }
+          if (candidates.length===0) return;
           const song = candidates[Math.floor(Math.random()*candidates.length)];
           if(!song) return;
+          autoPlayedIds.add(song.id);
           fetch("/api/add/", {method:"POST", headers:{"Content-Type":"application/json","X-CSRFToken": getCSRFToken()}, credentials: 'same-origin', body: JSON.stringify({title:song.title, video_id:song.id, thumbnail:song.thumbnail, channel:song.channel, requested_by:"ระบบ (ออโต้สุ่ม)", client_id:"auto_random_"+Date.now()})}).then(()=>fetchQueue()).catch(()=>{});
         }
         document.addEventListener('DOMContentLoaded', () => { updateAutoRandomBtn(); });
