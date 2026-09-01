@@ -25,10 +25,7 @@
             }
         }
     </script>
-    <style>
-@keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-.animate-marquee { animation: marquee 15s linear infinite; }
-</style>
+
 </head>
 <body class="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen font-sans pb-24">
     <div class="max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto px-4 sm:px-6 pt-6">
@@ -51,7 +48,7 @@
                 <div id="now-playing-content" class="flex items-center gap-3 overflow-hidden">
                     <img id="now-playing-thumb" src="{% static 'music/img/logo.jpg' %}" class="w-16 h-16 rounded-full object-cover animate-spin flex-shrink-0" style="animation-play-state: paused; animation-duration: 6s" alt="CD">
                     <div class="flex-1 overflow-hidden">
-                        <p id="now-playing-title" class="text-sm font-bold whitespace-nowrap overflow-hidden animate-marquee">กำลังโหลด...</p>
+                        <p id="now-playing-title" class="text-sm font-bold truncate overflow-hidden">กำลังโหลด...</p>
                         <p id="now-playing-channel" class="text-xs text-slate-500 truncate"></p>
                     </div>
                 </div>
