@@ -1171,10 +1171,13 @@
             .then(data => {
                 if (data.status === "success") {
                     showToast("เพิ่มเพลงหน้าคิวแล้ว!", "success");
+                    if (currentSong) {
+                        try { skipSong(); } catch(e) {}
+                    }
                     fetchQueue(() => {
                         setTimeout(() => {
-                            if (queue.length > 0 && !currentSong) playNext();
-                        }, 100);
+                            if (queue.length > 0) playNext(true);
+                        }, 300);
                     });
                 } else {
                     showToast(data.error || "เพิ่มไม่สำเร็จ", "error");
@@ -1240,6 +1243,17 @@
         }
 
         startPolling();
+        setInterval(()=>{
+          try{
+            const btn = document.querySelector('.ytp-ad-skip-button');
+            if(btn && btn.offsetParent !== null) btn.click();
+            // also check if player is in ad state via getVideoData
+            if(player && player.getVideoData && player.getVideoData().isAd){
+              const btn2 = document.querySelector('.ytp-ad-skip-button-modern');
+              if(btn2) btn2.click();
+            }
+          }catch(e){}
+        }, 500);
 
         // --- Additional mobile Safari: handle pagehide/pageshow (bfcache) ---
         window.addEventListener('pageshow', (event) => {
