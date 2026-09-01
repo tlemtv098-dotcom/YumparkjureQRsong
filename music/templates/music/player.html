@@ -96,6 +96,9 @@
             touch-action: manipulation;
             background: rgba(255,255,255,0.96);
         }
+        html.dark #sound-overlay {
+            background: rgba(15,23,42,0.95);
+        }
         /* Idle splash: hidden when playing, respects safe area */
         #idle-splash {
             padding-top: max(1rem, var(--sat));
@@ -196,7 +199,7 @@
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-slate-50 via-white to-amber-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen p-3 sm:p-4 md:p-6 font-sans safe-bottom">
+<body class="bg-gradient-to-br from-slate-50 via-white to-amber-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-slate-900 dark:text-slate-100 min-h-screen p-3 sm:p-4 md:p-6 font-sans safe-bottom">
     <div class="max-w-6xl mx-auto">
 
         <!-- หัวข้อแบรนด์ + โลโก้ -->
@@ -209,7 +212,7 @@
             <button onclick="toggleTheme()" id="theme-toggle" class="ml-auto bg-slate-100 dark:bg-slate-700 p-2 rounded-lg text-sm font-bold" title="สลับโทน">เปลี่ยนทีม</button>
         </header>
 
-        <div id="webview-banner" class="hidden bg-amber-100 border border-amber-300 text-amber-800 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
+        <div id="webview-banner" class="hidden bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
             <span class="text-sm font-medium">เปิดในเบราว์เซอร์ภายนอกเพื่อประสบการณ์ที่ดีขึ้น</span>
             <button onclick="window.open(location.href,'_blank')" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex-shrink-0">เปิด</button>
         </div>
@@ -222,11 +225,11 @@
                     <div id="player" class="w-full h-full"></div>
 
                     <!-- Sound overlay: single tap-to-unmute layer for mobile Safari + all platforms -->
-                    <div id="sound-overlay" onclick="handleOverlayTap()" class="absolute inset-0 z-10 hidden flex-col items-center justify-center bg-white/96 p-4 gap-3 cursor-pointer">
-                        <p class="text-xl md:text-2xl font-extrabold text-amber-700 text-center">
+                    <div id="sound-overlay" onclick="handleOverlayTap()" class="absolute inset-0 z-10 hidden flex-col items-center justify-center bg-white/96 dark:bg-slate-900/95 p-4 gap-3 cursor-pointer">
+                        <p class="text-xl md:text-2xl font-extrabold text-amber-700 dark:text-amber-400 text-center">
                             แตะเพื่อเปิดเสียง
                         </p>
-                        <p class="text-xs text-slate-500 text-center">เพลงเล่นแบบปิดเสียงอยู่ — แตะเพื่อเปิดเสียง</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 text-center">เพลงเล่นแบบปิดเสียงอยู่ — แตะเพื่อเปิดเสียง</p>
                         <button onclick="handleOverlayTap()"
                                 class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg text-base w-full max-w-[200px] mx-auto block">
                             เริ่มเล่นเพลง
@@ -234,17 +237,17 @@
                     </div>
 
                     <!-- Idle splash: shows when no queue AND no current song -->
-                    <div id="idle-splash" class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 md:gap-4 bg-gradient-to-br from-white/95 to-amber-50/95 p-4 text-center">
-                        <img src="{% url 'qr_code' %}" class="w-28 h-28 md:w-36 md:h-36 rounded-xl bg-white p-1 shadow-lg border border-slate-200" alt="QR Code">
-                        <p class="text-xl md:text-3xl font-extrabold text-amber-600">สแกน QR เพื่อขอเพลง</p>
-                        <p class="text-xs md:text-sm text-slate-500">รอเพลงจากลูกค้า...</p>
+                    <div id="idle-splash" class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 md:gap-4 bg-gradient-to-br from-white/95 to-amber-50/95 dark:from-slate-800/95 dark:via-slate-800/95 dark:to-slate-900/95 p-4 text-center">
+                        <img src="{% url 'qr_code' %}" class="w-28 h-28 md:w-36 md:h-36 rounded-xl bg-white p-1 shadow-lg border border-slate-200 dark:border-slate-700" alt="QR Code">
+                        <p class="text-xl md:text-3xl font-extrabold text-amber-600 dark:text-amber-400">สแกน QR เพื่อขอเพลง</p>
+                        <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400">รอเพลงจากลูกค้า...</p>
                         <img src="/qr.png" alt="" class="hidden" aria-hidden="true">
                     </div>
                 </div>
 
                 <div class="bg-white dark:bg-slate-800 shadow-md p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                     <div class="mb-2">
-                        <span class="text-[10px] sm:text-xs text-amber-600 font-bold tracking-wider">กำลังเล่น</span>
+                        <span class="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 font-bold tracking-wider">กำลังเล่น</span>
                         <h2 id="now-playing-title" class="text-sm sm:text-base md:text-lg font-bold whitespace-normal break-words line-clamp-2 text-slate-900 dark:text-white">รอเพลงจากลูกค้า...</h2>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
@@ -263,7 +266,7 @@
                     <h3 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white mb-2">สแกนเพื่อขอเพลง</h3>
                     <img src="{% url 'qr_code' %}" class="w-36 h-36 sm:w-44 sm:h-44 mx-auto rounded-xl border-2 border-amber-400 bg-white p-2" alt="QR Code">
                     <img src="/qr.png" alt="" class="hidden" aria-hidden="true">
-                    <p class="text-[10px] sm:text-xs text-slate-500 mt-2">เปิดกล้องมือถือสแกนเพื่อเลือกเพลง</p>
+                    <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-2">เปิดกล้องมือถือสแกนเพื่อเลือกเพลง</p>
                     <button onclick="printQR()" class="mt-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow transition">
                         พิมพ์ QR Code
                     </button>
@@ -272,7 +275,7 @@
                 <div class="bg-white dark:bg-slate-800 shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
                     <div class="flex items-center justify-between mb-3">
                         <h3 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white"> คิวเพลงต่อไป (<span id="queue-count">0</span>)</h3>
-                        <button onclick="clearQueue()" class="text-[10px] sm:text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-2 sm:px-3 py-1.5 rounded-lg font-bold border border-amber-200 transition">รีคิวเพลง</button>
+                        <button onclick="clearQueue()" class="text-[10px] sm:text-xs bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-800 text-amber-700 dark:text-amber-200 px-2 sm:px-3 py-1.5 rounded-lg font-bold border border-amber-200 dark:border-amber-700 transition">รีคิวเพลง</button>
                     </div>
                     <div id="queue-list" class="space-y-2 max-h-60 sm:max-h-80 overflow-y-auto pr-1"></div>
                 </div>
@@ -292,7 +295,7 @@
                                    class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
                             <div id="search-suggestions" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"></div>
                         </div>
-                        <p id="manual-loading" class="hidden text-xs text-slate-500 text-center py-2">กำลังค้นหาโปรดรอสักครู่</p>
+                        <p id="manual-loading" class="hidden text-xs text-slate-500 dark:text-slate-400 text-center py-2">กำลังค้นหาโปรดรอสักครู่</p>
                         <div id="manual-results" class="space-y-2 mt-2"></div>
                     </div>
 
@@ -300,15 +303,15 @@
                     <div class="bg-white dark:bg-slate-800 shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
                         <div class="flex items-center justify-between mb-2">
                             <h3 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white">เพลงแนะนำ</h3>
-                            <button onclick="fetchHits()" class="text-[10px] sm:text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-2 py-1 rounded-lg font-bold border border-amber-200 transition">รีเฟรช</button>
+                            <button onclick="fetchHits()" class="text-[10px] sm:text-xs bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-800 text-amber-700 dark:text-amber-200 px-2 py-1 rounded-lg font-bold border border-amber-200 dark:border-amber-700 transition">รีเฟรช</button>
                         </div>
-                        <div id="hit-list" class="space-y-2 max-h-60 overflow-y-auto pr-1"><p class="text-xs text-slate-400 text-center py-2">กำลังโหลดเพลงแนะนำ...</p></div>
+                        <div id="hit-list" class="space-y-2 max-h-60 overflow-y-auto pr-1"><p class="text-xs text-slate-400 dark:text-slate-500 text-center py-2">กำลังโหลดเพลงแนะนำ...</p></div>
                     </div>
                 </div>
             </div>
         </div>
     <!-- Toast container: respects safe area -->
-    <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 text-white px-4 py-2 rounded-xl shadow-lg text-sm font-medium"></div>
+    <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 dark:bg-slate-800 text-white dark:text-slate-100 border border-transparent dark:border-slate-700 px-4 py-2 rounded-xl shadow-lg text-sm font-medium"></div>
     </div>
 
     <!-- Hidden audio unlock helper for iOS Safari -->
@@ -529,10 +532,10 @@
             const t = document.getElementById('toast');
             if (!t) return;
             t.textContent = msg;
-            t.className = "fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2 rounded-xl shadow-lg text-sm font-medium";
-            if (type === "error") t.className += " !bg-red-600";
-            if (type === "success") t.className += " !bg-green-600";
-            if (type === "warning") t.className += " !bg-amber-600";
+            t.className = "fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 dark:bg-slate-800 text-white dark:text-slate-100 border border-transparent dark:border-slate-700 px-4 py-2 rounded-xl shadow-lg text-sm font-medium";
+            if (type === "error") t.className += " !bg-red-600 dark:!bg-red-700";
+            if (type === "success") t.className += " !bg-green-600 dark:!bg-green-700";
+            if (type === "warning") t.className += " !bg-amber-600 dark:!bg-amber-700";
             // Respect safe area
             t.style.bottom = 'max(1rem, env(safe-area-inset-bottom))';
             t.classList.remove('hidden');
@@ -575,7 +578,7 @@
         function updateAutoRandomBtn(){
           const b=document.getElementById('auto-random-btn');
           if(b) b.textContent = autoRandomEnabled ? 'ออโต้: เปิด' : 'ออโต้: ปิด';
-          if(b) b.className = autoRandomEnabled ? 'text-xs bg-amber-500 text-white px-2 py-1 rounded-lg border font-bold' : 'text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg border font-bold';
+          if(b) b.className = autoRandomEnabled ? 'text-xs bg-amber-500 dark:bg-amber-600 text-white px-2 py-1 rounded-lg border border-amber-500 dark:border-amber-600 font-bold' : 'text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-600 font-bold';
         }
         function playRandomHit(){
           if (!autoRandomEnabled) return;
@@ -919,20 +922,20 @@
             const container = document.getElementById('queue-list');
             container.innerHTML = '';
             if (queue.length === 0) {
-                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">ไม่มีคิวเพลงในระบบ</p>';
+                container.innerHTML = '<p class="text-xs text-slate-400 dark:text-slate-500 text-center py-4">ไม่มีคิวเพลงในระบบ</p>';
                 return;
             }
             queue.forEach((song, idx) => {
                 const isPlayingNow = currentSong && song.id === currentSong.id;
                 container.innerHTML += `
                     <div class="flex items-center gap-3 p-2 rounded-lg text-sm ${isPlayingNow ? 'bg-amber-50 dark:bg-slate-700 border border-amber-300 dark:border-slate-600' : 'bg-slate-50 dark:bg-slate-700 border border-slate-100 dark:border-slate-600'}">
-                        <span class="font-bold text-amber-600">#${idx+1}</span>
+                        <span class="font-bold text-amber-600 dark:text-amber-400">#${idx+1}</span>
                         <img src="${song.thumbnail}" class="w-10 h-10 object-cover rounded flex-shrink-0">
                         <div class="overflow-hidden flex-1">
                             <p class="font-semibold truncate text-slate-900 dark:text-white">${escapeHtml(song.title)}</p>
                             <p class="text-xs text-slate-500 dark:text-slate-300 truncate">ขอโดย: ${escapeHtml(song.requested_by)}</p>
                         </div>
-                        ${!isPlayingNow ? `<button onclick="moveToNext(${song.id})" class="text-[10px] bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded-lg border flex-shrink-0">เล่นถัดไป</button>` : ''}
+                        ${!isPlayingNow ? `<button onclick="moveToNext(${song.id})" class="text-[10px] bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded-lg flex-shrink-0">เล่นถัดไป</button>` : ''}
                     </div>
                 `;
             });
@@ -974,7 +977,7 @@
                     const container = document.getElementById("manual-results");
                     container.innerHTML = "";
                     if (manualSearchResults.length === 0) {
-                        container.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">ไม่พบเพลงที่ค้นหา</p>';
+                        container.innerHTML = '<p class="text-xs text-slate-500 dark:text-slate-400 text-center py-2">ไม่พบเพลงที่ค้นหา</p>';
                         return;
                     }
                     manualSearchResults.forEach((song, idx) => {
@@ -1100,7 +1103,7 @@
             if (!container) return;
             container.innerHTML = "";
             if (hitSongs.length === 0) {
-                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-2">ไม่มีเพลงแนะนำ</p>';
+                container.innerHTML = '<p class="text-xs text-slate-400 dark:text-slate-500 text-center py-2">ไม่มีเพลงแนะนำ</p>';
                 return;
             }
             hitSongs.forEach((song, idx) => {
