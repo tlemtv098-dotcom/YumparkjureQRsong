@@ -352,6 +352,7 @@
         let userInteracted = false;
         let soundEnabled = false;
         let audioUnlocked = false;
+        let playerStarting = false;
 
         // Video IDs with embedding disabled
         const blockedVideoIds = new Set([
@@ -512,12 +513,13 @@
         }
 
         function ensurePlaying() {
+            if (playerStarting) return;
             userInteracted = true;
             soundEnabled = true;
             unlockAudio();
             if (!player || !isPlayerReady) return;
             if (!currentSong && queue.length > 0) {
-                playNext();
+                playNext(true);
                 return;
             }
             if (!currentSong) return;
@@ -817,14 +819,26 @@
                 .catch(err => { console.error(err); showToast("เกิดข้อผิดพลาด", "error"); });
         }
 
-        function playNext() {
+        function playNext(withSound) {
+            if (playerStarting) { setTimeout(()=>playNext(withSound), 350); return; }
+            const wantSound = typeof withSound === 'boolean' ? withSound : soundEnabled;
             const next = queue.find(song => !finishingSongIds.has(song.id));
             const videoContainer = document.getElementById('video-container');
             const soundOverlay = document.getElementById('sound-overlay');
             const idleSplash = document.getElementById('idle-splash');
 
             if (next) {
-                if (currentSong && currentSong.id === next.id) return;
+                if (currentSong && currentSong.id === next.id) {
+                    if (player && player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) {
+                        try { player.playVideo(); } catch(e) {}
+                    }
+                    if (wantSound && player && player.isMuted && player.isMuted()) {
+                        try { player.unMute(); } catch(e) {}
+                    }
+                    return;
+                }
+                playerStarting = true;
+                setTimeout(()=>{ playerStarting = false; }, 300);
                 currentSong = next;
                 lastPlayedVideoId = next.video_id;
                 document.getElementById('now-playing-title').innerText = currentSong.title;
@@ -841,10 +855,10 @@
                     } catch (e) {}
                 }
                 // Keep sound-overlay visible until user taps, unless already interacted
-                if (userInteracted && soundOverlay) {
+                if ((wantSound || userInteracted) && soundOverlay) {
                     soundOverlay.classList.add('hidden');
                     soundOverlay.style.display = 'none';
-                } else if (!userInteracted && soundOverlay) {
+                } else if (!wantSound && !userInteracted && soundOverlay) {
                     // Show sound overlay as unmute hint even while playing muted
                     soundOverlay.classList.remove('hidden');
                     soundOverlay.style.display = 'flex';
@@ -875,7 +889,7 @@
                 try { if(player && player.setVolume) player.setVolume(getSavedVolume()); } catch(e) {}
                 try { player.mute(); } catch(e) {}
                 try { player.playVideo(); } catch(e) {}
-                if (userInteracted) {
+                if (wantSound || userInteracted) {
                     // Need slight delay for iOS gesture to be recognized
                     setTimeout(() => {
                         try { if(player && player.setVolume) player.setVolume(getSavedVolume()); } catch(e) {}
@@ -1072,25 +1086,34 @@
                     client_id: "manual_" + Date.now()
                 })
             })
-            .then(res => res.json())
+            .then(async res => {
+                let data; try { data = await res.json(); } catch(e) { data = {}; }
+                if (res.ok && data.status === "success") return data;
+                // toast for 429/400 and other errors
+                throw { status: res.status, data };
+            })
             .then(data => {
-                if (data.status === "success") {
                     fetchQueue(() => {
                         setTimeout(() => {
-                            if (queue.length > 0 && !currentSong) playNext();
+                            if (queue.length > 0 && !currentSong) {
+                                try { playNext(soundEnabled); } catch(e) {}
+                                setTimeout(()=>{ if (queue.length > 0 && !currentSong) { try { playNext(soundEnabled); } catch(e) {} } }, 500);
+                            }
                         }, 100);
                     });
                     document.getElementById("manual-search").value = "";
                     document.getElementById("manual-results").innerHTML = "";
                     toggleSearchPanel();
                     showToast("เพิ่มเพลงเข้าคิวแล้ว", "success");
-                } else {
-                    showToast(data.error || "เพิ่มเพลงไม่สำเร็จ", "error");
-                }
             })
             .catch(err => {
                 console.error(err);
-                showToast("เกิดข้อผิดพลาด ลองใหม่นะ", "error");
+                if (err && err.data) {
+                    const msg = err.data.error || (err.status===429 ? "ส่งคำขอเร็วเกินไป รอสักครู่" : "เพิ่มเพลงไม่สำเร็จ");
+                    showToast(msg, "error");
+                } else {
+                    showToast("เกิดข้อผิดพลาด ลองใหม่นะ", "error");
+                }
             });
         }
 
@@ -1213,20 +1236,31 @@
                     client_id: "manual_" + Date.now()
                 })
             })
-            .then(res => res.json())
+            .then(async res => {
+                let data; try { data = await res.json(); } catch(e) { data = {}; }
+                if (res.ok && data.status === "success") return data;
+                throw { status: res.status, data };
+            })
             .then(data => {
-                if (data.status === "success") {
                     fetchQueue(() => {
                         setTimeout(() => {
-                            if (queue.length > 0 && !currentSong) playNext();
+                            if (queue.length > 0 && !currentSong) {
+                                try { playNext(soundEnabled); } catch(e) {}
+                                setTimeout(()=>{ if (queue.length > 0 && !currentSong) { try { playNext(soundEnabled); } catch(e) {} } }, 500);
+                            }
                         }, 100);
                     });
                     showToast("เพิ่มเพลงเข้าคิวแล้ว", "success");
-                } else {
-                    showToast(data.error || "เพิ่มเพลงไม่สำเร็จ", "error");
-                }
             })
-            .catch(err => { console.error(err); showToast("เกิดข้อผิดพลาด ลองใหม่นะ", "error"); });
+            .catch(err => {
+                console.error(err);
+                if (err && err.data) {
+                    const msg = err.data.error || (err.status===429 ? "ส่งคำขอเร็วเกินไป รอสักครู่" : "เพิ่มเพลงไม่สำเร็จ");
+                    showToast(msg, "error");
+                } else {
+                    showToast("เกิดข้อผิดพลาด ลองใหม่นะ", "error");
+                }
+            });
         }
 
         // --- Priority Play (เล่นทันทีข้ามคิว) ---
@@ -1244,23 +1278,33 @@
                     client_id: "manual_priority_" + Date.now()
                 })
             })
-            .then(res => res.json())
+            .then(async res => {
+                let data; try { data = await res.json(); } catch(e) { data = {}; }
+                if (res.ok && data.status === "success") return data;
+                throw { status: res.status, data };
+            })
             .then(data => {
-                if (data.status === "success") {
                     showToast("เพิ่มเพลงหน้าคิวแล้ว!", "success");
                     if (currentSong) {
                         try { skipSong(); } catch(e) {}
                     }
                     fetchQueue(() => {
                         setTimeout(() => {
-                            if (queue.length > 0) playNext(true);
+                            if (queue.length > 0) {
+                                try { playNext(true); } catch(e) {}
+                                setTimeout(()=>{ if (queue.length > 0 && !currentSong) { try { playNext(true); } catch(e) {} } }, 500);
+                            }
                         }, 300);
                     });
-                } else {
-                    showToast(data.error || "เพิ่มไม่สำเร็จ", "error");
-                }
             })
-            .catch(err => showToast("เกิดข้อผิดพลาด: " + err.message, "error"));
+            .catch(err => {
+                if (err && err.data) {
+                    const msg = err.data.error || (err.status===429 ? "ส่งคำขอเร็วเกินไป รอสักครู่" : "เพิ่มไม่สำเร็จ");
+                    showToast(msg, "error");
+                } else {
+                    showToast("เกิดข้อผิดพลาด: " + (err.message||err), "error");
+                }
+            });
         }
 
         function manualPlayFront(idx) {
