@@ -1,4 +1,4 @@
-const CACHE_NAME = "yum-juke-v1";
+const CACHE_NAME = "yum-juke-v2";
 const SHELL = ["/", "/request/", "/static/music/img/logo.jpg", "/static/music/manifest.json"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(SHELL)).catch(()=>{}));
