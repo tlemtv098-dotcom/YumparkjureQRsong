@@ -129,7 +129,7 @@ def search_youtube(query, max_results=8):
     api_results = youtube_api_search(query, max_results)
     if api_results:
         filtered = []
-        for r in api_results[:8]:
+        for r in api_results[:max_results]:
             if _is_album_title(r.get('title', '')):
                 continue
             cache_key = f"embed:{r['id']}"
@@ -150,7 +150,7 @@ def search_youtube(query, max_results=8):
                 continue
             # embed is True or None (network) -> keep
             filtered.append(r)
-            if len(filtered) >= 5:
+            if len(filtered) >= max_results:
                 break
         return filtered if filtered else []
 
@@ -169,9 +169,9 @@ def search_youtube(query, max_results=8):
         except Exception as e:
             print('Search Error:', e)
             return []
-    # Now check embeddable per video (slow but accurate) — limit to first 8 to keep time <5s
+    # Now check embeddable per video (slow but accurate) — limit to first max_results to keep time <5s
     filtered = []
-    for r in raw[:8]:
+    for r in raw[:max_results]:
         if _is_album_title(r.get('title', '')):
             continue
         cache_key = f"embed:{r['id']}"
@@ -191,9 +191,9 @@ def search_youtube(query, max_results=8):
                 BlockedVideo.objects.get_or_create(video_id=r['id'], defaults={'reason': 'Not embeddable'})
             except:
                 pass
-        if len(filtered) >= 5:
+        if len(filtered) >= max_results:
             break
-    return filtered[:5] if filtered else []
+    return filtered[:max_results] if filtered else []
 
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -290,7 +290,13 @@ def hits(request):
     if cached:
         # ensure cached results also filtered (defense in depth)
         filtered_cached = [r for r in cached if not _is_blocked(r['id']) and not _is_album_title(r.get('title',''))]
-        return JsonResponse({'results': filtered_cached})
+        # dedup cached as second layer
+        seen_c = set()
+        dedup_c = []
+        for r in filtered_cached:
+            if r['id'] not in seen_c:
+                dedup_c.append(r); seen_c.add(r['id'])
+        return JsonResponse({'results': dedup_c[:10]})
     results = search_youtube(query, 10)
     if not results:
         # Fallback static hits for PythonAnywhere free (YouTube blocked)
@@ -302,15 +308,23 @@ def hits(request):
             {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg"},
             {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
             {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/I9ZIq7ynvdU/mqdefault.jpg"},
-            {"id": "yEbv0QiI1Ns", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://img.youtube.com/vi/yEbv0QiI1Ns/mqdefault.jpg"},
+            {"id": "o2NiIUFFd1M", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://img.youtube.com/vi/o2NiIUFFd1M/mqdefault.jpg"},
+            {"id": "VZoB0Vd9nQ", "title": "ซ่อนไม่หา - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/VZoB0Vd9nQ/mqdefault.jpg"},
+            {"id": "9bZkp7q19f0", "title": "ลืมไปแล้วว่ายังไง - Silly Fools", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/9bZkp7q19f0/mqdefault.jpg"},
         ]
         # filter blocked and album titles before return — never serve Error 153 to UI
         results = [r for r in results if not _is_blocked(r['id']) and not _is_album_title(r.get('title',''))]
     else:
         # also ensure live search results are filtered (defense in depth)
         results = [r for r in results if not _is_blocked(r['id']) and not _is_album_title(r.get('title',''))]
-    random.shuffle(results)
-    out = results[:8]
+    # dedup + shuffle second layer (search_youtube already filters but hits adds defense)
+    seen = set()
+    dedup = []
+    for r in results:
+        if r['id'] not in seen and not _is_album_title(r.get('title','')) and not _is_blocked(r['id']):
+            dedup.append(r); seen.add(r['id'])
+    random.shuffle(dedup)
+    out = dedup[:10]
     cache.set(cache_key, out, 60)
     return JsonResponse({'results': out})
 

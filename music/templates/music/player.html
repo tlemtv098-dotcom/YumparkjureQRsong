@@ -240,15 +240,14 @@
                     </div>
                 </div>
 
-                <div class="bg-white shadow-md p-3 sm:p-4 rounded-xl flex items-center justify-between border border-slate-200">
-                    <div class="overflow-hidden pr-2 flex-1">
+                <div class="bg-white shadow-md p-3 sm:p-4 rounded-xl border border-slate-200">
+                    <div class="mb-2">
                         <span class="text-[10px] sm:text-xs text-amber-600 font-bold tracking-wider">กำลังเล่น</span>
-                        <h2 id="now-playing-title" class="text-sm sm:text-base md:text-lg font-bold truncate text-slate-900">รอเพลงจากลูกค้า...</h2>
+                        <h2 id="now-playing-title" class="text-sm sm:text-base md:text-lg font-bold whitespace-normal break-words line-clamp-2 text-slate-900">รอเพลงจากลูกค้า...</h2>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <input type="range" id="volume-slider" min="0" max="100" value="80" class="w-20 accent-amber-500" title="ระดับเสียง">
-                        <button onclick="toggleAutoRandom()" id="auto-random-btn" class="text-xs bg-amber-100 hover:bg-amber-200 px-2 py-1 rounded-lg border border-amber-200 font-bold" title="เล่นอัตโนมัติแบบสุ่ม">ออโต้: เปิด</button>
-                        <button onclick="shareCurrentSong()" class="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg border" title="แชร์เพลง">🔗</button>
+                        <button onclick="toggleAutoRandom()" id="auto-random-btn" class="text-xs bg-amber-100 hover:bg-amber-200 px-2 py-1 rounded-lg border border-amber-200 font-bold" title="เล่นอัตโนมัติแบบสุ่ม">ออโต้: ปิด</button>
                         <button onclick="skipSong()" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow transition flex-shrink-0">
                             ข้ามเพลง
                         </button>
@@ -536,16 +535,6 @@
             t.classList.remove('hidden');
             clearTimeout(t._timer);
             t._timer = setTimeout(() => t.classList.add('hidden'), 3000);
-        }
-
-        function shareCurrentSong() {
-            if (!currentSong) { showToast("ยังไม่มีเพลงเล่นอยู่", "error"); return; }
-            const url = window.location.origin + "/request/?q=" + encodeURIComponent(currentSong.title);
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(url).then(() => showToast("คัดลอกลิงก์แล้ว!", "success"));
-            } else {
-                prompt("คัดลอกลิงก์:", url);
-            }
         }
 
         // --- Volume (constant loudness) ---
