@@ -124,6 +124,7 @@
             // Add more known blocked Thai songs here as discovered
         ]);
         function isAlbumLike(t){return /longplay|รวมเพลง|ชั่วโมง|อัลบั้ม|60 minutes|playlist|ยาวๆ|ต่อเนื่อง/i.test(t||'');}
+        function isAI(t,c){return /\bAI\b|AurAIa|Artificial|Bot/i.test((t||'')+' '+(c||''));}
 
         let searchResults = [];
         let searchTimer = null;
@@ -140,7 +141,7 @@
         ];
 
         function filterBlockedSongs(songs) {
-            return songs.filter(song => !blockedVideoIds.has(song.id) && !isAlbumLike(song.title));
+            return songs.filter(song => !blockedVideoIds.has(song.id) && !isAlbumLike(song.title) && !isAI(song.title, song.channel));
         }
 
         function renderHitList() {

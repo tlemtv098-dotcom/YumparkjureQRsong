@@ -350,6 +350,7 @@
             "qguo-j5PxBE",
         ]);
         function isAlbumLike(t){return /longplay|รวมเพลง|ชั่วโมง|อัลบั้ม|60 minutes|playlist|ยาวๆ|ต่อเนื่อง/i.test(t||'');}
+        function isAI(t,c){return /\bAI\b|AurAIa|Artificial|Bot/i.test((t||'')+' '+(c||''));}
 
         // Recommended hits data
         let hitSongs = [];
@@ -580,7 +581,7 @@
           if (!autoRandomEnabled) return;
           if (currentSong || queue.length>0) return;
           if(hitSongs.length===0) { fetchHits(); return; }
-          let candidates = hitSongs.filter(s=>!isAlbumLike(s.title));
+          let candidates = hitSongs.filter(s=>!isAlbumLike(s.title) && !isAI(s.title, s.channel));
           if (candidates.length===0) candidates = hitSongs; // fallback if all filtered
           const song = candidates[Math.floor(Math.random()*candidates.length)];
           if(!song) return;
@@ -969,7 +970,7 @@
                 .then(res => res.json())
                 .then(data => {
                     document.getElementById("manual-loading").classList.add("hidden");
-                    manualSearchResults = data.results.filter(song => !blockedVideoIds.has(song.id) && !isAlbumLike(song.title));
+                    manualSearchResults = data.results.filter(song => !blockedVideoIds.has(song.id) && !isAlbumLike(song.title) && !isAI(song.title, song.channel));
                     const container = document.getElementById("manual-results");
                     container.innerHTML = "";
                     if (manualSearchResults.length === 0) {
@@ -1078,7 +1079,7 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.results && data.results.length > 0) {
-                        const filtered = data.results.filter(s => !blockedVideoIds.has(s.id) && !isAlbumLike(s.title));
+                        const filtered = data.results.filter(s => !blockedVideoIds.has(s.id) && !isAlbumLike(s.title) && !isAI(s.title, s.channel));
                         hitSongs = filtered; renderHitList();
                         if (autoRandomEnabled && !currentSong && queue.length===0 && isPlayerReady) {
                           clearTimeout(autoRandomTimer);
