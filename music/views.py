@@ -39,10 +39,15 @@ def _get_blocked_ids():
 
 ALBUM_RE = re.compile(r'longplay|รวมเพลง|ชั่วโมง|อัลบั้ม|60 minutes|playlist|ยาวๆ|ต่อเนื่อง', re.I)
 AI_RE = re.compile(r'\bAI\b|AurAIa|Artificial|Bot', re.I)
+NON_MUSIC_RE = re.compile(r'สอน|how to|vlog|game|gameplay', re.I)
 def _is_album_title(title):
     return bool(ALBUM_RE.search(title or ''))
 def _is_ai_title(title, channel):
     return bool(AI_RE.search(title or '') or AI_RE.search(channel or ''))
+def _is_non_music(title, channel):
+    return bool(NON_MUSIC_RE.search(title or '') or NON_MUSIC_RE.search(channel or ''))
+def _is_music_result(title, channel):
+    return not _is_non_music(title, channel)
 
 def _is_embeddable(video_id):
     try:
@@ -119,6 +124,8 @@ def youtube_api_search(query, max_results=8):
         channel = snippet.get('channelTitle', 'YouTube')
         if _is_ai_title(title, channel):
             continue
+        if _is_non_music(title, channel):
+            continue
         thumbnails = snippet.get('thumbnails', {})
         thumbnail = (thumbnails.get('medium') or thumbnails.get('default') or {}).get('url')
         results.append({
@@ -139,6 +146,8 @@ def search_youtube(query, max_results=8):
             if _is_album_title(r.get('title', '')):
                 continue
             if _is_ai_title(r.get('title', ''), r.get('channel', '')):
+                continue
+            if _is_non_music(r.get('title', ''), r.get('channel', '')):
                 continue
             cache_key = f"embed:{r['id']}"
             cached = cache.get(cache_key)
@@ -175,7 +184,11 @@ def search_youtube(query, max_results=8):
                     continue
                 if _is_ai_title(entry.get('title',''), entry.get('uploader') or entry.get('channel','')):
                     continue
-                raw.append({'id': vid_id, 'title': entry.get('title','Unknown'), 'channel': entry.get('uploader') or entry.get('channel','YouTube'), 'thumbnail': f'https://img.youtube.com/vi/{vid_id}/mqdefault.jpg'})
+                title_tmp = entry.get('title','')
+                chan_tmp = entry.get('uploader') or entry.get('channel','')
+                if _is_non_music(title_tmp, chan_tmp):
+                    continue
+                raw.append({'id': vid_id, 'title': entry.get('title','Unknown'), 'channel': chan_tmp or 'YouTube', 'thumbnail': f'https://img.youtube.com/vi/{vid_id}/mqdefault.jpg'})
         except Exception as e:
             print('Search Error:', e)
             return []
@@ -185,6 +198,8 @@ def search_youtube(query, max_results=8):
         if _is_album_title(r.get('title', '')):
             continue
         if _is_ai_title(r.get('title', ''), r.get('channel', '')):
+            continue
+        if _is_non_music(r.get('title', ''), r.get('channel', '')):
             continue
         cache_key = f"embed:{r['id']}"
         cached = cache.get(cache_key)
@@ -247,11 +262,11 @@ def search_song(request):
         results = [s for s in fallback if q_lower in s['title'].lower() or q_lower in s['channel'].lower()]
         if not results:
             results = fallback[:3]
-        # filter blocked and album titles
-        results = [r for r in results if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel',''))]
+        # filter blocked and album titles + non-music
+        results = [r for r in results if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
     else:
-        # also filter live results (defense in depth) for album titles
-        results = [r for r in results if not _is_album_title(r.get('title','')) and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel',''))]
+        # also filter live results (defense in depth) for album titles + non-music
+        results = [r for r in results if not _is_album_title(r.get('title','')) and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
     return JsonResponse({'results': results})
 
 def suggest_song(request):
@@ -303,8 +318,8 @@ def hits(request):
     cache_key = f"hits:{genre}:v2"
     cached = cache.get(cache_key)
     if cached:
-        # ensure cached results also filtered (defense in depth)
-        filtered_cached = [r for r in cached if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel',''))]
+        # ensure cached results also filtered (defense in depth) + non-music
+        filtered_cached = [r for r in cached if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
         # dedup cached as second layer
         seen_c = set()
         dedup_c = []
@@ -338,20 +353,20 @@ def hits(request):
     ]
     if not merged:
         # Fallback static hits for PythonAnywhere free (YouTube blocked) - shuffle and dedup
-        results = [r for r in _fallback_static if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel',''))]
+        results = [r for r in _fallback_static if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
     else:
-        # also ensure live search results are filtered (defense in depth)
-        results = [r for r in merged if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel',''))]
+        # also ensure live search results are filtered (defense in depth) + non-music
+        results = [r for r in merged if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
     # dedup via seen set + shuffle
     seen = set()
     dedup = []
     for r in results:
-        if r['id'] not in seen and not _is_album_title(r.get('title','')) and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')):
+        if r['id'] not in seen and not _is_album_title(r.get('title','')) and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')):
             dedup.append(r); seen.add(r['id'])
     # if live results deduped to less than 10, pad with fallback to ensure 10 non-duplicate
     if len(dedup) < 10 and merged:
         for fb in _fallback_static:
-            if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_album_title(fb.get('title','')) and not _is_ai_title(fb.get('title',''), fb.get('channel','')):
+            if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_album_title(fb.get('title','')) and not _is_ai_title(fb.get('title',''), fb.get('channel','')) and not _is_non_music(fb.get('title',''), fb.get('channel','')):
                 dedup.append(fb); seen.add(fb['id'])
             if len(dedup) >= 10:
                 break
