@@ -352,6 +352,7 @@
         let userInteracted = false;
         let soundEnabled = false;
         let audioUnlocked = false;
+        let playerStarting = false;
 
         // Video IDs with embedding disabled
         const blockedVideoIds = new Set([
@@ -504,12 +505,13 @@
         }
 
         function ensurePlaying() {
+            if (playerStarting) return;
             userInteracted = true;
             soundEnabled = true;
             unlockAudio();
             if (!player || !isPlayerReady) return;
             if (!currentSong && queue.length > 0) {
-                playNext();
+                playNext(true);
                 return;
             }
             if (!currentSong) return;
@@ -787,14 +789,26 @@
                 .catch(err => { console.error(err); showToast("เกิดข้อผิดพลาด", "error"); });
         }
 
-        function playNext() {
+        function playNext(withSound) {
+            if (playerStarting) { setTimeout(()=>playNext(withSound), 350); return; }
+            const wantSound = typeof withSound === 'boolean' ? withSound : soundEnabled;
             const next = queue.find(song => !finishingSongIds.has(song.id));
             const videoContainer = document.getElementById('video-container');
             const soundOverlay = document.getElementById('sound-overlay');
             const idleSplash = document.getElementById('idle-splash');
 
             if (next) {
-                if (currentSong && currentSong.id === next.id) return;
+                if (currentSong && currentSong.id === next.id) {
+                    if (player && player.getPlayerState && player.getPlayerState() !== YT.PlayerState.PLAYING) {
+                        try { player.playVideo(); } catch(e) {}
+                    }
+                    if (wantSound && player && player.isMuted && player.isMuted()) {
+                        try { player.unMute(); } catch(e) {}
+                    }
+                    return;
+                }
+                playerStarting = true;
+                setTimeout(()=>{ playerStarting = false; }, 800);
                 currentSong = next;
                 lastPlayedVideoId = next.video_id;
                 document.getElementById('now-playing-title').innerText = currentSong.title;
@@ -811,10 +825,10 @@
                     } catch (e) {}
                 }
                 // Keep sound-overlay visible until user taps, unless already interacted
-                if (userInteracted && soundOverlay) {
+                if ((wantSound || userInteracted) && soundOverlay) {
                     soundOverlay.classList.add('hidden');
                     soundOverlay.style.display = 'none';
-                } else if (!userInteracted && soundOverlay) {
+                } else if (!wantSound && !userInteracted && soundOverlay) {
                     // Show sound overlay as unmute hint even while playing muted
                     soundOverlay.classList.remove('hidden');
                     soundOverlay.style.display = 'flex';
@@ -832,7 +846,7 @@
                 try { if(player && player.setVolume) player.setVolume(getSavedVolume()); } catch(e) {}
                 try { player.mute(); } catch(e) {}
                 try { player.playVideo(); } catch(e) {}
-                if (userInteracted) {
+                if (wantSound || userInteracted) {
                     // Need slight delay for iOS gesture to be recognized
                     setTimeout(() => {
                         try { if(player && player.setVolume) player.setVolume(getSavedVolume()); } catch(e) {}
@@ -1034,7 +1048,10 @@
                 if (data.status === "success") {
                     fetchQueue(() => {
                         setTimeout(() => {
-                            if (queue.length > 0 && !currentSong) playNext();
+                            if (queue.length > 0 && !currentSong) {
+                                try { playNext(soundEnabled); } catch(e) {}
+                                setTimeout(()=>{ if (queue.length > 0 && !currentSong) { try { playNext(soundEnabled); } catch(e) {} } }, 500);
+                            }
                         }, 100);
                     });
                     document.getElementById("manual-search").value = "";
@@ -1175,7 +1192,10 @@
                 if (data.status === "success") {
                     fetchQueue(() => {
                         setTimeout(() => {
-                            if (queue.length > 0 && !currentSong) playNext();
+                            if (queue.length > 0 && !currentSong) {
+                                try { playNext(soundEnabled); } catch(e) {}
+                                setTimeout(()=>{ if (queue.length > 0 && !currentSong) { try { playNext(soundEnabled); } catch(e) {} } }, 500);
+                            }
                         }, 100);
                     });
                     showToast("เพิ่มเพลงเข้าคิวแล้ว", "success");
@@ -1210,7 +1230,10 @@
                     }
                     fetchQueue(() => {
                         setTimeout(() => {
-                            if (queue.length > 0) playNext(true);
+                            if (queue.length > 0) {
+                                try { playNext(true); } catch(e) {}
+                                setTimeout(()=>{ if (queue.length > 0 && !currentSong) { try { playNext(true); } catch(e) {} } }, 500);
+                            }
                         }, 300);
                     });
                 } else {
