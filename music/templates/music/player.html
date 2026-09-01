@@ -590,11 +590,11 @@
           if(hitSongs.length===0) { fetchHits(); return; }
           let candidates = hitSongs.filter(s=>!isAlbumLike(s.title) && !isAI(s.title,s.channel) && !blockedVideoIds.has(s.id) && !autoPlayedIds.has(s.id) && !queue.some(q=>q.video_id===s.id));
           if (candidates.length===0) {
-            // reset after all played
             autoPlayedIds.clear();
-            candidates = hitSongs.filter(s=>!isAlbumLike(s.title) && !isAI(s.title,s.channel) && !blockedVideoIds.has(s.id) && !queue.some(q=>q.video_id===s.id));
+            fetchHits();
+            setTimeout(()=>playRandomHit(), 1000);
+            return;
           }
-          if (candidates.length===0) return;
           const song = candidates[Math.floor(Math.random()*candidates.length)];
           if(!song) return;
           autoPlayedIds.add(song.id);
