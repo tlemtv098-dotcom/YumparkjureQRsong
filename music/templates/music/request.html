@@ -15,6 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
@@ -25,14 +26,15 @@
         }
     </script>
 </head>
-<body class="bg-white min-h-screen font-sans pb-24">
+<body class="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen font-sans pb-24">
     <div class="max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto px-4 sm:px-6 pt-6">
         <div class="flex items-center gap-3 mb-6">
             <img src="{% static 'music/img/logo.jpg' %}" class="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded-xl ring-2 ring-amber-400/50 shadow-md">
             <div>
-                <h1 class="font-extrabold text-lg sm:text-xl text-slate-900">ร้านยำปากเจ่อ</h1>
-                <p class="text-xs sm:text-sm text-slate-500">สแกน QR เพื่อขอเพลง</p>
+                <h1 class="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white">ร้านยำปากเจ่อ</h1>
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">สแกน QR เพื่อขอเพลง</p>
             </div>
+            <button onclick="toggleTheme()" id="theme-toggle" class="ml-auto bg-slate-100 dark:bg-slate-700 p-2 rounded-lg" title="สลับโทน">🌙</button>
         </div>
 
         <div id="webview-banner" class="hidden bg-amber-100 border border-amber-300 text-amber-800 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
@@ -40,8 +42,8 @@
             <button onclick="window.open(location.href,'_blank')" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex-shrink-0">เปิดในเบราว์เซอร์ภายนอก</button>
         </div>
 
-        <div id="now-playing-card" class="bg-amber-50 shadow-md border border-amber-200 rounded-2xl p-4 sm:p-5 mb-4">
-            <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 mb-2">เพลงถัดไปในคิว</h2>
+        <div id="now-playing-card" class="bg-amber-50 dark:bg-slate-800 shadow-md border border-amber-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 mb-4">
+            <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white mb-2">เพลงถัดไปในคิว</h2>
             <div id="now-playing-content" class="text-sm text-slate-600">กำลังโหลด...</div>
         </div>
 
@@ -49,13 +51,13 @@
             <p id="result-text" class="font-bold text-sm"></p>
         </div>
 
-        <div class="bg-slate-50 shadow-md border border-slate-200 rounded-2xl p-4 sm:p-5 mb-4">
-            <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 mb-3">ค้นหาเพลง</h2>
+        <div class="bg-slate-50 dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 mb-4">
+            <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white mb-3">ค้นหาเพลง</h2>
             <div class="flex gap-2 sm:gap-3 mb-1">
                 <div class="relative flex-1 min-w-0">
                     <input type="text" id="searchInput" placeholder="พิมพ์ชื่อเพลงหรือศิลปิน..."
-                           class="w-full border border-slate-300 bg-white text-slate-900 placeholder-slate-400 rounded-xl px-3 sm:px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
-                    <div id="search-suggestions" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"></div>
+                           class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 sm:px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+                    <div id="search-suggestions" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"></div>
                 </div>
                 <button onclick="searchSong()"
                         class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-4 sm:px-5 py-3 rounded-xl font-bold text-sm shadow transition flex-shrink-0">
@@ -66,9 +68,9 @@
             <div id="results" class="space-y-2"></div>
         </div>
 
-        <div class="bg-slate-50 shadow-md border border-slate-200 rounded-2xl p-4 sm:p-5 mb-4">
+        <div class="bg-slate-50 dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 mb-4">
             <div class="flex items-center justify-between mb-3">
-                <h2 class="font-extrabold text-lg sm:text-xl text-slate-900">เพลงแนะนำ / เพลงฮิต</h2>
+                <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white">เพลงแนะนำ / เพลงฮิต</h2>
                 <button id="refresh-hits" onclick="fetchHits()"
                         class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-sm shadow transition">
                     รีเฟรชเพลง
@@ -84,8 +86,8 @@
             <div id="hit-list" class="space-y-2"></div>
         </div>
 
-        <div class="bg-slate-50 shadow-md border border-slate-200 rounded-2xl p-4 sm:p-5 mb-4">
-            <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 mb-3">เพลงที่ฉันขอ</h2>
+        <div class="bg-slate-50 dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 mb-4">
+            <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white mb-3">เพลงที่ฉันขอ</h2>
             <div id="my-songs-list" class="space-y-2"></div>
         </div>
     </div>
@@ -153,14 +155,14 @@
             filteredHits.forEach((song, idx) => {
                 const originalIdx = hitSongs.indexOf(song);
                 container.innerHTML += `
-                    <div class="bg-white shadow-md p-3 rounded-xl border border-slate-200 flex items-center gap-3">
+                    <div class="bg-white dark:bg-slate-700 shadow-md p-3 rounded-xl border border-slate-200 dark:border-slate-600 flex items-center gap-3">
                         <img src="${song.thumbnail}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
                         <div class="flex-1 overflow-hidden">
                             <div class="flex items-center gap-2 mb-1">
-                                <p class="font-semibold text-sm truncate text-slate-900">${escapeHtml(song.title)}</p>
+                                <p class="font-semibold text-sm truncate text-slate-900 dark:text-white">${escapeHtml(song.title)}</p>
                                 <span class="bg-amber-100 text-amber-800 text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0">เพลงฮิต</span>
                             </div>
-                            <p class="text-xs text-slate-500 truncate">${escapeHtml(song.channel)}</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-300 truncate">${escapeHtml(song.channel)}</p>
                         </div>
                             <button onclick="requestHit(${originalIdx})"
                                     class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
@@ -219,11 +221,11 @@
                     }
                     searchResults.forEach((song, idx) => {
                         container.innerHTML += `
-                            <div class="bg-white shadow-md p-3 rounded-xl border border-slate-200 flex items-center gap-3">
+                            <div class="bg-white dark:bg-slate-700 shadow-md p-3 rounded-xl border border-slate-200 dark:border-slate-600 flex items-center gap-3">
                                 <img src="${song.thumbnail}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
                                 <div class="flex-1 overflow-hidden">
-                                    <p class="font-semibold text-sm truncate text-slate-900">${escapeHtml(song.title)}</p>
-                                    <p class="text-xs text-slate-500 truncate">${escapeHtml(song.channel)}</p>
+                                    <p class="font-semibold text-sm truncate text-slate-900 dark:text-white">${escapeHtml(song.title)}</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-300 truncate">${escapeHtml(song.channel)}</p>
                                 </div>
                                     <button onclick="requestSong(${idx})"
                                             class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
@@ -332,8 +334,8 @@
                             <div class="flex items-center gap-3">
                                 <img src="${song.thumbnail}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
                                 <div class="overflow-hidden">
-                                    <p class="font-semibold text-sm truncate text-slate-900">${escapeHtml(song.title)}</p>
-                                    <p class="text-xs text-slate-500 truncate">${escapeHtml(song.channel)}</p>
+                                    <p class="font-semibold text-sm truncate text-slate-900 dark:text-white">${escapeHtml(song.title)}</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-300 truncate">${escapeHtml(song.channel)}</p>
                                 </div>
                             </div>
                         `;
@@ -356,11 +358,11 @@
                     container.innerHTML = "";
                     data.songs.forEach(song => {
                         container.innerHTML += `
-                            <div class="bg-white shadow-md p-3 rounded-xl border border-slate-200 flex items-center gap-3">
+                            <div class="bg-white dark:bg-slate-700 shadow-md p-3 rounded-xl border border-slate-200 dark:border-slate-600 flex items-center gap-3">
                                 <img src="${song.thumbnail}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
                                 <div class="flex-1 overflow-hidden">
-                                    <p class="font-semibold text-sm truncate text-slate-900">${escapeHtml(song.title)}</p>
-                                    <p class="text-xs text-slate-500 truncate">${escapeHtml(song.channel)}</p>
+                                    <p class="font-semibold text-sm truncate text-slate-900 dark:text-white">${escapeHtml(song.title)}</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-300 truncate">${escapeHtml(song.channel)}</p>
                                 </div>
                                 <button onclick="removeMySong(${song.id})"
                                         class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
@@ -433,7 +435,7 @@
                 return;
             }
             container.innerHTML = suggestions.map(s =>
-                '<div class="px-3 py-2 text-sm text-slate-700 hover:bg-amber-50 cursor-pointer border-b border-slate-100 last:border-0">' + escapeHtml(s) + '</div>'
+                '<div class="px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-0">' + escapeHtml(s) + '</div>'
             ).join("");
             container.classList.remove("hidden");
             // Bind click on each suggestion
@@ -461,6 +463,23 @@
         }
     </script>
     <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 text-white px-4 py-2 rounded-xl shadow-lg text-sm font-medium"></div>
+    <script>
+    function toggleTheme(){
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      updateThemeIcon();
+    }
+    function updateThemeIcon(){
+      const btn=document.getElementById('theme-toggle');
+      if(btn) btn.textContent = document.documentElement.classList.contains('dark') ? '☀️' : '🌙';
+    }
+    (function(){
+      const saved=localStorage.getItem('theme');
+      if(saved==='dark') document.documentElement.classList.add('dark');
+      updateThemeIcon();
+    })();
+    document.addEventListener('DOMContentLoaded', updateThemeIcon);
+    </script>
     <script>
     if ('serviceWorker' in navigator && !isLineWebView) {
         window.addEventListener('load', () => {

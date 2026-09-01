@@ -19,6 +19,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
@@ -195,16 +196,17 @@
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-slate-50 via-white to-amber-50 text-slate-900 min-h-screen p-3 sm:p-4 md:p-6 font-sans safe-bottom">
+<body class="bg-gradient-to-br from-slate-50 via-white to-amber-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen p-3 sm:p-4 md:p-6 font-sans safe-bottom">
     <div class="max-w-6xl mx-auto">
 
         <!-- หัวข้อแบรนด์ + โลโก้ -->
         <header class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
             <img src="{% static 'music/img/logo.jpg' %}" alt="ร้านยำปากเจ่อ" class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 object-cover rounded-xl ring-4 ring-amber-400/60 shadow-xl">
             <div>
-                <h1 class="text-lg sm:text-2xl md:text-3xl font-extrabold text-slate-900">ร้านยำปากเจ่อKPP</h1>
-                <p class="text-[10px] sm:text-xs text-slate-500">ระบบคิวเพลงอัตโนมัติสำหรับลูกค้า</p>
+                <h1 class="text-lg sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white">ร้านยำปากเจ่อKPP</h1>
+                <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">ระบบคิวเพลงอัตโนมัติสำหรับลูกค้า</p>
             </div>
+            <button onclick="toggleTheme()" id="theme-toggle" class="ml-auto bg-slate-100 dark:bg-slate-700 p-2 rounded-lg" title="สลับโทน">🌙</button>
         </header>
 
         <div id="webview-banner" class="hidden bg-amber-100 border border-amber-300 text-amber-800 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
@@ -240,10 +242,10 @@
                     </div>
                 </div>
 
-                <div class="bg-white shadow-md p-3 sm:p-4 rounded-xl border border-slate-200">
+                <div class="bg-white dark:bg-slate-800 shadow-md p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                     <div class="mb-2">
                         <span class="text-[10px] sm:text-xs text-amber-600 font-bold tracking-wider">กำลังเล่น</span>
-                        <h2 id="now-playing-title" class="text-sm sm:text-base md:text-lg font-bold whitespace-normal break-words line-clamp-2 text-slate-900">รอเพลงจากลูกค้า...</h2>
+                        <h2 id="now-playing-title" class="text-sm sm:text-base md:text-lg font-bold whitespace-normal break-words line-clamp-2 text-slate-900 dark:text-white">รอเพลงจากลูกค้า...</h2>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <input type="range" id="volume-slider" min="0" max="100" value="80" class="w-20 accent-amber-500" title="ระดับเสียง">
@@ -257,8 +259,8 @@
 
             <!-- ฝั่ง QR Code, คิวเพลง, ค้นหา, เพลงแนะนำ -->
             <div class="space-y-3 sm:space-y-4">
-                <div class="bg-white shadow-md p-4 sm:p-5 rounded-2xl text-center border border-slate-200">
-                    <h3 class="font-bold text-base sm:text-lg text-slate-900 mb-2">สแกนเพื่อขอเพลง</h3>
+                <div class="bg-white dark:bg-slate-800 shadow-md p-4 sm:p-5 rounded-2xl text-center border border-slate-200 dark:border-slate-700">
+                    <h3 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white mb-2">สแกนเพื่อขอเพลง</h3>
                     <img src="{% url 'qr_code' %}" class="w-36 h-36 sm:w-44 sm:h-44 mx-auto rounded-xl border-2 border-amber-400 bg-white p-2" alt="QR Code">
                     <img src="/qr.png" alt="" class="hidden" aria-hidden="true">
                     <p class="text-[10px] sm:text-xs text-slate-500 mt-2">เปิดกล้องมือถือสแกนเพื่อเลือกเพลง</p>
@@ -267,9 +269,9 @@
                     </button>
                 </div>
 
-                <div class="bg-white shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200">
+                <div class="bg-white dark:bg-slate-800 shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
                     <div class="flex items-center justify-between mb-3">
-                        <h3 class="font-bold text-base sm:text-lg text-slate-900"> คิวเพลงต่อไป (<span id="queue-count">0</span>)</h3>
+                        <h3 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white"> คิวเพลงต่อไป (<span id="queue-count">0</span>)</h3>
                         <button onclick="clearQueue()" class="text-[10px] sm:text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-2 sm:px-3 py-1.5 rounded-lg font-bold border border-amber-200 transition">รีคิวเพลง</button>
                     </div>
                     <div id="queue-list" class="space-y-2 max-h-60 sm:max-h-80 overflow-y-auto pr-1"></div>
@@ -283,8 +285,8 @@
                 <!-- แผงค้นหา + เพลงแนะนำ (ซ่อนไว้ กดเปิด) -->
                 <div id="search-panel" class="space-y-3">
                     <!-- ค้นหาเพลง -->
-                    <div class="bg-white shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200 relative">
-                        <h3 class="font-bold text-base sm:text-lg text-slate-900 mb-2">ค้นหาเพลง</h3>
+                    <div class="bg-white dark:bg-slate-800 shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 relative">
+                        <h3 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white mb-2">ค้นหาเพลง</h3>
                         <div class="relative">
                             <input type="text" id="manual-search" placeholder="พิมพ์ชื่อเพลงหรือศิลปิน..."
                                    class="w-full border border-slate-300 bg-white text-slate-900 placeholder-slate-400 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
@@ -295,9 +297,9 @@
                     </div>
 
                     <!-- เพลงแนะนำ -->
-                    <div class="bg-white shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200">
+                    <div class="bg-white dark:bg-slate-800 shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
                         <div class="flex items-center justify-between mb-2">
-                            <h3 class="font-bold text-base sm:text-lg text-slate-900">เพลงแนะนำ</h3>
+                            <h3 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white">เพลงแนะนำ</h3>
                             <button onclick="fetchHits()" class="text-[10px] sm:text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-2 py-1 rounded-lg font-bold border border-amber-200 transition">รีเฟรช</button>
                         </div>
                         <div id="hit-list" class="space-y-2 max-h-60 overflow-y-auto pr-1"><p class="text-xs text-slate-400 text-center py-2">กำลังโหลดเพลงแนะนำ...</p></div>
@@ -1282,6 +1284,23 @@
             regs.forEach(r => r.unregister());
         }).catch(()=>{});
     }
+    </script>
+    <script>
+    function toggleTheme(){
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      updateThemeIcon();
+    }
+    function updateThemeIcon(){
+      const btn=document.getElementById('theme-toggle');
+      if(btn) btn.textContent = document.documentElement.classList.contains('dark') ? '☀️' : '🌙';
+    }
+    (function(){
+      const saved=localStorage.getItem('theme');
+      if(saved==='dark') document.documentElement.classList.add('dark');
+      updateThemeIcon();
+    })();
+    document.addEventListener('DOMContentLoaded', updateThemeIcon);
     </script>
 </body>
 </html>
