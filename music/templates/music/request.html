@@ -34,7 +34,7 @@
                 <h1 class="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white">ร้านยำปากเจ่อ</h1>
                 <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">สแกน QR เพื่อขอเพลง</p>
             </div>
-            <button onclick="toggleTheme()" id="theme-toggle" class="ml-auto bg-slate-100 dark:bg-slate-700 p-2 rounded-lg" title="สลับโทน">🌙</button>
+            <button onclick="toggleTheme()" id="theme-toggle" class="ml-auto bg-slate-100 dark:bg-slate-700 p-2 rounded-lg text-sm font-bold" title="สลับโทน">เปลี่ยนทีม</button>
         </div>
 
         <div id="webview-banner" class="hidden bg-amber-100 border border-amber-300 text-amber-800 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
@@ -472,7 +472,7 @@
     }
     function updateThemeIcon(){
       const btn=document.getElementById('theme-toggle');
-      if(btn) btn.textContent = document.documentElement.classList.contains('dark') ? '☀️' : '🌙';
+      if(btn) btn.textContent = 'เปลี่ยนทีม';
     }
     (function(){
       const saved=localStorage.getItem('theme');

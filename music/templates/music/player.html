@@ -206,7 +206,7 @@
                 <h1 class="text-lg sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white">ร้านยำปากเจ่อKPP</h1>
                 <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">ระบบคิวเพลงอัตโนมัติสำหรับลูกค้า</p>
             </div>
-            <button onclick="toggleTheme()" id="theme-toggle" class="ml-auto bg-slate-100 dark:bg-slate-700 p-2 rounded-lg" title="สลับโทน">🌙</button>
+            <button onclick="toggleTheme()" id="theme-toggle" class="ml-auto bg-slate-100 dark:bg-slate-700 p-2 rounded-lg text-sm font-bold" title="สลับโทน">เปลี่ยนทีม</button>
         </header>
 
         <div id="webview-banner" class="hidden bg-amber-100 border border-amber-300 text-amber-800 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
@@ -218,7 +218,7 @@
 
             <!-- เครื่องเล่นวิดีโอ YouTube -->
             <div class="md:col-span-2 space-y-4">
-                <div class="aspect-video bg-black rounded-2xl overflow-hidden shadow-xl relative border border-slate-200" id="video-container">
+                <div class="aspect-video bg-black rounded-2xl overflow-hidden shadow-xl relative border border-slate-200 dark:border-slate-700" id="video-container">
                     <div id="player" class="w-full h-full"></div>
 
                     <!-- Sound overlay: single tap-to-unmute layer for mobile Safari + all platforms -->
@@ -289,8 +289,8 @@
                         <h3 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white mb-2">ค้นหาเพลง</h3>
                         <div class="relative">
                             <input type="text" id="manual-search" placeholder="พิมพ์ชื่อเพลงหรือศิลปิน..."
-                                   class="w-full border border-slate-300 bg-white text-slate-900 placeholder-slate-400 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
-                            <div id="search-suggestions" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"></div>
+                                   class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+                            <div id="search-suggestions" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"></div>
                         </div>
                         <p id="manual-loading" class="hidden text-xs text-slate-500 text-center py-2">กำลังค้นหาโปรดรอสักครู่</p>
                         <div id="manual-results" class="space-y-2 mt-2"></div>
@@ -925,12 +925,12 @@
             queue.forEach((song, idx) => {
                 const isPlayingNow = currentSong && song.id === currentSong.id;
                 container.innerHTML += `
-                    <div class="flex items-center gap-3 p-2 rounded-lg text-sm ${isPlayingNow ? 'bg-amber-50 border border-amber-300' : 'bg-slate-50 border border-slate-100'}">
+                    <div class="flex items-center gap-3 p-2 rounded-lg text-sm ${isPlayingNow ? 'bg-amber-50 dark:bg-slate-700 border border-amber-300 dark:border-slate-600' : 'bg-slate-50 dark:bg-slate-700 border border-slate-100 dark:border-slate-600'}">
                         <span class="font-bold text-amber-600">#${idx+1}</span>
                         <img src="${song.thumbnail}" class="w-10 h-10 object-cover rounded flex-shrink-0">
                         <div class="overflow-hidden flex-1">
-                            <p class="font-semibold truncate text-slate-900">${escapeHtml(song.title)}</p>
-                            <p class="text-xs text-slate-500 truncate">ขอโดย: ${escapeHtml(song.requested_by)}</p>
+                            <p class="font-semibold truncate text-slate-900 dark:text-white">${escapeHtml(song.title)}</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-300 truncate">ขอโดย: ${escapeHtml(song.requested_by)}</p>
                         </div>
                         ${!isPlayingNow ? `<button onclick="moveToNext(${song.id})" class="text-[10px] bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded-lg border flex-shrink-0">เล่นถัดไป</button>` : ''}
                     </div>
@@ -979,11 +979,11 @@
                     }
                     manualSearchResults.forEach((song, idx) => {
                         container.innerHTML += `
-                            <div class="bg-white shadow-md p-2 rounded-xl border border-slate-200 flex items-center gap-2">
+                            <div class="bg-white dark:bg-slate-700 shadow-md p-2 rounded-xl border border-slate-200 dark:border-slate-600 flex items-center gap-2">
                                 <img src="${song.thumbnail}" class="w-10 h-10 object-cover rounded-lg flex-shrink-0">
                                 <div class="flex-1 overflow-hidden">
-                                    <p class="font-semibold text-xs truncate text-slate-900">${escapeHtml(song.title)}</p>
-                                    <p class="text-[10px] text-slate-500 truncate">${escapeHtml(song.channel)}</p>
+                                    <p class="font-semibold text-xs truncate text-slate-900 dark:text-white">${escapeHtml(song.title)}</p>
+                                    <p class="text-[10px] text-slate-500 dark:text-slate-300 truncate">${escapeHtml(song.channel)}</p>
                                 </div>
                                 <button onclick="manualPlay(${idx})"
                                         class="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
@@ -1049,7 +1049,7 @@
                 return;
             }
             container.innerHTML = suggestions.map(s =>
-                '<div class="px-3 py-2 text-sm text-slate-700 hover:bg-amber-50 cursor-pointer border-b border-slate-100 last:border-0" onclick="selectSuggestion(\'' + s.replace(/'/g, "\\'") + '\')">' + escapeHtml(s) + '</div>'
+                '<div class="px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-0" onclick="selectSuggestion(\'' + s.replace(/'/g, "\\'") + '\')">' + escapeHtml(s) + '</div>'
             ).join("");
             container.classList.remove("hidden");
         }
@@ -1105,11 +1105,11 @@
             }
             hitSongs.forEach((song, idx) => {
                 container.innerHTML += `
-                    <div class="bg-white shadow-md p-2 rounded-xl border border-slate-200 flex items-center gap-2">
+                    <div class="bg-white dark:bg-slate-700 shadow-md p-2 rounded-xl border border-slate-200 dark:border-slate-600 flex items-center gap-2">
                         <img src="${song.thumbnail}" class="w-10 h-10 object-cover rounded-lg flex-shrink-0">
                         <div class="flex-1 overflow-hidden">
-                            <p class="font-semibold text-xs truncate text-slate-900">${escapeHtml(song.title)}</p>
-                            <p class="text-[10px] text-slate-500 truncate">${escapeHtml(song.channel)}</p>
+                            <p class="font-semibold text-xs truncate text-slate-900 dark:text-white">${escapeHtml(song.title)}</p>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-300 truncate">${escapeHtml(song.channel)}</p>
                         </div>
                         <button onclick="hitPlay(${idx})"
                                 class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow transition flex-shrink-0">
@@ -1294,7 +1294,7 @@
     }
     function updateThemeIcon(){
       const btn=document.getElementById('theme-toggle');
-      if(btn) btn.textContent = document.documentElement.classList.contains('dark') ? '☀️' : '🌙';
+      if(btn) btn.textContent = 'เปลี่ยนทีม';
     }
     (function(){
       const saved=localStorage.getItem('theme');
