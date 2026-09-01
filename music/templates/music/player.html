@@ -344,6 +344,7 @@
         let lastPlayedVideoId = null;
         const finishingSongIds = new Set();
         let userInteracted = false;
+        let soundEnabled = false;
         let audioUnlocked = false;
 
         // Video IDs with embedding disabled
@@ -463,6 +464,7 @@
         // --- Sound overlay tap handler (single overlay) ---
         function handleOverlayTap() {
             userInteracted = true;
+            soundEnabled = true;
             unlockAudio();
             const soundOverlay = document.getElementById('sound-overlay');
             const idleSplash = document.getElementById('idle-splash');
@@ -500,6 +502,7 @@
 
         function ensurePlaying() {
             userInteracted = true;
+            soundEnabled = true;
             unlockAudio();
             if (!player || !isPlayerReady) return;
             if (!currentSong && queue.length > 0) {
@@ -522,10 +525,10 @@
         }
         // Global tap listeners for iOS: any tap should try to ensure playing
         // But use uniform tap gate: only via overlay, not auto-play without tap
-        document.addEventListener('touchstart', () => { userInteracted = true; unlockAudio(); ensurePlaying(); }, { passive: true });
-        document.addEventListener('click', () => { userInteracted = true; unlockAudio(); ensurePlaying(); });
+        document.addEventListener('touchstart', () => { userInteracted = true; soundEnabled = true; unlockAudio(); ensurePlaying(); }, { passive: true });
+        document.addEventListener('click', () => { userInteracted = true; soundEnabled = true; unlockAudio(); ensurePlaying(); });
         // Also handle touchend for iOS Safari gesture requirement
-        document.addEventListener('touchend', () => { userInteracted = true; unlockAudio(); }, { passive: true });
+        document.addEventListener('touchend', () => { userInteracted = true; soundEnabled = true; unlockAudio(); }, { passive: true });
 
         // --- Toast ---
         function showToast(msg, type="info") {
@@ -651,6 +654,7 @@
                             if (currentSong) fetch('/api/block/' + encodeURIComponent(currentSong.video_id) + '/', {method: 'POST', headers: {"X-CSRFToken": getCSRFToken(), "X-Player-Token": getPlayerToken()}, credentials: 'same-origin'}).catch(()=>{});
                             showToast("เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) → ข้ามไปเพลงถัดไป", "warning");
                             skipSong();
+                            setTimeout(()=>{ if (queue.length>0) playNext(soundEnabled); else fetchQueue(); }, 500);
                             fetchQueue();
                             setTimeout(()=>{ if(!currentSong && queue.length===0) { const idleSplash=document.getElementById('idle-splash'); const videoContainer=document.getElementById('video-container'); if(idleSplash) idleSplash.classList.remove('hidden'); if(videoContainer) videoContainer.classList.add('bg-black'); } }, 500);
                         } else {
