@@ -548,16 +548,25 @@
             }
         }
 
-        // --- Volume ---
+        // --- Volume (constant loudness) ---
+        function getSavedVolume(){ try{ const v=parseInt(localStorage.getItem('player_volume')||'80',10); if(isNaN(v)) return 80; return Math.max(0,Math.min(100,v)); }catch(e){ return 80; } }
+        function saveVolume(v){ try{ localStorage.setItem('player_volume', String(v)); }catch(e){} }
+        function safePlayMuted(){ try{ if(player && player.setVolume) player.setVolume(getSavedVolume()); if(player && player.mute) player.mute(); if(player && player.playVideo) player.playVideo(); }catch(e){} }
+        function safePlayWithSound(){ try{ if(player && player.setVolume) player.setVolume(getSavedVolume()); if(player && player.unMute) player.unMute(); if(player && player.playVideo) player.playVideo(); }catch(e){} }
         document.addEventListener('DOMContentLoaded', () => {
             const vol = document.getElementById('volume-slider');
-            if (vol) vol.addEventListener('input', () => {
-                if (player && player.setVolume) player.setVolume(parseInt(vol.value));
-                // On iOS, volume control is limited but we try
-                if (isIOS) {
-                    // iOS Safari ignores setVolume for YouTube iframe, but keep for other browsers
-                }
-            });
+            if (vol) {
+                try{ vol.value = String(getSavedVolume()); }catch(e){}
+                vol.addEventListener('input', () => {
+                    const v = parseInt(vol.value,10);
+                    if (!isNaN(v)) saveVolume(v);
+                    if (player && player.setVolume) player.setVolume(isNaN(v)?getSavedVolume():v);
+                    // On iOS, volume control is limited but we try
+                    if (isIOS) {
+                        // iOS Safari ignores setVolume for YouTube iframe, but keep for other browsers
+                    }
+                });
+            }
         });
 
         // --- Auto Random ---
@@ -811,12 +820,14 @@
                     const f=document.querySelector('#player iframe');
                     if(f){ f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture'); }
                 }, 600);
-                // Browser autoplay policy: start muted, unmute after user interaction
+                // Browser autoplay policy: start muted, unmute after user interaction — keep loudness constant
+                try { if(player && player.setVolume) player.setVolume(getSavedVolume()); } catch(e) {}
                 try { player.mute(); } catch(e) {}
                 try { player.playVideo(); } catch(e) {}
                 if (userInteracted) {
                     // Need slight delay for iOS gesture to be recognized
                     setTimeout(() => {
+                        try { if(player && player.setVolume) player.setVolume(getSavedVolume()); } catch(e) {}
                         try { player.unMute(); } catch(e) {}
                         try { player.playVideo(); } catch(e) {}
                         unlockAudio();

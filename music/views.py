@@ -89,6 +89,7 @@ def youtube_api_search(query, max_results=8):
         'type': 'video',
         'maxResults': min(max_results, 50),
         'regionCode': 'TH',
+        'videoCategoryId': '10',
         'videoEmbeddable': 'true',
         'videoSyndicated': 'true',
         'key': api_key,
