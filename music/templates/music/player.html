@@ -644,6 +644,8 @@
                             if (currentSong) fetch('/api/block/' + encodeURIComponent(currentSong.video_id) + '/', {method: 'POST', headers: {"X-CSRFToken": getCSRFToken(), "X-Player-Token": getPlayerToken()}, credentials: 'same-origin'}).catch(()=>{});
                             showToast("เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) → ข้ามไปเพลงถัดไป", "warning");
                             skipSong();
+                            fetchQueue();
+                            setTimeout(()=>{ if(!currentSong && queue.length===0) { const idleSplash=document.getElementById('idle-splash'); const videoContainer=document.getElementById('video-container'); if(idleSplash) idleSplash.classList.remove('hidden'); if(videoContainer) videoContainer.classList.add('bg-black'); } }, 500);
                         } else {
                             // Transient errors - retry once
                             console.warn('YouTube player error:', event.data, 'retrying once...');
@@ -654,6 +656,8 @@
                             } else {
                                 window._retryCount = 0;
                                 skipSong();
+                                fetchQueue();
+                                setTimeout(()=>{ if(!currentSong && queue.length===0) { const idleSplash=document.getElementById('idle-splash'); const videoContainer=document.getElementById('video-container'); if(idleSplash) idleSplash.classList.remove('hidden'); if(videoContainer) videoContainer.classList.add('bg-black'); } }, 500);
                             }
                         }
                     }
@@ -771,6 +775,18 @@
                         }
                     } else if (hasNewSongs) {
                         setFastPoll();
+                    }
+
+                    // Fallback for 153 loop: when queue has songs but no currentSong (all blocked), ensure not stuck black
+                    if (queue.length > 0 && !currentSong) {
+                        try { playNext(); } catch(e) {}
+                    }
+                    // Ensure idle splash shown when queue empty not black screen without video
+                    if (!currentSong && queue.length === 0) {
+                        idleSplash.classList.remove('hidden');
+                        hideSoundOverlay();
+                        videoContainer.classList.remove('bg-white');
+                        videoContainer.classList.add('bg-black');
                     }
 
                     if (onDone) onDone();
