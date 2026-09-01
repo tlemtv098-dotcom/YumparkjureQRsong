@@ -630,6 +630,15 @@
                         isPlayerReady = true;
                         fetchQueue();
                         fetchHits();
+                        setTimeout(()=>{
+                          const f=document.querySelector('#player iframe');
+                          if(f){
+                            f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture');
+                            f.setAttribute('allowFullscreen','');
+                            f.setAttribute('playsinline','');
+                            f.setAttribute('webkit-playsinline','');
+                          }
+                        }, 200);
                         setTimeout(()=>{ if (autoRandomEnabled) playRandomHit(); }, 800);
                     },
                     'onStateChange': onPlayerStateChange,
@@ -842,6 +851,15 @@
                     console.warn('loadVideoById failed', e);
                     showToast("กำลังโหลดเพลง...", "info");
                 }
+                setTimeout(()=>{
+                  const f=document.querySelector('#player iframe');
+                  if(f){
+                    f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture');
+                    f.setAttribute('allowFullscreen','');
+                    f.setAttribute('playsinline','');
+                    f.setAttribute('webkit-playsinline','');
+                  }
+                }, 100);
                 // Browser autoplay policy: start muted, unmute after user interaction — keep loudness constant
                 try { if(player && player.setVolume) player.setVolume(getSavedVolume()); } catch(e) {}
                 try { player.mute(); } catch(e) {}
