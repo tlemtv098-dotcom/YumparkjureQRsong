@@ -450,14 +450,6 @@
             if (document.visibilityState === 'visible') {
                 requestWakeLock();
                 setVh();
-                // Re-apply iframe allow on visibility return (iOS Safari quirk)
-                setTimeout(() => {
-                    const f = document.querySelector('#player iframe');
-                    if (f) {
-                        f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture');
-                        f.setAttribute('allowFullscreen','');
-                    }
-                }, 200);
             }
         });
 
@@ -637,24 +629,6 @@
                         fetchQueue();
                         fetchHits();
                         setTimeout(()=>{ if (autoRandomEnabled) playRandomHit(); }, 800);
-                        // Ensure iframe has correct allow attributes for iOS + Chrome
-                        setTimeout(()=>{
-                            const f=document.querySelector('#player iframe');
-                            if(f){
-                                f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture');
-                                f.setAttribute('allowFullscreen','');
-                                // iOS Safari: also need to set playsinline
-                                f.setAttribute('playsinline','');
-                                f.setAttribute('webkit-playsinline','');
-                            }
-                        }, 200);
-                        // For iOS Safari, also re-apply after a bit (iframe may be recreated)
-                        setTimeout(()=>{
-                            const f=document.querySelector('#player iframe');
-                            if(f){
-                                f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture');
-                            }
-                        }, 1000);
                     },
                     'onStateChange': onPlayerStateChange,
                     'onError': (event) => {
@@ -686,18 +660,6 @@
                     }
                 }
             });
-            // iOS Safari: observe iframe creation and patch it
-            const observer = new MutationObserver(() => {
-                const f = document.querySelector('#player iframe');
-                if (f && !f.getAttribute('data-patched')) {
-                    f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture');
-                    f.setAttribute('allowFullscreen','');
-                    f.setAttribute('playsinline','');
-                    f.setAttribute('webkit-playsinline','');
-                    f.setAttribute('data-patched','1');
-                }
-            });
-            observer.observe(document.getElementById('player'), { childList: true, subtree: true });
         }
 
         function onPlayerStateChange(event) {
@@ -857,20 +819,6 @@
                     console.warn('loadVideoById failed', e);
                     showToast("กำลังโหลดเพลง...", "info");
                 }
-                setTimeout(()=>{
-                    const f=document.querySelector('#player iframe');
-                    if(f){
-                        f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture');
-                        f.setAttribute('allowFullscreen','');
-                        f.setAttribute('playsinline','');
-                        f.setAttribute('webkit-playsinline','');
-                    }
-                }, 100);
-                // iOS Safari fix: re-apply after load
-                setTimeout(()=>{
-                    const f=document.querySelector('#player iframe');
-                    if(f){ f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture'); }
-                }, 600);
                 // Browser autoplay policy: start muted, unmute after user interaction — keep loudness constant
                 try { if(player && player.setVolume) player.setVolume(getSavedVolume()); } catch(e) {}
                 try { player.mute(); } catch(e) {}
