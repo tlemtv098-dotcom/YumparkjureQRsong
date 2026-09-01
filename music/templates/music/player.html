@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ร้านยำปากเจ่อ">
+    <!-- Android/Chrome PWA install support (apple-mobile-web-app-capable is iOS-only) -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="color-scheme" content="light dark">
     <meta name="format-detection" content="telephone=no">
     <title>ร้านยำปากเจ่อ - Music Player</title>
     <link rel="manifest" href="{% static 'music/manifest.json' %}">
@@ -15,6 +19,8 @@
     <link rel="apple-touch-icon" href="{% static 'music/img/logo.jpg' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://www.youtube.com">
+    <link rel="preconnect" href="https://i.ytimg.com">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -209,7 +215,7 @@
                 <h1 class="text-lg sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white">ร้านยำปากเจ่อKPP</h1>
                 <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">ระบบคิวเพลงอัตโนมัติสำหรับลูกค้า</p>
             </div>
-            <button onclick="toggleTheme()" id="theme-toggle" class="ml-auto bg-slate-100 dark:bg-slate-700 p-2 rounded-lg text-sm font-bold" title="สลับโทน">เปลี่ยนทีม</button>
+            <button onclick="toggleTheme()" id="theme-toggle" class="ml-auto bg-slate-100 dark:bg-slate-700 p-2 rounded-lg text-sm font-bold" title="สลับโหมดมืด/สว่าง" aria-label="สลับโหมดมืด/สว่าง">เปลี่ยนทีม</button>
         </header>
 
         <div id="webview-banner" class="hidden bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
@@ -435,6 +441,11 @@
             catch (err) { console.warn('Wake Lock error:', err); }
         }
         requestWakeLock();
+        // Re-acquire wake lock on the next tap if it was silently released
+        // (happens on some Android browsers when the screen briefly locks)
+        document.addEventListener('click', () => { if (!wakeLock || wakeLock.released) requestWakeLock(); });
+        window.addEventListener('online', () => showToast('เชื่อมต่ออินเทอร์เน็ตแล้ว', 'success'));
+        window.addEventListener('offline', () => showToast('ขาดการเชื่อมต่ออินเทอร์เน็ต', 'warning'));
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 requestWakeLock();
@@ -615,6 +626,8 @@
                     'modestbranding': 1,
                     'rel': 0,
                     'playsinline': 1,
+                    'iv_load_policy': 3,
+                    'fs': 1,
                     'origin': window.location.origin,
                     'enablejsapi': 1,
                     'widget_referrer': window.location.origin
@@ -817,6 +830,17 @@
                 lastPlayedVideoId = next.video_id;
                 document.getElementById('now-playing-title').innerText = currentSong.title;
                 idleSplash.classList.add('hidden');
+                // Media Session API: shows now-playing info in OS/browser media controls
+                if ('mediaSession' in navigator) {
+                    try {
+                        navigator.mediaSession.metadata = new MediaMetadata({
+                            title: currentSong.title || '',
+                            artist: 'ร้านยำปากเจ่อKPP',
+                            artwork: currentSong.thumbnail ? [{ src: currentSong.thumbnail, sizes: '320x180', type: 'image/jpeg' }] : []
+                        });
+                        navigator.mediaSession.setActionHandler('nexttrack', () => skipSong());
+                    } catch (e) {}
+                }
                 // Keep sound-overlay visible until user taps, unless already interacted
                 if (userInteracted && soundOverlay) {
                     soundOverlay.classList.add('hidden');
@@ -1072,14 +1096,18 @@
         }
 
         // --- Search Suggestions (autocomplete) ---
+        let currentSuggestions = [];
         function showSuggestions(suggestions) {
             const container = document.getElementById("search-suggestions");
+            currentSuggestions = suggestions || [];
             if (!suggestions || suggestions.length === 0) {
                 container.classList.add("hidden");
                 return;
             }
-            container.innerHTML = suggestions.map(s =>
-                '<div class="px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-0" onclick="selectSuggestion(\'' + s.replace(/'/g, "\\'") + '\')">' + escapeHtml(s) + '</div>'
+            // Use data-idx + delegated listener (below) instead of inline onclick,
+            // so titles containing quotes/backslashes/emoji never break across browsers.
+            container.innerHTML = suggestions.map((s, i) =>
+                '<div class="px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-0" data-idx="' + i + '">' + escapeHtml(s) + '</div>'
             ).join("");
             container.classList.remove("hidden");
         }
@@ -1094,6 +1122,23 @@
             hideSuggestions();
             manualSearch();
         }
+
+        // Delegated click/tap on suggestion items (mousedown fires before input blur,
+        // needed on iOS Safari where blur closes the dropdown first)
+        document.addEventListener('DOMContentLoaded', () => {
+            const sugBox = document.getElementById('search-suggestions');
+            if (sugBox) {
+                sugBox.addEventListener('mousedown', (e) => {
+                    const item = e.target.closest('[data-idx]');
+                    if (!item) return;
+                    e.preventDefault();
+                    const idx = parseInt(item.getAttribute('data-idx'), 10);
+                    if (!isNaN(idx) && currentSuggestions[idx] !== undefined) {
+                        selectSuggestion(currentSuggestions[idx]);
+                    }
+                });
+            }
+        });
 
         function fetchSuggestions(query) {
             if (!query || query.length < 2) { hideSuggestions(); return; }
@@ -1328,8 +1373,17 @@
     }
     (function(){
       const saved=localStorage.getItem('theme');
-      if(saved==='dark') document.documentElement.classList.add('dark');
+      // Respect explicit user choice; otherwise follow the OS/browser preference
+      // (works consistently across Safari, Chrome, Firefox, Edge)
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (saved === 'dark' || (!saved && prefersDark)) document.documentElement.classList.add('dark');
       updateThemeIcon();
+      if (!saved && window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+          if (localStorage.getItem('theme')) return; // user has an explicit choice now
+          document.documentElement.classList.toggle('dark', e.matches);
+        });
+      }
     })();
     document.addEventListener('DOMContentLoaded', updateThemeIcon);
     </script>

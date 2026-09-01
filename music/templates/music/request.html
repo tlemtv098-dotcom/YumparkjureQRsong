@@ -3,7 +3,13 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ขอเพลง">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="color-scheme" content="light dark">
+    <meta name="format-detection" content="telephone=no">
     <title>ขอเพลง - ร้านยำปากเจ่อ</title>
     <link rel="manifest" href="{% static 'music/manifest.json' %}">
     <meta name="theme-color" content="#f59e0b">
@@ -12,6 +18,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://img.youtube.com">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
@@ -25,7 +32,29 @@
             }
         }
     </script>
-
+    <style>
+        /* Safe-area support so content isn't clipped by the iPhone notch/home
+           indicator or Android gesture bar — matches the player page fixes */
+        :root {
+            --sat: env(safe-area-inset-top);
+            --sar: env(safe-area-inset-right);
+            --sab: env(safe-area-inset-bottom);
+            --sal: env(safe-area-inset-left);
+        }
+        html { overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+        body {
+            padding-top: var(--sat);
+            padding-right: var(--sar);
+            padding-bottom: var(--sab);
+            padding-left: var(--sal);
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Prevent iOS auto-zoom on input focus (needs >=16px) */
+        input[type="text"] { font-size: 16px; }
+        button { touch-action: manipulation; }
+        #toast { bottom: max(1rem, var(--sab)); }
+        #result-panel { top: max(0.5rem, var(--sat)); }
+    </style>
 </head>
 <body class="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen font-sans pb-24">
     <div class="max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto px-4 sm:px-6 pt-6">
@@ -35,10 +64,10 @@
                 <h1 class="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white">ร้านยำปากเจ่อ</h1>
                 <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">สแกน QR เพื่อขอเพลง</p>
             </div>
-            <button onclick="toggleTheme()" id="theme-toggle" class="ml-auto bg-slate-100 dark:bg-slate-700 p-2 rounded-lg text-sm font-bold" title="สลับโทน">เปลี่ยนทีม</button>
+            <button onclick="toggleTheme()" id="theme-toggle" class="ml-auto bg-slate-100 dark:bg-slate-700 p-2 rounded-lg text-sm font-bold" title="สลับโหมดมืด/สว่าง" aria-label="สลับโหมดมืด/สว่าง">เปลี่ยนทีม</button>
         </div>
 
-        <div id="webview-banner" class="hidden bg-amber-100 border border-amber-300 text-amber-800 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
+        <div id="webview-banner" class="hidden bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
             <span class="text-sm font-medium">เปิดในเบราว์เซอร์ภายนอกเพื่อประสบการณ์ที่ดีขึ้น</span>
             <button onclick="window.open(location.href,'_blank')" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex-shrink-0">เปิดในเบราว์เซอร์ภายนอก</button>
         </div>
@@ -426,6 +455,9 @@
         document.addEventListener("touchstart", function() {}, { once: true });
         document.addEventListener("click", function() {}, { once: true });
 
+        window.addEventListener('online', () => showToast('เชื่อมต่ออินเทอร์เน็ตแล้ว', 'success'));
+        window.addEventListener('offline', () => showToast('ขาดการเชื่อมต่ออินเทอร์เน็ต ตรวจสอบ WiFi/มือถือ', 'error'));
+
         let suggestTimer = null;
 
         searchInput.addEventListener("input", function () {
@@ -489,8 +521,15 @@
     }
     (function(){
       const saved=localStorage.getItem('theme');
-      if(saved==='dark') document.documentElement.classList.add('dark');
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (saved === 'dark' || (!saved && prefersDark)) document.documentElement.classList.add('dark');
       updateThemeIcon();
+      if (!saved && window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+          if (localStorage.getItem('theme')) return;
+          document.documentElement.classList.toggle('dark', e.matches);
+        });
+      }
     })();
     document.addEventListener('DOMContentLoaded', updateThemeIcon);
     </script>
