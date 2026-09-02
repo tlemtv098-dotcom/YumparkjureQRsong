@@ -461,6 +461,11 @@
                 }, 200);
             }
         });
+        document.addEventListener('visibilitychange', ()=>{
+          if(document.visibilityState==='hidden' && soundEnabled && player && player.playVideo){
+            try{ player.playVideo(); }catch(e){}
+          }
+        });
 
         // --- Handle LINE WebView ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -826,16 +831,17 @@
                 lastPlayedVideoId = next.video_id;
                 document.getElementById('now-playing-title').innerText = currentSong.title;
                 idleSplash.classList.add('hidden');
-                // Media Session API: shows now-playing info in OS/browser media controls
                 if ('mediaSession' in navigator) {
-                    try {
-                        navigator.mediaSession.metadata = new MediaMetadata({
-                            title: currentSong.title || '',
-                            artist: 'ร้านยำปากเจ่อKPP',
-                            artwork: currentSong.thumbnail ? [{ src: currentSong.thumbnail, sizes: '320x180', type: 'image/jpeg' }] : []
-                        });
-                        navigator.mediaSession.setActionHandler('nexttrack', () => skipSong());
-                    } catch (e) {}
+                  try {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                      title: currentSong.title || '',
+                      artist: 'ร้านยำปากเจ่อKPP',
+                      artwork: currentSong.thumbnail ? [{src: currentSong.thumbnail, sizes: '512x512', type: 'image/jpeg'}] : []
+                    });
+                    navigator.mediaSession.setActionHandler('play', ()=>{ try{player.playVideo();}catch(e){} });
+                    navigator.mediaSession.setActionHandler('pause', ()=>{ try{player.pauseVideo();}catch(e){} });
+                    navigator.mediaSession.setActionHandler('nexttrack', ()=>skipSong());
+                  } catch(e) {}
                 }
                 // Keep sound-overlay visible until user taps, unless already interacted
                 if ((wantSound || userInteracted) && soundOverlay) {
