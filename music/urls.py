@@ -17,6 +17,7 @@ urlpatterns = [
     path('qr.png', views.generate_qr, name='qr_code'),
     path('api/suggest/', views.suggest_song, name='suggest_song'),
     path('api/block/<str:video_id>/', views.block_video, name='block_video'),
+    path('api/ai/recommend/', views.ai_recommend, name='ai_recommend'),
     path('healthz/', views.healthz, name='healthz'),
     path('api/stats/', views.stats, name='stats'),
 ]

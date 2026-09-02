@@ -575,6 +575,121 @@ def block_video(request, video_id):
         return JsonResponse({'status': 'blocked', 'video_id': video_id})
     return JsonResponse({'status': 'failed'}, status=405)
 
+@csrf_exempt
+def ai_recommend(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "method not allowed"}, status=405)
+    try:
+        data = json.loads(request.body.decode("utf-8") or "{}")
+    except Exception:
+        data = {}
+    mood = str(data.get("mood") or "").strip()
+    if not mood:
+        mood = "ทั่วไป"
+
+    titles = []
+    api_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    if api_key:
+        try:
+            prompt = f"แนะนำเพลงไทย 5 เพลงสำหรับอารมณ์ {mood} ตอบเป็น JSON list ของชื่อเพลง"
+            payload = json.dumps({
+                "model": "deepseek-chat",
+                "messages": [{"role": "user", "content": prompt}],
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                "https://api.deepseek.com/v1/chat/completions",
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_key}",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+            content = body.get("choices", [{}])[0].get("message", {}).get("content", "")
+            # Extract JSON array from content (handle markdown code blocks)
+            m = re.search(r"\[.*\]", content, re.S)
+            json_str = m.group(0) if m else content
+            parsed = json.loads(json_str)
+            if isinstance(parsed, list):
+                titles = [str(t).strip() for t in parsed if str(t).strip()]
+            elif isinstance(parsed, dict) and "songs" in parsed:
+                titles = [str(t).strip() for t in parsed["songs"] if str(t).strip()]
+        except Exception as e:
+            print(f"ai_recommend DeepSeek error: {e}")
+            titles = []
+
+    songs = []
+    for title in titles[:5]:
+        try:
+            res = search_youtube(title, 1)
+            if res:
+                songs.append(res[0])
+        except Exception as e:
+            print(f"ai_recommend search error for {title}: {e}")
+            continue
+
+    if len(songs) < 5:
+        _fallback_static = [
+            {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/ks7p6DA0dKk/mqdefault.jpg"},
+            {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/zwvv71slEYc/mqdefault.jpg"},
+            {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://img.youtube.com/vi/L1k0wkQ6uww/mqdefault.jpg"},
+            {"id": "yEbv0QiI1Ns", "title": "คนไม่สำคัญ - Safeplanet", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/yEbv0QiI1Ns/mqdefault.jpg"},
+            {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg"},
+            {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
+            {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/I9ZIq7ynvdU/mqdefault.jpg"},
+            {"id": "9bZkp7q19f0", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://img.youtube.com/vi/9bZkp7q19f0/mqdefault.jpg"},
+            {"id": "Bk4O_3WF8II", "title": "ซ่อน(ไม่)หา - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/Bk4O_3WF8II/mqdefault.jpg"},
+            {"id": "kJQP7kiw5Fk", "title": "ลืมไปแล้วว่ายังไง - Silly Fools", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/kJQP7kiw5Fk/mqdefault.jpg"},
+            {"id": "OPf0YbXqDm0", "title": "ดาวหางฮัลเลย์ - Fellow Fellow", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/OPf0YbXqDm0/mqdefault.jpg"},
+            {"id": "09R8_2nJtjg0", "title": "เสน่หา - Groove Riders", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/09R8_2nJtjg0/mqdefault.jpg"},
+            {"id": "2Vv-BfVoq4g1", "title": "ละบาป - Musketeers", "channel": "Musketeers", "thumbnail": "https://img.youtube.com/vi/2Vv-BfVoq4g1/mqdefault.jpg"},
+            {"id": "QH2-TGUlwu4", "title": "จดจำ - Getsunova", "channel": "Getsunova", "thumbnail": "https://img.youtube.com/vi/QH2-TGUlwu4/mqdefault.jpg"},
+            {"id": "JGwWNGJdvx8", "title": "คิดถึง - Silly Fools", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/JGwWNGJdvx8/mqdefault.jpg"},
+        ]
+        try:
+            fb_filtered = [r for r in _fallback_static if not _is_blocked(r["id"]) and not _is_album_title(r.get("title", "")) and not _is_ai_title(r.get("title", ""), r.get("channel", "")) and not _is_non_music(r.get("title", ""), r.get("channel", ""))]
+        except Exception:
+            fb_filtered = [r for r in _fallback_static if r["id"] not in BLOCKED_VIDEO_IDS and not _is_album_title(r.get("title", "")) and not _is_ai_title(r.get("title", ""), r.get("channel", "")) and not _is_non_music(r.get("title", ""), r.get("channel", ""))]
+        random.shuffle(fb_filtered)
+        existing_ids = {s.get("id") for s in songs}
+        for r in fb_filtered:
+            if r["id"] not in existing_ids:
+                songs.append(r)
+                existing_ids.add(r["id"])
+            if len(songs) >= 5:
+                break
+        # If still less than 5 (e.g. heavy filtering), pad by reusing fallback
+        idx = 0
+        while len(songs) < 5 and fb_filtered:
+            songs.append(fb_filtered[idx % len(fb_filtered)])
+            idx += 1
+
+    songs = songs[:5]
+    # Final guarantee: if still empty, return static
+    if len(songs) < 5:
+        try:
+            _static_fallback = _fallback_static  # type: ignore
+        except NameError:
+            _static_fallback = [
+                {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/ks7p6DA0dKk/mqdefault.jpg"},
+                {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/zwvv71slEYc/mqdefault.jpg"},
+                {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://img.youtube.com/vi/L1k0wkQ6uww/mqdefault.jpg"},
+                {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg"},
+                {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
+            ]
+        # Fill remaining slots from fallback
+        existing = {s.get("id") for s in songs}
+        for r in _static_fallback:
+            if len(songs) >= 5:
+                break
+            if r["id"] not in existing:
+                songs.append(r)
+        songs = songs[:5]
+    return JsonResponse({"songs": songs[:5]})
+
+
 def healthz(request):
     return JsonResponse({"status": "ok"})
 
