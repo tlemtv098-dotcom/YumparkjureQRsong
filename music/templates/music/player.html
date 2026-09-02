@@ -747,9 +747,8 @@
                             showSoundOverlay();
                             videoContainer.classList.remove('bg-white');
                             videoContainer.classList.add('bg-black');
-                            // try muted autoplay behind overlay - iOS Safari allows muted autoplay
-                            try { playNext(); } catch(e) {}
-                            // keep overlay visible as tap-to-unmute hint even though video playing muted behind
+                            // iPad reload fix: no gesture yet -> do NOT call playNext (would cause 153 without gesture)
+                            // wait for overlay tap -> handleOverlayTap -> playNext(true)
                         } else {
                             hideSoundOverlay();
                             playNext();
@@ -784,7 +783,7 @@
                             showSoundOverlay();
                             videoContainer.classList.remove('bg-white');
                             videoContainer.classList.add('bg-black');
-                            try { playNext(); } catch(e) {}
+                            // iPad reload fix: no gesture -> show overlay only, no playNext (153)
                         } else {
                             playNext();
                             setFastPoll();
@@ -794,7 +793,8 @@
                     }
 
                     // Fallback for 153 loop: when queue has songs but no currentSong (all blocked), ensure not stuck black
-                    if (queue.length > 0 && !currentSong) {
+                    // gated: only autoplay if user gesture already happened (iPad 153 fix)
+                    if (queue.length > 0 && !currentSong && (soundEnabled || userInteracted)) {
                         try { playNext(); } catch(e) {}
                     }
                     // Ensure idle splash shown when queue empty not black screen without video
