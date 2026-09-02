@@ -623,9 +623,11 @@
         // --- YouTube Player (IFrame API only) with iOS Safari fixes ---
         function onYouTubeIframeAPIReady() {
             // iOS Safari requires playsinline and mute:1 for autoplay
+            // Use youtube-nocookie.com to bypass ITP / Private Relay cookie blocking (error 153 on iPad)
             player = new YT.Player('player', {
                 height: '100%',
                 width: '100%',
+                host: 'https://www.youtube-nocookie.com',
                 playerVars: {
                     'autoplay': 1,
                     'mute': 1,
