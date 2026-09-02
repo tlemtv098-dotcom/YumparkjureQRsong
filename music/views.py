@@ -329,12 +329,12 @@ def hits(request):
         # shuffle a copy to avoid same order on refresh within 60s
         out_cached = list(dedup_c)
         random.shuffle(out_cached)
-        return JsonResponse({'results': out_cached[:10]})
-    # merge results from 2 queries (5 each)
+        return JsonResponse({'results': out_cached[:15]})
+    # merge results from 2 queries (15 total, split across 2 queries)
     merged = []
     for q in picked:
         try:
-            chunk = search_youtube(q, 5)
+            chunk = search_youtube(q, 15)
         except Exception:
             chunk = []
         if chunk:
@@ -350,6 +350,11 @@ def hits(request):
         {"id": "9bZkp7q19f0", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://img.youtube.com/vi/9bZkp7q19f0/mqdefault.jpg"},
         {"id": "VZoB0Vd9nQ1", "title": "ซ่อนไม่หา - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/VZoB0Vd9nQ1/mqdefault.jpg"},
         {"id": "kJQP7kiw5Fk", "title": "ลืมไปแล้วว่ายังไง - Silly Fools", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/kJQP7kiw5Fk/mqdefault.jpg"},
+        {"id": "OPf0YbXqDm0", "title": "ดาวหางฮัลเลย์ - Fellow Fellow", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/OPf0YbXqDm0/mqdefault.jpg"},
+        {"id": "09R8_2nJtjg0", "title": "เสน่หา - Groove Riders", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/09R8_2nJtjg0/mqdefault.jpg"},
+        {"id": "2Vv-BfVoq4g1", "title": "ละบาป - Musketeers", "channel": "Musketeers", "thumbnail": "https://img.youtube.com/vi/2Vv-BfVoq4g1/mqdefault.jpg"},
+        {"id": "QH2-TGUlwu4", "title": "จดจำ - Getsunova", "channel": "Getsunova", "thumbnail": "https://img.youtube.com/vi/QH2-TGUlwu4/mqdefault.jpg"},
+        {"id": "JGwWNGJdvx8", "title": "คิดถึง - Silly Fools", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/JGwWNGJdvx8/mqdefault.jpg"},
     ]
     if not merged:
         # Fallback static hits for PythonAnywhere free (YouTube blocked) - shuffle and dedup
@@ -363,15 +368,15 @@ def hits(request):
     for r in results:
         if r['id'] not in seen and not _is_album_title(r.get('title','')) and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')):
             dedup.append(r); seen.add(r['id'])
-    # if live results deduped to less than 10, pad with fallback to ensure 10 non-duplicate
-    if len(dedup) < 10 and merged:
+    # if live results deduped to less than 15, pad with fallback to ensure 15 non-duplicate
+    if len(dedup) < 15 and merged:
         for fb in _fallback_static:
             if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_album_title(fb.get('title','')) and not _is_ai_title(fb.get('title',''), fb.get('channel','')) and not _is_non_music(fb.get('title',''), fb.get('channel','')):
                 dedup.append(fb); seen.add(fb['id'])
-            if len(dedup) >= 10:
+            if len(dedup) >= 15:
                 break
     random.shuffle(dedup)
-    out = dedup[:10]
+    out = dedup[:15]
     cache.set(cache_key, out, 60)
     return JsonResponse({'results': out})
 

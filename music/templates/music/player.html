@@ -601,7 +601,7 @@
           if (!autoRandomEnabled) return;
           if (currentSong || queue.length>0) return;
           if(hitSongs.length===0) { fetchHits(); return; }
-          let candidates = hitSongs.filter(s=>!isAlbumLike(s.title) && !isAI(s.title,s.channel) && !blockedVideoIds.has(s.id) && !autoPlayedIds.has(s.id) && !queue.some(q=>q.video_id===s.id));
+          let candidates = hitSongs.filter(s=>!isAI(s.title,s.channel) && !blockedVideoIds.has(s.id) && !autoPlayedIds.has(s.id) && !queue.some(q=>q.video_id===s.id));
           if (candidates.length===0) {
             autoPlayedIds.clear();
             fetchHits();
