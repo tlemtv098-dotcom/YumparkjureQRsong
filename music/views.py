@@ -320,7 +320,7 @@ def hits(request):
     k = min(2, len(queries))
     picked = random.sample(queries, k) if k else []
     # cache key versioned to avoid stale single-query cache; keep 60s but shuffle on hit
-    cache_key = f"hits:{genre}:v2"
+    cache_key = f"hits:{genre}:v3"
     cached = cache.get(cache_key)
     if cached:
         # ensure cached results also filtered (defense in depth) + non-music
