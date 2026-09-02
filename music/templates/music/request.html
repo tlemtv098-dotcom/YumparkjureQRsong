@@ -91,7 +91,8 @@
             <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white mb-3">ค้นหาเพลง</h2>
             <div class="flex gap-2 sm:gap-3 mb-1">
                 <div class="relative flex-1 min-w-0">
-                    <input type="text" id="searchInput" placeholder="พิมพ์ชื่อเพลงหรือศิลปิน..."
+                    <label for="searchInput" class="sr-only">ค้นหาเพลง</label>
+                    <input type="text" id="searchInput" placeholder="พิมพ์ชื่อเพลงหรือศิลปิน..." aria-label="ค้นหาเพลง"
                            class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 sm:px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
                     <div id="search-suggestions" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"></div>
                 </div>
@@ -193,7 +194,7 @@
                 const originalIdx = hitSongs.indexOf(song);
                 container.innerHTML += `
                     <div class="bg-white dark:bg-slate-700 shadow-md p-3 rounded-xl border border-slate-200 dark:border-slate-600 flex items-center gap-3">
-                        <img src="${song.thumbnail}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
+                        <img src="${song.thumbnail}" alt="ปกเพลง ${escapeHtml(song.title)}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
                         <div class="flex-1 overflow-hidden">
                             <div class="flex items-center gap-2 mb-1">
                                 <p class="font-semibold text-sm truncate text-slate-900 dark:text-white">${escapeHtml(song.title)}</p>
@@ -259,7 +260,7 @@
                     searchResults.forEach((song, idx) => {
                         container.innerHTML += `
                             <div class="bg-white dark:bg-slate-700 shadow-md p-3 rounded-xl border border-slate-200 dark:border-slate-600 flex items-center gap-3">
-                                <img src="${song.thumbnail}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
+                                <img src="${song.thumbnail}" alt="ปกเพลง ${escapeHtml(song.title)}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
                                 <div class="flex-1 overflow-hidden">
                                     <p class="font-semibold text-sm truncate text-slate-900 dark:text-white">${escapeHtml(song.title)}</p>
                                     <p class="text-xs text-slate-500 dark:text-slate-300 truncate">${escapeHtml(song.channel)}</p>
@@ -402,7 +403,7 @@
                     data.songs.forEach(song => {
                         container.innerHTML += `
                             <div class="bg-white dark:bg-slate-700 shadow-md p-3 rounded-xl border border-slate-200 dark:border-slate-600 flex items-center gap-3">
-                                <img src="${song.thumbnail}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
+                                <img src="${song.thumbnail}" alt="ปกเพลง ${escapeHtml(song.title)}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
                                 <div class="flex-1 overflow-hidden">
                                     <p class="font-semibold text-sm truncate text-slate-900 dark:text-white">${escapeHtml(song.title)}</p>
                                     <p class="text-xs text-slate-500 dark:text-slate-300 truncate">${escapeHtml(song.channel)}</p>

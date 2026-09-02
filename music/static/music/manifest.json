@@ -1,12 +1,6 @@
 {
-  "name": "Yum Jukebox - ร้านยำปากเจ่อ",
-  "short_name": "YumJuke",
-  "description": "ระบบคิวเพลงสำหรับร้านยำปากเจ่อ",
-  "start_url": "/",
-  "scope": "/",
-  "display": "standalone",
-  "background_color": "#fff7ed",
-  "theme_color": "#f59e0b",
+  "name": "ร้านยำปากเจ่อ",
+  "short_name": "ยำปากเจ่อ",
   "icons": [
     {
       "src": "/static/music/img/logo.jpg",
@@ -18,5 +12,10 @@
       "sizes": "512x512",
       "type": "image/jpeg"
     }
-  ]
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#f59e0b",
+  "background_color": "#ffffff",
+  "scope": "/"
 }
