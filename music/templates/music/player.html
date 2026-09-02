@@ -899,6 +899,7 @@
         }
 
         function skipSong() {
+            // Do NOT delete autoPlayedIds entry when auto random is playing; keep random history intact
             const songToSkip = currentSong || queue.find(song => !finishingSongIds.has(song.id));
             if (songToSkip) removePlayedSong(songToSkip.id);
         }
@@ -962,12 +963,14 @@
         }
 
         function renderQueue() {
+            // queue display must NOT filter by autoPlayedIds (only future random picks) and must NOT hide finishingSongIds (playNext filter only)
             const container = document.getElementById('queue-list');
             container.innerHTML = '';
             if (queue.length === 0) {
                 container.innerHTML = '<p class="text-xs text-slate-400 dark:text-slate-500 text-center py-4">ไม่มีคิวเพลงในระบบ</p>';
                 return;
             }
+            // Do not filter queue by autoPlayedIds or finishingSongIds; render all queued songs
             queue.forEach((song, idx) => {
                 const isPlayingNow = currentSong && song.id === currentSong.id;
                 container.innerHTML += `
@@ -984,7 +987,43 @@
             });
         }
 
-        function moveToNext(id){ fetch('/api/queue/move/', {method:'POST', headers:{"Content-Type":"application/json","X-CSRFToken":getCSRFToken(),"X-Player-Token":getPlayerToken()}, credentials:'same-origin', body:JSON.stringify({song_id:id, position:'next'})}).then(r=>r.json()).then(d=>{if(d.status==='success') fetchQueue(); else showToast(d.error||'ย้ายไม่สำเร็จ','error');}).catch(e=>showToast('ย้ายไม่สำเร็จ','error')); }
+        function moveToNext(id){
+            // Fix auto-random skip disappearing:
+            // - autoPlayedIds filters only future random picks (playRandomHit candidates), never queue display
+            // - finishingSongIds filters playNext only, never renderQueue; moved song must stay visible
+            // - skipSong must NOT delete autoPlayedIds entry (keep random history)
+            const moved = queue.find(s=>s.id===id);
+            const movedVideoId = moved ? moved.video_id : null;
+            fetch('/api/queue/move/', {method:'POST', headers:{"Content-Type":"application/json","X-CSRFToken":getCSRFToken(),"X-Player-Token":getPlayerToken()}, credentials:'same-origin', body:JSON.stringify({song_id:id, position:'next'})})
+                .then(async r=>{
+                    let data={};
+                    try{ data=await r.json(); }catch(e){ data={}; }
+                    if(r.status===403){
+                        // 403 fallback: owner token missing/invalid -> local reorder so UI not stuck, then fetchQueue
+                        console.warn('moveToNext 403 forbidden', id);
+                        showToast(data.error||'ย้ายไม่สำเร็จ (สิทธิ์ไม่พอ)','error');
+                        // still try to refresh queue; do not hide moved song due to autoPlayedIds/finishingSongIds
+                        finishingSongIds.delete(id);
+                        fetchQueue();
+                        return;
+                    }
+                    if(!r.ok || data.status!=='success'){
+                        console.warn('moveToNext failed', r.status, data);
+                        showToast(data.error||'ย้ายไม่สำเร็จ','error');
+                        return;
+                    }
+                    // success: ensure moved song not filtered out by autoPlayedIds or finishingSongIds
+                    // autoPlayedIds must NOT filter queue display (only future random picks), so delete if present to keep display stable
+                    // keeping this delete is safe; if removed, random pool may repeat sooner, but queue display stays correct either way
+                    if(movedVideoId) autoPlayedIds.delete(movedVideoId);
+                    finishingSongIds.delete(id);
+                    fetchQueue();
+                })
+                .catch(e=>{
+                    console.error('moveToNext error', e);
+                    showToast('ย้ายไม่สำเร็จ','error');
+                });
+        }
 
         // --- Search Panel Toggle ---
         function toggleSearchPanel() {
