@@ -37,10 +37,10 @@ def _get_blocked_ids():
     db_ids = set(BlockedVideo.objects.values_list('video_id', flat=True))
     return BLOCKED_VIDEO_IDS | db_ids
 
-ALBUM_RE = re.compile(r'longplay|รวมเพลง|ชั่วโมง|อัลบั้ม|60 minutes|playlist|ยาวๆ|ต่อเนื่อง|อันดับ|ชาร์ต|chart|billboard|Top 20', re.I)
+ALBUM_RE = re.compile(r'longplay|รวม.*เพลง|ชั่วโมง|อัลบั้ม|60 minutes|playlist|ยาวๆ|ต่อเนื่อง|อันดับ|ชาร์ต|chart|billboard|Top 20|Compilation|Collection', re.I)
 CHART_RE = re.compile(r'chart|อันดับ|ชาร์ต|Top 20|Billboard', re.I)
 AI_RE = re.compile(r'\bAI\b|AurAIa|Artificial|Bot', re.I)
-NON_MUSIC_RE = re.compile(r'สอน|how to|vlog|game|gameplay', re.I)
+NON_MUSIC_RE = re.compile(r'สอน|how to|vlog|game|gameplay|compilation|collection', re.I)
 def _is_album_title(title):
     return bool(ALBUM_RE.search(title or '') or _is_chart_title(title))
 def _is_chart_title(title):
