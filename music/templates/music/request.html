@@ -18,7 +18,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://img.youtube.com">
+    <link rel="preconnect" href="https://i.ytimg.com">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
@@ -167,14 +167,14 @@
         let searchTimer = null;
         const searchInput = document.getElementById("searchInput");
         let hitSongs = [
-            { id: "qguo-j5PxBE", title: "ซ่อน(ไม่)หา", channel: "Jeff Satur", thumbnail: "https://img.youtube.com/vi/qguo-j5PxBE/mqdefault.jpg", type: "hit" },
-            { id: "ks7p6DA0dKk", title: "ข้างกัน", channel: "Three Man Down", thumbnail: "https://img.youtube.com/vi/ks7p6DA0dKk/mqdefault.jpg", type: "hit" },
-            { id: "zwvv71slEYc", title: "ถ้าเธอ", channel: "Tilly Birds", thumbnail: "https://img.youtube.com/vi/zwvv71slEYc/mqdefault.jpg", type: "new" },
-            { id: "L1k0wkQ6uww", title: "แฟนเก่าคนโปรด", channel: "SLAPKISS", thumbnail: "https://img.youtube.com/vi/L1k0wkQ6uww/mqdefault.jpg", type: "hit" },
-            { id: "yEbv0QiI1Ns", title: "คนไม่สำคัญ", channel: "GMM", thumbnail: "https://img.youtube.com/vi/yEbv0QiI1Ns/mqdefault.jpg", type: "new" },
-            { id: "s-MZid-59Hc", title: "แค่เธอ", channel: "Jeff Satur", thumbnail: "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg", type: "hit" },
-            { id: "rc7KnQAh_1I", title: "รักแรกพบ", channel: "Tattoo Colour", thumbnail: "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg", type: "new" },
-            { id: "I9ZIq7ynvdU", title: "แค่คนโทรผิด", channel: "GMM", thumbnail: "https://img.youtube.com/vi/I9ZIq7ynvdU/mqdefault.jpg", type: "hit" }
+            { id: "qguo-j5PxBE", title: "ซ่อน(ไม่)หา", channel: "Jeff Satur", thumbnail: "https://i.ytimg.com/vi/qguo-j5PxBE/mqdefault.jpg", type: "hit" },
+            { id: "ks7p6DA0dKk", title: "ข้างกัน", channel: "Three Man Down", thumbnail: "https://i.ytimg.com/vi/ks7p6DA0dKk/mqdefault.jpg", type: "hit" },
+            { id: "zwvv71slEYc", title: "ถ้าเธอ", channel: "Tilly Birds", thumbnail: "https://i.ytimg.com/vi/zwvv71slEYc/mqdefault.jpg", type: "new" },
+            { id: "L1k0wkQ6uww", title: "แฟนเก่าคนโปรด", channel: "SLAPKISS", thumbnail: "https://i.ytimg.com/vi/L1k0wkQ6uww/mqdefault.jpg", type: "hit" },
+            { id: "yEbv0QiI1Ns", title: "คนไม่สำคัญ", channel: "GMM", thumbnail: "https://i.ytimg.com/vi/yEbv0QiI1Ns/mqdefault.jpg", type: "new" },
+            { id: "s-MZid-59Hc", title: "แค่เธอ", channel: "Jeff Satur", thumbnail: "https://i.ytimg.com/vi/s-MZid-59Hc/mqdefault.jpg", type: "hit" },
+            { id: "rc7KnQAh_1I", title: "รักแรกพบ", channel: "Tattoo Colour", thumbnail: "https://i.ytimg.com/vi/rc7KnQAh_1I/mqdefault.jpg", type: "new" },
+            { id: "I9ZIq7ynvdU", title: "แค่คนโทรผิด", channel: "GMM", thumbnail: "https://i.ytimg.com/vi/I9ZIq7ynvdU/mqdefault.jpg", type: "hit" }
         ];
 
         function filterBlockedSongs(songs) {

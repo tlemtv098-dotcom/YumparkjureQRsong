@@ -121,7 +121,7 @@ def youtube_api_search(query, max_results=8):
     for item in payload.get('items', []):
         video_id = item.get('id', {}).get('videoId')
         snippet = item.get('snippet', {})
-        if not video_id or _is_blocked(video_id):
+        if not video_id or not re.match(r'^[A-Za-z0-9_-]{11}$', video_id) or _is_blocked(video_id):
             continue
         title = snippet.get('title', 'Unknown Title')
         if _is_album_title(title):
@@ -137,7 +137,7 @@ def youtube_api_search(query, max_results=8):
             'id': video_id,
             'title': title,
             'channel': channel,
-            'thumbnail': thumbnail or f'https://img.youtube.com/vi/{video_id}/mqdefault.jpg',
+            'thumbnail': thumbnail or f'https://i.ytimg.com/vi/{video_id}/mqdefault.jpg',
         })
     return results
 
@@ -193,7 +193,9 @@ def search_youtube(query, max_results=8):
                 chan_tmp = entry.get('uploader') or entry.get('channel','')
                 if _is_non_music(title_tmp, chan_tmp):
                     continue
-                raw.append({'id': vid_id, 'title': entry.get('title','Unknown'), 'channel': chan_tmp or 'YouTube', 'thumbnail': f'https://img.youtube.com/vi/{vid_id}/mqdefault.jpg'})
+                if not re.match(r'^[A-Za-z0-9_-]{11}$', vid_id):
+                    continue
+                raw.append({'id': vid_id, 'title': entry.get('title','Unknown'), 'channel': chan_tmp or 'YouTube', 'thumbnail': f'https://i.ytimg.com/vi/{vid_id}/mqdefault.jpg'})
         except Exception as e:
             print('Search Error:', e)
             return []
@@ -256,11 +258,11 @@ def search_song(request):
     if not results:
         # Fallback for PythonAnywhere free where yt-dlp blocked — return hits-style fallback filtered by query
         fallback = [
-            {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/ks7p6DA0dKk/mqdefault.jpg"},
-            {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/zwvv71slEYc/mqdefault.jpg"},
-            {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://img.youtube.com/vi/L1k0wkQ6uww/mqdefault.jpg"},
-            {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg"},
-            {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
+            {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/ks7p6DA0dKk/mqdefault.jpg"},
+            {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/zwvv71slEYc/mqdefault.jpg"},
+            {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://i.ytimg.com/vi/L1k0wkQ6uww/mqdefault.jpg"},
+            {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/s-MZid-59Hc/mqdefault.jpg"},
+            {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://i.ytimg.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
         ]
         # simple filter by query substring
         q_lower = query.lower()
@@ -316,8 +318,8 @@ def hits(request):
         queries = genre_queries[genre]
     else:
         queries = ['เพลงไทยฮิต', 'เพลงฮิต 2025', 'เพลงดัง', 'เพลงใหม่ 2025', 'เพลงไทยเพราะๆ', 'เพลงฮิตติดชาร์ต']
-    # pick 2 random queries to broaden pool and avoid duplicate refresh
-    k = min(2, len(queries))
+    # pick 5 random queries to broaden pool and return 100 unique
+    k = min(5, len(queries))
     picked = random.sample(queries, k) if k else []
     # cache key versioned to avoid stale single-query cache; keep 60s but shuffle on hit
     cache_key = f"hits:{genre}:v3"
@@ -334,32 +336,42 @@ def hits(request):
         # shuffle a copy to avoid same order on refresh within 60s
         out_cached = list(dedup_c)
         random.shuffle(out_cached)
-        return JsonResponse({'results': out_cached[:15]})
-    # merge results from 2 queries (15 total, split across 2 queries)
+        return JsonResponse({'results': out_cached[:100]})
+    # merge results from 5 queries (100 total, 20 per query)
     merged = []
     for q in picked:
         try:
-            chunk = search_youtube(q, 15)
+            chunk = search_youtube(q, 20)
         except Exception:
             chunk = []
         if chunk:
             merged.extend(chunk)
     _fallback_static = [
-        {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/ks7p6DA0dKk/mqdefault.jpg"},
-        {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/zwvv71slEYc/mqdefault.jpg"},
-        {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://img.youtube.com/vi/L1k0wkQ6uww/mqdefault.jpg"},
-        {"id": "yEbv0QiI1Ns", "title": "คนไม่สำคัญ - Safeplanet", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/yEbv0QiI1Ns/mqdefault.jpg"},
-        {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg"},
-        {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
-        {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/I9ZIq7ynvdU/mqdefault.jpg"},
-        {"id": "9bZkp7q19f0", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://img.youtube.com/vi/9bZkp7q19f0/mqdefault.jpg"},
+        {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/ks7p6DA0dKk/mqdefault.jpg"},
+        {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/zwvv71slEYc/mqdefault.jpg"},
+        {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://i.ytimg.com/vi/L1k0wkQ6uww/mqdefault.jpg"},
+        {"id": "yEbv0QiI1Ns", "title": "คนไม่สำคัญ - Safeplanet", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/yEbv0QiI1Ns/mqdefault.jpg"},
+        {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/s-MZid-59Hc/mqdefault.jpg"},
+        {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://i.ytimg.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
+        {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/I9ZIq7ynvdU/mqdefault.jpg"},
+        {"id": "9bZkp7q19f0", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://i.ytimg.com/vi/9bZkp7q19f0/mqdefault.jpg"},
         {"id": "Bk4O_3WF8II", "title": "ซ่อน(ไม่)หา - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/Bk4O_3WF8II/mqdefault.jpg"},
-        {"id": "kJQP7kiw5Fk", "title": "ลืมไปแล้วว่ายังไง - Silly Fools", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/kJQP7kiw5Fk/mqdefault.jpg"},
-        {"id": "OPf0YbXqDm0", "title": "ดาวหางฮัลเลย์ - Fellow Fellow", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/OPf0YbXqDm0/mqdefault.jpg"},
-        {"id": "09R8_2nJtjg0", "title": "เสน่หา - Groove Riders", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/09R8_2nJtjg0/mqdefault.jpg"},
-        {"id": "2Vv-BfVoq4g1", "title": "ละบาป - Musketeers", "channel": "Musketeers", "thumbnail": "https://img.youtube.com/vi/2Vv-BfVoq4g1/mqdefault.jpg"},
-        {"id": "QH2-TGUlwu4", "title": "จดจำ - Getsunova", "channel": "Getsunova", "thumbnail": "https://img.youtube.com/vi/QH2-TGUlwu4/mqdefault.jpg"},
-        {"id": "JGwWNGJdvx8", "title": "คิดถึง - Silly Fools", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/JGwWNGJdvx8/mqdefault.jpg"},
+        {"id": "kJQP7kiw5Fk", "title": "ลืมไปแล้วว่ายังไง - Silly Fools", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/kJQP7kiw5Fk/mqdefault.jpg"},
+        {"id": "OPf0YbXqDm0", "title": "ดาวหางฮัลเลย์ - Fellow Fellow", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/OPf0YbXqDm0/mqdefault.jpg"},
+        {"id": "09R8_2nJtjg", "title": "เสน่หา - Groove Riders", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/09R8_2nJtjg/mqdefault.jpg"},
+        {"id": "2Vv-BfVoq4g", "title": "ละบาป - Musketeers", "channel": "Musketeers", "thumbnail": "https://i.ytimg.com/vi/2Vv-BfVoq4g/mqdefault.jpg"},
+        {"id": "QH2-TGUlwu4", "title": "จดจำ - Getsunova", "channel": "Getsunova", "thumbnail": "https://i.ytimg.com/vi/QH2-TGUlwu4/mqdefault.jpg"},
+        {"id": "JGwWNGJdvx8", "title": "คิดถึง - Silly Fools", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/JGwWNGJdvx8/mqdefault.jpg"},
+        {"id": "dT6d1y9R8X2", "title": "พิง - NONT TANONT", "channel": "LOVEiS", "thumbnail": "https://i.ytimg.com/vi/dT6d1y9R8X2/mqdefault.jpg"},
+        {"id": "e8F2kL9m3Qp", "title": "วาดไว้ - Bowkylion", "channel": "What The Duck", "thumbnail": "https://i.ytimg.com/vi/e8F2kL9m3Qp/mqdefault.jpg"},
+        {"id": "f4J7hN2b5Vc", "title": "ทน - Cocktail", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/f4J7hN2b5Vc/mqdefault.jpg"},
+        {"id": "g6K3pX8q1Wz", "title": "ยิ้มมา - Jeff Satur", "channel": "Wayfer Records", "thumbnail": "https://i.ytimg.com/vi/g6K3pX8q1Wz/mqdefault.jpg"},
+        {"id": "h9L2vC5n8Bm", "title": "รถไฟบนฟ้า - Safeplanet", "channel": "Safeplanet", "thumbnail": "https://i.ytimg.com/vi/h9L2vC5n8Bm/mqdefault.jpg"},
+        {"id": "j2M5bN8c1Xk", "title": "ขอบคุณที่รักกัน - Potato", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/j2M5bN8c1Xk/mqdefault.jpg"},
+        {"id": "k5P8qW2e6Rt", "title": "ลืม - Getsunova", "channel": "White Music", "thumbnail": "https://i.ytimg.com/vi/k5P8qW2e6Rt/mqdefault.jpg"},
+        {"id": "m3R8sK1p5XQ", "title": "ใจนักเลง - Cocktail", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/m3R8sK1p5XQ/mqdefault.jpg"},
+        {"id": "n9V2wQ4t6Yz", "title": "ดวงเดือน - โจอี้ ภูวศิษฐ์", "channel": "Joey Phuwasit", "thumbnail": "https://i.ytimg.com/vi/n9V2wQ4t6Yz/mqdefault.jpg"},
+        {"id": "p4L6jH2k8Mn", "title": "นะหน้าทอง - โจอี้ ภูวศิษฐ์", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/p4L6jH2k8Mn/mqdefault.jpg"},
     ]
     if not merged:
         # Fallback static hits for PythonAnywhere free (YouTube blocked) - shuffle and dedup
@@ -373,15 +385,15 @@ def hits(request):
     for r in results:
         if r['id'] not in seen and not _is_album_title(r.get('title','')) and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')):
             dedup.append(r); seen.add(r['id'])
-    # if live results deduped to less than 15, pad with fallback to ensure 15 non-duplicate
-    if len(dedup) < 15 and merged:
+    # if live results deduped to less than 100, pad with fallback to ensure 100 non-duplicate
+    if len(dedup) < 100:
         for fb in _fallback_static:
             if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_album_title(fb.get('title','')) and not _is_ai_title(fb.get('title',''), fb.get('channel','')) and not _is_non_music(fb.get('title',''), fb.get('channel','')):
                 dedup.append(fb); seen.add(fb['id'])
-            if len(dedup) >= 15:
+            if len(dedup) >= 100:
                 break
     random.shuffle(dedup)
-    out = dedup[:15]
+    out = dedup[:100]
     cache.set(cache_key, out, 60)
     return JsonResponse({'results': out})
 
@@ -420,7 +432,7 @@ def add_to_queue(request):
         title = title.strip()[:255]
         channel = str(data.get('channel', 'YouTube')).strip()[:255]
         requested_by = str(data.get('requested_by', 'ลูกค้าในร้าน')).strip()[:100]
-        thumbnail = str(data.get('thumbnail', f'https://img.youtube.com/vi/{video_id}/mqdefault.jpg')).strip()[:500]
+        thumbnail = str(data.get('thumbnail', f'https://i.ytimg.com/vi/{video_id}/mqdefault.jpg')).strip()[:500]
         audio_url = str(data.get('audio_url', '')).strip()[:1000]
         client_id = str(client_id).strip()[:64]
         
@@ -475,7 +487,7 @@ def add_to_queue_front(request):
         title = title_raw[:255]
         channel = str(data.get('channel', 'YouTube')).strip()[:255]
         requested_by = str(data.get('requested_by', 'เจ้าของร้าน (เล่นเอง - ข้ามคิว)')).strip()[:100]
-        thumbnail = str(data.get('thumbnail', f'https://img.youtube.com/vi/{video_id}/mqdefault.jpg')).strip()[:500]
+        thumbnail = str(data.get('thumbnail', f'https://i.ytimg.com/vi/{video_id}/mqdefault.jpg')).strip()[:500]
         audio_url = str(data.get('audio_url', '')).strip()[:1000]
         client_id = str(client_id).strip()[:64]
         
@@ -637,21 +649,21 @@ def ai_recommend(request):
 
     if len(songs) < 5:
         _fallback_static = [
-            {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/ks7p6DA0dKk/mqdefault.jpg"},
-            {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/zwvv71slEYc/mqdefault.jpg"},
-            {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://img.youtube.com/vi/L1k0wkQ6uww/mqdefault.jpg"},
-            {"id": "yEbv0QiI1Ns", "title": "คนไม่สำคัญ - Safeplanet", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/yEbv0QiI1Ns/mqdefault.jpg"},
-            {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg"},
-            {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
-            {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/I9ZIq7ynvdU/mqdefault.jpg"},
-            {"id": "9bZkp7q19f0", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://img.youtube.com/vi/9bZkp7q19f0/mqdefault.jpg"},
+            {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/ks7p6DA0dKk/mqdefault.jpg"},
+            {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/zwvv71slEYc/mqdefault.jpg"},
+            {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://i.ytimg.com/vi/L1k0wkQ6uww/mqdefault.jpg"},
+            {"id": "yEbv0QiI1Ns", "title": "คนไม่สำคัญ - Safeplanet", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/yEbv0QiI1Ns/mqdefault.jpg"},
+            {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/s-MZid-59Hc/mqdefault.jpg"},
+            {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://i.ytimg.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
+            {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/I9ZIq7ynvdU/mqdefault.jpg"},
+            {"id": "9bZkp7q19f0", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://i.ytimg.com/vi/9bZkp7q19f0/mqdefault.jpg"},
             {"id": "Bk4O_3WF8II", "title": "ซ่อน(ไม่)หา - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/Bk4O_3WF8II/mqdefault.jpg"},
-            {"id": "kJQP7kiw5Fk", "title": "ลืมไปแล้วว่ายังไง - Silly Fools", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/kJQP7kiw5Fk/mqdefault.jpg"},
-            {"id": "OPf0YbXqDm0", "title": "ดาวหางฮัลเลย์ - Fellow Fellow", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/OPf0YbXqDm0/mqdefault.jpg"},
-            {"id": "09R8_2nJtjg0", "title": "เสน่หา - Groove Riders", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/09R8_2nJtjg0/mqdefault.jpg"},
-            {"id": "2Vv-BfVoq4g1", "title": "ละบาป - Musketeers", "channel": "Musketeers", "thumbnail": "https://img.youtube.com/vi/2Vv-BfVoq4g1/mqdefault.jpg"},
-            {"id": "QH2-TGUlwu4", "title": "จดจำ - Getsunova", "channel": "Getsunova", "thumbnail": "https://img.youtube.com/vi/QH2-TGUlwu4/mqdefault.jpg"},
-            {"id": "JGwWNGJdvx8", "title": "คิดถึง - Silly Fools", "channel": "GMM", "thumbnail": "https://img.youtube.com/vi/JGwWNGJdvx8/mqdefault.jpg"},
+            {"id": "kJQP7kiw5Fk", "title": "ลืมไปแล้วว่ายังไง - Silly Fools", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/kJQP7kiw5Fk/mqdefault.jpg"},
+            {"id": "OPf0YbXqDm0", "title": "ดาวหางฮัลเลย์ - Fellow Fellow", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/OPf0YbXqDm0/mqdefault.jpg"},
+            {"id": "09R8_2nJtjg", "title": "เสน่หา - Groove Riders", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/09R8_2nJtjg/mqdefault.jpg"},
+            {"id": "2Vv-BfVoq4g", "title": "ละบาป - Musketeers", "channel": "Musketeers", "thumbnail": "https://i.ytimg.com/vi/2Vv-BfVoq4g/mqdefault.jpg"},
+            {"id": "QH2-TGUlwu4", "title": "จดจำ - Getsunova", "channel": "Getsunova", "thumbnail": "https://i.ytimg.com/vi/QH2-TGUlwu4/mqdefault.jpg"},
+            {"id": "JGwWNGJdvx8", "title": "คิดถึง - Silly Fools", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/JGwWNGJdvx8/mqdefault.jpg"},
         ]
         try:
             fb_filtered = [r for r in _fallback_static if not _is_blocked(r["id"]) and not _is_album_title(r.get("title", "")) and not _is_ai_title(r.get("title", ""), r.get("channel", "")) and not _is_non_music(r.get("title", ""), r.get("channel", ""))]
@@ -678,11 +690,11 @@ def ai_recommend(request):
             _static_fallback = _fallback_static  # type: ignore
         except NameError:
             _static_fallback = [
-                {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/ks7p6DA0dKk/mqdefault.jpg"},
-                {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://img.youtube.com/vi/zwvv71slEYc/mqdefault.jpg"},
-                {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://img.youtube.com/vi/L1k0wkQ6uww/mqdefault.jpg"},
-                {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://img.youtube.com/vi/s-MZid-59Hc/mqdefault.jpg"},
-                {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://img.youtube.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
+                {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/ks7p6DA0dKk/mqdefault.jpg"},
+                {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/zwvv71slEYc/mqdefault.jpg"},
+                {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://i.ytimg.com/vi/L1k0wkQ6uww/mqdefault.jpg"},
+                {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/s-MZid-59Hc/mqdefault.jpg"},
+                {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://i.ytimg.com/vi/rc7KnQAh_1I/mqdefault.jpg"},
             ]
         # Fill remaining slots from fallback
         existing = {s.get("id") for s in songs}
