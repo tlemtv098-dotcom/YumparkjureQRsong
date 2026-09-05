@@ -56,7 +56,7 @@ def _is_music_result(title, channel):
 
 def _is_embeddable(video_id):
     try:
-        opts = {'quiet': True, 'skip_download': True, 'noplaylist': True, 'socket_timeout': 5}
+        opts = {'quiet': True, 'skip_download': True, 'noplaylist': True, 'socket_timeout': 3}
         with YoutubeDL(opts) as ydl:
             info = ydl.extract_info(f'https://www.youtube.com/watch?v={video_id}', download=False)
             if not info:
@@ -110,7 +110,7 @@ def youtube_api_search(query, max_results=8):
     try:
         with urllib.request.urlopen(
             f'https://www.googleapis.com/youtube/v3/search?{params}',
-            timeout=15,
+            timeout=8,
         ) as response:
             payload = json.loads(response.read().decode('utf-8'))
     except Exception as exc:
@@ -146,35 +146,8 @@ def search_youtube(query, max_results=8):
     """Use the official API first, retaining yt-dlp as a local fallback."""
     api_results = youtube_api_search(query, max_results)
     if api_results:
-        filtered = []
-        for r in api_results[:max_results]:
-            if _is_album_title(r.get('title', '')):
-                continue
-            if _is_ai_title(r.get('title', ''), r.get('channel', '')):
-                continue
-            if _is_non_music(r.get('title', ''), r.get('channel', '')):
-                continue
-            cache_key = f"embed:{r['id']}"
-            cached = cache.get(cache_key)
-            if cached is True or cached is False:
-                embed = cached
-            else:
-                embed = _is_embeddable(r['id'])
-                if embed is not None:
-                    cache.set(cache_key, embed, 3600)
-                else:
-                    cache.set(cache_key, True, 60)
-            if embed is False:
-                try:
-                    BlockedVideo.objects.get_or_create(video_id=r['id'], defaults={'reason': 'Not embeddable'})
-                except:
-                    pass
-                continue
-            # embed is True or None (network) -> keep
-            filtered.append(r)
-            if len(filtered) >= max_results:
-                break
-        return filtered if filtered else []
+        # API already filters videoEmbeddable=true + server-side title checks — return directly for speed.
+        return api_results[:max_results]
 
     ydl_opts = {'quiet': True, 'skip_download': True, 'extract_flat': True, 'default_search': f'ytsearch{max_results}'}
     raw = []
@@ -318,8 +291,8 @@ def hits(request):
         queries = genre_queries[genre]
     else:
         queries = ['เพลงไทยฮิต', 'เพลงฮิต 2025', 'เพลงดัง', 'เพลงใหม่ 2025', 'เพลงไทยเพราะๆ', 'เพลงฮิตติดชาร์ต']
-    # pick 3 random queries to broaden pool and return 15 unique (reduce API calls to avoid 429/timeout)
-    k = min(3, len(queries))
+    # pick 2 random queries to broaden pool and return 10 unique (+fallback pad to 15) for speed
+    k = min(2, len(queries))
     picked = random.sample(queries, k) if k else []
     # cache key versioned to avoid stale single-query cache; keep 60s but shuffle on hit
     cache_key = f"hits:{genre}:v3"
@@ -345,7 +318,7 @@ def hits(request):
         out_cached = list(dedup_c)
         random.shuffle(out_cached)
         return JsonResponse({'results': out_cached[:15]})
-    # merge results from 3 queries (15 total, 5 per query)
+    # merge results from 2 queries (10 total, 5 per query)
     merged = []
     for q in picked:
         try:
