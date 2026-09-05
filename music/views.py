@@ -323,10 +323,18 @@ def hits(request):
     picked = random.sample(queries, k) if k else []
     # cache key versioned to avoid stale single-query cache; keep 60s but shuffle on hit
     cache_key = f"hits:{genre}:v3"
-    cached = cache.get(cache_key)
+    try:
+        cached = cache.get(cache_key)
+    except Exception as e:
+        print(f'hits cache.get failed: {e}')
+        cached = None
     if cached:
         # ensure cached results also filtered (defense in depth) + non-music
-        filtered_cached = [r for r in cached if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
+        try:
+            filtered_cached = [r for r in cached if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
+        except Exception as e:
+            print(f'hits cached filter failed: {e}')
+            filtered_cached = list(cached)
         # dedup cached as second layer
         seen_c = set()
         dedup_c = []
@@ -373,29 +381,38 @@ def hits(request):
         {"id": "n9V2wQ4t6Yz", "title": "ดวงเดือน - โจอี้ ภูวศิษฐ์", "channel": "Joey Phuwasit", "thumbnail": "https://i.ytimg.com/vi/n9V2wQ4t6Yz/mqdefault.jpg"},
         {"id": "p4L6jH2k8Mn", "title": "นะหน้าทอง - โจอี้ ภูวศิษฐ์", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/p4L6jH2k8Mn/mqdefault.jpg"},
     ]
-    if not merged:
-        # Fallback static hits for PythonAnywhere free (YouTube blocked) - shuffle and dedup
-        results = [r for r in _fallback_static if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
-    else:
-        # also ensure live search results are filtered (defense in depth) + non-music
-        results = [r for r in merged if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
-    # dedup via seen set + shuffle
-    seen = set()
-    dedup = []
-    for r in results:
-        if r['id'] not in seen and not _is_album_title(r.get('title','')) and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')):
-            dedup.append(r); seen.add(r['id'])
-    # if live results deduped to less than 30, pad with fallback to ensure 30 non-duplicate
-    if len(dedup) < 30:
-        for fb in _fallback_static:
-            if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_album_title(fb.get('title','')) and not _is_ai_title(fb.get('title',''), fb.get('channel','')) and not _is_non_music(fb.get('title',''), fb.get('channel','')):
-                dedup.append(fb); seen.add(fb['id'])
-            if len(dedup) >= 30:
-                break
-    random.shuffle(dedup)
-    out = dedup[:30]
-    cache.set(cache_key, out, 60)
-    return JsonResponse({'results': out})
+    try:
+        if not merged:
+            # Fallback static hits for PythonAnywhere free (YouTube blocked) - shuffle and dedup
+            results = [r for r in _fallback_static if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
+        else:
+            # also ensure live search results are filtered (defense in depth) + non-music
+            results = [r for r in merged if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
+        # dedup via seen set + shuffle
+        seen = set()
+        dedup = []
+        for r in results:
+            if r['id'] not in seen and not _is_album_title(r.get('title','')) and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')):
+                dedup.append(r); seen.add(r['id'])
+        # if live results deduped to less than 30, pad with fallback to ensure 30 non-duplicate
+        if len(dedup) < 30:
+            for fb in _fallback_static:
+                if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_album_title(fb.get('title','')) and not _is_ai_title(fb.get('title',''), fb.get('channel','')) and not _is_non_music(fb.get('title',''), fb.get('channel','')):
+                    dedup.append(fb); seen.add(fb['id'])
+                if len(dedup) >= 30:
+                    break
+        random.shuffle(dedup)
+        out = dedup[:30]
+        try:
+            cache.set(cache_key, out, 60)
+        except Exception as e:
+            print(f'hits cache.set failed: {e}')
+        return JsonResponse({'results': out})
+    except Exception as e:
+        print(f'hits failed, returning static fallback: {e}')
+        safe = [r for r in _fallback_static if r['id'] not in BLOCKED_VIDEO_IDS and not _is_album_title(r.get('title', '')) and not _is_ai_title(r.get('title', ''), r.get('channel', '')) and not _is_non_music(r.get('title', ''), r.get('channel', ''))]
+        random.shuffle(safe)
+        return JsonResponse({'results': safe[:30]})
 
 def add_to_queue(request):
     if request.method == 'POST':

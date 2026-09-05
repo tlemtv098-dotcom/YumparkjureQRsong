@@ -1168,7 +1168,7 @@
         // --- Hits / Recommended ---
         function fetchHits() {
             fetch("/api/hits/")
-                .then(res => res.json())
+                .then(res => { if (!res.ok) throw new Error('Hits '+res.status); return res.json(); })
                 .then(data => {
                     if (data.results && data.results.length > 0) {
                         const filtered = data.results.filter(s => !blockedVideoIds.has(s.id) && !isAlbumLike(s.title) && !isAI(s.title, s.channel));
@@ -1179,7 +1179,7 @@
                         }
                     }
                 })
-                .catch(err => { console.error(err); showToast("โหลดเพลงแนะนำไม่สำเร็จ", "error"); });
+                .catch(err => { console.error(err); if (hitSongs.length > 0) { renderHitList(); } else { showToast("โหลดเพลงแนะนำไม่สำเร็จ", "error"); } });
         }
 
         document.addEventListener("DOMContentLoaded", function () {
