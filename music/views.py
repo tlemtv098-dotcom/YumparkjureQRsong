@@ -143,64 +143,16 @@ def youtube_api_search(query, max_results=8):
 
 
 def search_youtube(query, max_results=8):
-    """Use the official API first, retaining yt-dlp as a local fallback."""
+    """Use the official API first; fast-fail to [] so search_song can fallback immediately."""
     api_results = youtube_api_search(query, max_results)
     if api_results:
         # API already filters videoEmbeddable=true + server-side title checks — return directly for speed.
         return api_results[:max_results]
 
-    ydl_opts = {'quiet': True, 'skip_download': True, 'extract_flat': True, 'default_search': f'ytsearch{max_results}'}
-    raw = []
-    with YoutubeDL(ydl_opts) as ydl:
-        try:
-            info = ydl.extract_info(f'ytsearch{max_results}:{query}', download=False)
-            for entry in info.get('entries', []):
-                vid_id = entry.get('id')
-                if not vid_id or _is_blocked(vid_id):
-                    continue
-                if _is_album_title(entry.get('title','')):
-                    continue
-                if _is_ai_title(entry.get('title',''), entry.get('uploader') or entry.get('channel','')):
-                    continue
-                title_tmp = entry.get('title','')
-                chan_tmp = entry.get('uploader') or entry.get('channel','')
-                if _is_non_music(title_tmp, chan_tmp):
-                    continue
-                if not re.match(r'^[A-Za-z0-9_-]{11}$', vid_id):
-                    continue
-                raw.append({'id': vid_id, 'title': entry.get('title','Unknown'), 'channel': chan_tmp or 'YouTube', 'thumbnail': f'https://i.ytimg.com/vi/{vid_id}/hqdefault.jpg'})
-        except Exception as e:
-            print('Search Error:', e)
-            return []
-    # Now check embeddable per video (slow but accurate) — limit to first max_results to keep time <5s
-    filtered = []
-    for r in raw[:max_results]:
-        if _is_album_title(r.get('title', '')):
-            continue
-        if _is_ai_title(r.get('title', ''), r.get('channel', '')):
-            continue
-        if _is_non_music(r.get('title', ''), r.get('channel', '')):
-            continue
-        cache_key = f"embed:{r['id']}"
-        cached = cache.get(cache_key)
-        if cached is True or cached is False:
-            embed = cached
-        else:
-            embed = _is_embeddable(r['id'])
-            if embed is not None:
-                cache.set(cache_key, embed, 3600)
-            else:
-                cache.set(cache_key, True, 60)
-        if embed is True or embed is None:
-            filtered.append(r)
-        elif embed is False:
-            try:
-                BlockedVideo.objects.get_or_create(video_id=r['id'], defaults={'reason': 'Not embeddable'})
-            except:
-                pass
-        if len(filtered) >= max_results:
-            break
-    return filtered[:max_results] if filtered else []
+    # Fast path: API empty (no key/quota/error) -> return [] immediately.
+    # Do NOT call yt-dlp ytsearch or _is_embeddable in search path (slow, Render 429/bot).
+    # YoutubeDL/_is_embeddable helpers kept for hits-only deep checks.
+    return []
 
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -244,6 +196,9 @@ def search_song(request):
             results = fallback[:3]
         # filter blocked and album titles + non-music
         results = [r for r in results if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
+        if not results:
+            # Guarantee non-empty: album/ai/non-music filters must not silently empty fallback.
+            results = [r for r in fallback[:3] if not _is_blocked(r['id'])]
     else:
         # also filter live results (defense in depth) for album titles + non-music
         results = [r for r in results if not _is_album_title(r.get('title','')) and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
@@ -335,24 +290,7 @@ def hits(request):
         {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/s-MZid-59Hc/hqdefault.jpg"},
         {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://i.ytimg.com/vi/rc7KnQAh_1I/hqdefault.jpg"},
         {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/I9ZIq7ynvdU/hqdefault.jpg"},
-        {"id": "9bZkp7q19f0", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://i.ytimg.com/vi/9bZkp7q19f0/hqdefault.jpg"},
         {"id": "Bk4O_3WF8II", "title": "ซ่อน(ไม่)หา - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/Bk4O_3WF8II/hqdefault.jpg"},
-        {"id": "kJQP7kiw5Fk", "title": "ลืมไปแล้วว่ายังไง - Silly Fools", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/kJQP7kiw5Fk/hqdefault.jpg"},
-        {"id": "OPf0YbXqDm0", "title": "ดาวหางฮัลเลย์ - Fellow Fellow", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/OPf0YbXqDm0/hqdefault.jpg"},
-        {"id": "09R8_2nJtjg", "title": "เสน่หา - Groove Riders", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/09R8_2nJtjg/hqdefault.jpg"},
-        {"id": "2Vv-BfVoq4g", "title": "ละบาป - Musketeers", "channel": "Musketeers", "thumbnail": "https://i.ytimg.com/vi/2Vv-BfVoq4g/hqdefault.jpg"},
-        {"id": "QH2-TGUlwu4", "title": "จดจำ - Getsunova", "channel": "Getsunova", "thumbnail": "https://i.ytimg.com/vi/QH2-TGUlwu4/hqdefault.jpg"},
-        {"id": "JGwWNGJdvx8", "title": "คิดถึง - Silly Fools", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/JGwWNGJdvx8/hqdefault.jpg"},
-        {"id": "dT6d1y9R8X2", "title": "พิง - NONT TANONT", "channel": "LOVEiS", "thumbnail": "https://i.ytimg.com/vi/dT6d1y9R8X2/hqdefault.jpg"},
-        {"id": "e8F2kL9m3Qp", "title": "วาดไว้ - Bowkylion", "channel": "What The Duck", "thumbnail": "https://i.ytimg.com/vi/e8F2kL9m3Qp/hqdefault.jpg"},
-        {"id": "f4J7hN2b5Vc", "title": "ทน - Cocktail", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/f4J7hN2b5Vc/hqdefault.jpg"},
-        {"id": "g6K3pX8q1Wz", "title": "ยิ้มมา - Jeff Satur", "channel": "Wayfer Records", "thumbnail": "https://i.ytimg.com/vi/g6K3pX8q1Wz/hqdefault.jpg"},
-        {"id": "h9L2vC5n8Bm", "title": "รถไฟบนฟ้า - Safeplanet", "channel": "Safeplanet", "thumbnail": "https://i.ytimg.com/vi/h9L2vC5n8Bm/hqdefault.jpg"},
-        {"id": "j2M5bN8c1Xk", "title": "ขอบคุณที่รักกัน - Potato", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/j2M5bN8c1Xk/hqdefault.jpg"},
-        {"id": "k5P8qW2e6Rt", "title": "ลืม - Getsunova", "channel": "White Music", "thumbnail": "https://i.ytimg.com/vi/k5P8qW2e6Rt/hqdefault.jpg"},
-        {"id": "m3R8sK1p5XQ", "title": "ใจนักเลง - Cocktail", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/m3R8sK1p5XQ/hqdefault.jpg"},
-        {"id": "n9V2wQ4t6Yz", "title": "ดวงเดือน - โจอี้ ภูวศิษฐ์", "channel": "Joey Phuwasit", "thumbnail": "https://i.ytimg.com/vi/n9V2wQ4t6Yz/hqdefault.jpg"},
-        {"id": "p4L6jH2k8Mn", "title": "นะหน้าทอง - โจอี้ ภูวศิษฐ์", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/p4L6jH2k8Mn/hqdefault.jpg"},
     ]
     try:
         if not merged:
@@ -646,14 +584,7 @@ def ai_recommend(request):
             {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/s-MZid-59Hc/hqdefault.jpg"},
             {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://i.ytimg.com/vi/rc7KnQAh_1I/hqdefault.jpg"},
             {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/I9ZIq7ynvdU/hqdefault.jpg"},
-            {"id": "9bZkp7q19f0", "title": "ธาตุทองซาวด์ - YOUNGOHM", "channel": "YOUNGOHM", "thumbnail": "https://i.ytimg.com/vi/9bZkp7q19f0/hqdefault.jpg"},
             {"id": "Bk4O_3WF8II", "title": "ซ่อน(ไม่)หา - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/Bk4O_3WF8II/hqdefault.jpg"},
-            {"id": "kJQP7kiw5Fk", "title": "ลืมไปแล้วว่ายังไง - Silly Fools", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/kJQP7kiw5Fk/hqdefault.jpg"},
-            {"id": "OPf0YbXqDm0", "title": "ดาวหางฮัลเลย์ - Fellow Fellow", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/OPf0YbXqDm0/hqdefault.jpg"},
-            {"id": "09R8_2nJtjg", "title": "เสน่หา - Groove Riders", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/09R8_2nJtjg/hqdefault.jpg"},
-            {"id": "2Vv-BfVoq4g", "title": "ละบาป - Musketeers", "channel": "Musketeers", "thumbnail": "https://i.ytimg.com/vi/2Vv-BfVoq4g/hqdefault.jpg"},
-            {"id": "QH2-TGUlwu4", "title": "จดจำ - Getsunova", "channel": "Getsunova", "thumbnail": "https://i.ytimg.com/vi/QH2-TGUlwu4/hqdefault.jpg"},
-            {"id": "JGwWNGJdvx8", "title": "คิดถึง - Silly Fools", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/JGwWNGJdvx8/hqdefault.jpg"},
         ]
         try:
             fb_filtered = [r for r in _fallback_static if not _is_blocked(r["id"]) and not _is_album_title(r.get("title", "")) and not _is_ai_title(r.get("title", ""), r.get("channel", "")) and not _is_non_music(r.get("title", ""), r.get("channel", ""))]

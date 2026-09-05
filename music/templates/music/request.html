@@ -101,7 +101,7 @@
                     ค้นหา
                 </button>
             </div>
-            <p id="loading" class="hidden text-sm text-slate-500 text-center py-2">🤖 AI กำลังช่วยค้นเพลง...</p>
+            <p id="loading" class="hidden text-sm text-slate-500 text-center py-2">AI กำลังช่วยค้นเพลง...</p>
             <div id="results" class="space-y-2"></div>
         </div>
 
@@ -165,6 +165,7 @@
 
         let searchResults = [];
         let searchTimer = null;
+        let searchAbort = null;
         const searchInput = document.getElementById("searchInput");
         let hitSongs = [
             { id: "qguo-j5PxBE", title: "ซ่อน(ไม่)หา", channel: "Jeff Satur", thumbnail: "https://i.ytimg.com/vi/qguo-j5PxBE/hqdefault.jpg", type: "hit" },
@@ -245,10 +246,15 @@
         function searchSong() {
             const query = document.getElementById("searchInput").value.trim();
             if (!query) return;
+            if (searchAbort) { searchAbort.abort(); }
             document.getElementById("loading").classList.remove("hidden");
-            fetch("/api/search/?q=" + encodeURIComponent(query))
-                .then(res => res.json())
+            function searchRetry(isRetry) {
+                searchAbort = new AbortController();
+                const timeoutId = setTimeout(() => searchAbort.abort(), 8000);
+                fetch("/api/search/?q=" + encodeURIComponent(query), { signal: searchAbort.signal })
+                .then(res => { if (!res.ok) throw new Error('Search '+res.status); return res.json(); })
                 .then(data => {
+                    clearTimeout(timeoutId);
                     document.getElementById("loading").classList.add("hidden");
                     searchResults = filterBlockedSongs(data.results);
                     const container = document.getElementById("results");
@@ -274,10 +280,18 @@
                     });
                 })
                 .catch(err => {
+                    clearTimeout(timeoutId);
                     document.getElementById("loading").classList.add("hidden");
+                    if (err && err.name === 'AbortError') return;
+                    if (!isRetry) {
+                        setTimeout(() => searchRetry(true), 800);
+                        return;
+                    }
                     console.error(err);
                     showToast("ค้นหาไม่สำเร็จ ลองใหม่นะ", "error");
                 });
+            }
+            searchRetry(false);
         }
 
         function requestSong(idx) {

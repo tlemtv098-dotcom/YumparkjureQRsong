@@ -301,7 +301,7 @@
                                    class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
                             <div id="search-suggestions" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"></div>
                         </div>
-                        <p id="manual-loading" class="hidden text-xs text-slate-500 dark:text-slate-400 text-center py-2">🤖 AI กำลังช่วยค้นเพลง...</p>
+                        <p id="manual-loading" class="hidden text-xs text-slate-500 dark:text-slate-400 text-center py-2">AI กำลังช่วยค้นเพลง...</p>
                         <div id="manual-results" class="space-y-2 mt-2"></div>
                     </div>
 
@@ -1019,6 +1019,7 @@
         // --- Manual Search ---
         let manualSearchResults = [];
         let manualSearchTimer = null;
+        let manualSearchAbort = null;
         let suggestTimer = null;
 
         function manualSearch() {
@@ -1028,9 +1029,16 @@
             document.getElementById("manual-results").innerHTML = "";
             hideSuggestions();
 
-            fetch("/api/search/?q=" + encodeURIComponent(query))
-                .then(res => res.json())
+            if (manualSearchAbort) { try { manualSearchAbort.abort(); } catch(e) {} }
+            function manualSearchRetry(isRetry) {
+                const manualController = new AbortController();
+                manualSearchAbort = manualController;
+                const manualSearchTimeoutId = setTimeout(() => manualController.abort(), 8000);
+
+                fetch("/api/search/?q=" + encodeURIComponent(query), { signal: manualController.signal })
+                .then(res => { if (!res.ok) throw new Error("search failed: " + res.status); return res.json(); })
                 .then(data => {
+                    clearTimeout(manualSearchTimeoutId);
                     document.getElementById("manual-loading").classList.add("hidden");
                     manualSearchResults = data.results.filter(song => !blockedVideoIds.has(song.id) && !isAlbumLike(song.title) && !isAI(song.title, song.channel));
                     const container = document.getElementById("manual-results");
@@ -1060,10 +1068,18 @@
                     });
                 })
                 .catch(err => {
+                    clearTimeout(manualSearchTimeoutId);
                     document.getElementById("manual-loading").classList.add("hidden");
+                    if (err && err.name === "AbortError") return;
+                    if (!isRetry) {
+                        setTimeout(() => manualSearchRetry(true), 800);
+                        return;
+                    }
                     console.error(err);
-                    showToast("เกิดข้อผิดพลาด", "error");
+                    showToast("เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ ลองใหม่อีกครั้ง", "error");
                 });
+            }
+            manualSearchRetry(false);
         }
 
         function manualPlay(idx) {

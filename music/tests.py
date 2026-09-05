@@ -400,3 +400,88 @@ class SingleSoundOverlayTests(TestCase):
         content = res.content.decode()
         self.assertIn('id="sound-overlay"', content)
         self.assertNotIn('id="queue-overlay"', content)
+
+
+class SearchFastFallbackRegressionTests(TestCase):
+    def test_search_returns_fast_when_api_empty(self):
+        import time
+        from unittest.mock import patch
+        with patch('music.views.youtube_api_search', return_value=[]):
+            start = time.time()
+            res = self.client.get('/api/search/?q=ข้างกัน')
+            elapsed = time.time() - start
+            self.assertEqual(res.status_code, 200)
+            self.assertLess(elapsed, 5)
+            self.assertIsInstance(res.json()['results'], list)
+
+    def test_player_search_has_abort(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        self.assertIn('AbortController', html)
+        self.assertIn('manual-loading', html)
+
+    def test_request_search_has_abort(self):
+        res = self.client.get('/request/')
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        self.assertIn('AbortController', html)
+        self.assertIn('loading', html)
+
+
+class SearchColdstartRetryRegressionTests(TestCase):
+    def test_player_search_retries_once_and_thai_message(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        self.assertIn('manualSearchRetry', html)
+        self.assertIn('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', html)
+
+    def test_request_search_retries_once(self):
+        res = self.client.get('/request/')
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        self.assertIn('searchRetry', html)
+
+
+class FallbackIdsRegressionTests(TestCase):
+    def test_hits_fallback_ids_are_valid_youtube_ids(self):
+        import re
+        from unittest.mock import patch
+        from django.core.cache import cache
+        cache.clear()
+        with patch('music.views.search_youtube', return_value=[]):
+            cache.clear()
+            res = self.client.get('/api/hits/')
+            self.assertEqual(res.status_code, 200)
+            results = res.json().get('results', [])
+            self.assertGreater(len(results), 0)
+            for r in results:
+                self.assertRegex(r['id'], r'^[A-Za-z0-9_-]{11}$')
+
+    def test_hits_fallback_thumbnails_contain_own_id(self):
+        from unittest.mock import patch
+        from django.core.cache import cache
+        cache.clear()
+        with patch('music.views.search_youtube', return_value=[]):
+            cache.clear()
+            res = self.client.get('/api/hits/')
+            self.assertEqual(res.status_code, 200)
+            results = res.json().get('results', [])
+            self.assertGreater(len(results), 0)
+            for r in results:
+                self.assertIn(r['id'], r.get('thumbnail', ''))
+
+
+class FallbackMismatchRegressionTests(TestCase):
+    def test_hits_fallback_has_no_mismatched_ids(self):
+        from unittest.mock import patch
+        from django.core.cache import cache
+        cache.clear()
+        with patch('music.views.search_youtube', return_value=[]):
+            cache.clear()
+            res = self.client.get('/api/hits/')
+            self.assertEqual(res.status_code, 200)
+            ids = [r['id'] for r in res.json().get('results', [])]
+            self.assertNotIn('9bZkp7q19f0', ids)
+            self.assertNotIn('kJQP7kiw5Fk', ids)
