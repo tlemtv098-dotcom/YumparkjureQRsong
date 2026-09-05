@@ -30,6 +30,17 @@ BLOCKED_VIDEO_IDS = {
     'dQw4w9WgXcQ',
     'qguo-j5PxBE',
 }
+# Fallback hits that must never be permanently blocked (matches _fallback_static in hits/ai_recommend)
+FALLBACK_IDS = {
+    'ks7p6DA0dKk',
+    'zwvv71slEYc',
+    'L1k0wkQ6uww',
+    'yEbv0QiI1Ns',
+    's-MZid-59Hc',
+    'rc7KnQAh_1I',
+    'I9ZIq7ynvdU',
+    'Bk4O_3WF8II',
+}
 def _is_blocked(video_id):
     if video_id in BLOCKED_VIDEO_IDS:
         return True
@@ -537,6 +548,14 @@ def clear_queue(request):
     SongQueue.objects.all().delete()
     return JsonResponse({'status': 'cleared'})
 
+def clear_blocked(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'method'}, status=405)
+    if not _is_owner(request):
+        return JsonResponse({'error':'forbidden'}, status=403)
+    deleted, _ = BlockedVideo.objects.filter(video_id__in=FALLBACK_IDS).delete()
+    return JsonResponse({'status': 'cleared', 'deleted': deleted})
+
 def my_songs(request):
     client_id = request.GET.get('client_id', '')
     songs = SongQueue.objects.filter(client_id=client_id, is_played=False).values(
@@ -554,6 +573,8 @@ def remove_my_song(request, song_id):
 
 def block_video(request, video_id):
     if request.method == 'POST':
+        if video_id in FALLBACK_IDS:
+            return JsonResponse({'status': 'skipped', 'video_id': video_id})
         BlockedVideo.objects.get_or_create(video_id=video_id, defaults={'reason': 'Error 153'})
         return JsonResponse({'status': 'blocked', 'video_id': video_id})
     return JsonResponse({'status': 'failed'}, status=405)

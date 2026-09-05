@@ -623,3 +623,43 @@ class SearchButtonsWrapRegressionTests(TestCase):
         html = res.content.decode()
         self.assertIn('flex-wrap', html)
         self.assertIn('w-full md:w-auto', html)
+
+
+class FallbackUnblockRegressionTests(TestCase):
+    def test_block_fallback_id_skipped(self):
+        from .models import BlockedVideo
+        res = self.client.post('/api/block/ks7p6DA0dKk/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()['status'], 'skipped')
+        self.assertEqual(BlockedVideo.objects.filter(video_id='ks7p6DA0dKk').count(), 0)
+
+    def test_clear_blocked_deletes_only_fallback_ids(self):
+        from .models import BlockedVideo
+        BlockedVideo.objects.create(video_id='ks7p6DA0dKk', reason='Error 153')
+        BlockedVideo.objects.create(video_id='ZZZZZZZZZZZ', reason='Error 153')
+        # without token -> 403, rows untouched
+        res = self.client.post('/api/block/clear/')
+        self.assertEqual(res.status_code, 403)
+        self.assertEqual(BlockedVideo.objects.filter(video_id='ks7p6DA0dKk').count(), 1)
+        self.assertEqual(BlockedVideo.objects.filter(video_id='ZZZZZZZZZZZ').count(), 1)
+        # owner clears only FALLBACK_IDS rows
+        res = self.client.post('/api/block/clear/', headers={'X-Player-Token': settings.PLAYER_TOKEN})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(BlockedVideo.objects.filter(video_id='ks7p6DA0dKk').count(), 0)
+        self.assertEqual(BlockedVideo.objects.filter(video_id='ZZZZZZZZZZZ').count(), 1)
+
+    def test_hits_fallback_not_filtered_by_non_fallback_db_blocks(self):
+        from unittest.mock import patch
+        from django.core.cache import cache
+        from .models import BlockedVideo
+        from .views import FALLBACK_IDS
+        cache.clear()
+        BlockedVideo.objects.create(video_id='ZZZZZZZZZZZ', reason='Error 153')
+        with patch('music.views.search_youtube', return_value=[]):
+            cache.clear()
+            res = self.client.get('/api/hits/')
+            self.assertEqual(res.status_code, 200)
+            ids = [r['id'] for r in res.json().get('results', [])]
+            self.assertGreater(len(ids), 0)
+            for fid in FALLBACK_IDS:
+                self.assertIn(fid, ids, f'fallback id {fid} missing from hits')
