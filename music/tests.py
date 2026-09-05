@@ -663,3 +663,17 @@ class FallbackUnblockRegressionTests(TestCase):
             self.assertGreater(len(ids), 0)
             for fid in FALLBACK_IDS:
                 self.assertIn(fid, ids, f'fallback id {fid} missing from hits')
+
+
+class Error153BreakerRegressionTests(TestCase):
+    def test_153_breaker_counter_and_reset_markers(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'consecutive153')
+        self.assertContains(res, 'consecutive153 = 0')
+        self.assertContains(res, 'consecutive153++')
+        self.assertContains(res, 'consecutive153 >= 3')
+        self.assertContains(res, 'handleOverlayTap')
+        self.assertContains(res, 'YT.PlayerState.PLAYING')
+        self.assertContains(res, 'sound-overlay')
+        self.assertContains(res, 'แตะเพื่อลองใหม่')

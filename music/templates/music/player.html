@@ -350,6 +350,7 @@
         let soundEnabled = false;
         let playerStarting = false;
         let last153Time = 0;
+        let consecutive153 = 0;
 
         // Video IDs with embedding disabled
         const blockedVideoIds = new Set([
@@ -451,6 +452,7 @@
 
         // --- Sound overlay tap handler (single overlay) ---
         function handleOverlayTap() {
+            consecutive153 = 0;
             userInteracted = true;
             soundEnabled = true;
             const soundOverlay = document.getElementById('sound-overlay');
@@ -621,6 +623,15 @@
                     'onError': (event) => {
                         // Embedding disabled / video unavailable errors
                         if ([2, 5, 100, 101, 150, 153].includes(event.data)) {
+                            if (event.data === 153) {
+                                consecutive153++;
+                                if (consecutive153 >= 3) {
+                                    const soBreak = document.getElementById('sound-overlay');
+                                    if (soBreak) { soBreak.classList.remove('hidden'); soBreak.style.display = 'flex'; }
+                                    if (consecutive153 === 3) showToast("ตรวจพบปัญหาเล่นไม่ได้หลายเพลงติด แตะเพื่อลองใหม่", "error");
+                                    return;
+                                }
+                            }
                             console.warn('YouTube video cannot be embedded (Error ' + event.data + '), skipping:', currentSong?.title);
                             if (currentSong) blockedVideoIds.add(currentSong.video_id);
                             // persist so /api/hits/search won't return it again
@@ -669,6 +680,7 @@
             }
             // When video starts playing, hide sound overlays if user has interacted
             if (event.data === YT.PlayerState.PLAYING) {
+                consecutive153 = 0;
                 window._retryCount = 0;
                 if (userInteracted) {
                     const so = document.getElementById('sound-overlay');
