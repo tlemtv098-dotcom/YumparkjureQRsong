@@ -534,6 +534,26 @@ class ApiKeyRotationRegressionTests(TestCase):
         self.assertEqual(results[0]['id'], 'ks7p6DA0dKk')
         self.assertEqual(mock_urlopen.call_count, 2)
 
+    def test_network_error_tries_next_key(self):
+        import os
+        import urllib.error
+        from unittest.mock import patch
+        from music.views import youtube_api_search
+        env = {
+            'YOUTUBE_API_KEYS': 'TESTKEY1,TESTKEY2',
+            'YOUTUBE_API_KEY': '',
+            'key': '',
+            'YOUTUBE_API_KEY_2': '',
+        }
+        with patch.dict(os.environ, env):
+            with patch('music.views.urllib.request.urlopen',
+                       side_effect=[urllib.error.URLError('timed out'),
+                                    self._success_response()]) as mock_urlopen:
+                results = youtube_api_search('test song', 5)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['id'], 'ks7p6DA0dKk')
+        self.assertEqual(mock_urlopen.call_count, 2)
+
     def test_single_invalid_key_returns_empty_without_looping(self):
         import io
         import os

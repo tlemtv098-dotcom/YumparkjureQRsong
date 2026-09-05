@@ -141,8 +141,8 @@ def youtube_api_search(query, max_results=8):
             print('YouTube API Error:', exc)
             return []
         except Exception as exc:
-            print('YouTube API Error:', exc)
-            return []
+            print(f'YouTube API key {index} network error: {exc}, trying next')
+            continue
 
         results = []
         for item in payload.get('items', []):
