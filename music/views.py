@@ -318,8 +318,8 @@ def hits(request):
         queries = genre_queries[genre]
     else:
         queries = ['เพลงไทยฮิต', 'เพลงฮิต 2025', 'เพลงดัง', 'เพลงใหม่ 2025', 'เพลงไทยเพราะๆ', 'เพลงฮิตติดชาร์ต']
-    # pick 3 random queries to broaden pool and return 30 unique (iPad Safari perf)
-    k = min(3, len(queries))
+    # pick 5 random queries to broaden pool and return 50 unique (iPad Safari perf)
+    k = min(5, len(queries))
     picked = random.sample(queries, k) if k else []
     # cache key versioned to avoid stale single-query cache; keep 60s but shuffle on hit
     cache_key = f"hits:{genre}:v3"
@@ -344,8 +344,8 @@ def hits(request):
         # shuffle a copy to avoid same order on refresh within 60s
         out_cached = list(dedup_c)
         random.shuffle(out_cached)
-        return JsonResponse({'results': out_cached[:30]})
-    # merge results from 3 queries (30 total, 10 per query)
+        return JsonResponse({'results': out_cached[:50]})
+    # merge results from 5 queries (50 total, 10 per query)
     merged = []
     for q in picked:
         try:
@@ -394,15 +394,15 @@ def hits(request):
         for r in results:
             if r['id'] not in seen and not _is_album_title(r.get('title','')) and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')):
                 dedup.append(r); seen.add(r['id'])
-        # if live results deduped to less than 30, pad with fallback to ensure 30 non-duplicate
-        if len(dedup) < 30:
+        # if live results deduped to less than 50, pad with fallback to ensure 50 non-duplicate
+        if len(dedup) < 50:
             for fb in _fallback_static:
                 if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_album_title(fb.get('title','')) and not _is_ai_title(fb.get('title',''), fb.get('channel','')) and not _is_non_music(fb.get('title',''), fb.get('channel','')):
                     dedup.append(fb); seen.add(fb['id'])
-                if len(dedup) >= 30:
+                if len(dedup) >= 50:
                     break
         random.shuffle(dedup)
-        out = dedup[:30]
+        out = dedup[:50]
         try:
             cache.set(cache_key, out, 60)
         except Exception as e:
@@ -412,7 +412,7 @@ def hits(request):
         print(f'hits failed, returning static fallback: {e}')
         safe = [r for r in _fallback_static if r['id'] not in BLOCKED_VIDEO_IDS and not _is_album_title(r.get('title', '')) and not _is_ai_title(r.get('title', ''), r.get('channel', '')) and not _is_non_music(r.get('title', ''), r.get('channel', ''))]
         random.shuffle(safe)
-        return JsonResponse({'results': safe[:30]})
+        return JsonResponse({'results': safe[:50]})
 
 def add_to_queue(request):
     if request.method == 'POST':
