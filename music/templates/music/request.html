@@ -226,7 +226,7 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.results && data.results.length > 0) {
-                        hitSongs = filterBlockedSongs(data.results);
+                        hitSongs = filterBlockedSongs(data.results).slice(0, 30);
                         renderHitList();
                     }
                 })
