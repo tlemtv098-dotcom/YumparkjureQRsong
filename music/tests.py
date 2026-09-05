@@ -614,3 +614,12 @@ class FallbackPoolRegressionTests(TestCase):
                 any('รัก' in r.get('title', '') for r in results),
                 'expected at least one fallback title containing รัก for query เพลงรัก',
             )
+
+
+class SearchButtonsWrapRegressionTests(TestCase):
+    def test_search_buttons_wrap(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        self.assertIn('flex-wrap', html)
+        self.assertIn('w-full md:w-auto', html)
