@@ -783,6 +783,11 @@
                         if (userInteracted) hideSoundOverlay();
                     }
 
+                    if (!isPlayerReady && queue.length > 0) {
+                        idleSplash.classList.add('hidden');
+                        if (soundOverlay) { soundOverlay.classList.remove('hidden'); soundOverlay.style.display = 'flex'; }
+                    }
+
                     if (hasNewSongs && isPlayerReady && !currentSong) {
                         if (!userInteracted) {
                             idleSplash.classList.add('hidden');
