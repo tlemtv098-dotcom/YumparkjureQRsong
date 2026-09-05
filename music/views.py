@@ -216,6 +216,16 @@ def search_song(request):
             {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://i.ytimg.com/vi/L1k0wkQ6uww/hqdefault.jpg"},
             {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/s-MZid-59Hc/hqdefault.jpg"},
             {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://i.ytimg.com/vi/rc7KnQAh_1I/hqdefault.jpg"},
+            {"id": "OYPiXBIgvJ8", "title": "เพลงรัก - Three Man Down |Official MV|", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/OYPiXBIgvJ8/hqdefault.jpg"},
+            {"id": "P5sHZRicEXg", "title": "Three Man Down - เพลงรัก Feat. whateve | Live at PAPAYA Studio", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/P5sHZRicEXg/hqdefault.jpg"},
+            {"id": "vMUeFBHwzSI", "title": "Three Man Down - เพลงรัก | Live at GFEST MARATHON CONCERT 2025", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/vMUeFBHwzSI/hqdefault.jpg"},
+            {"id": "FFhL0UcYVTc", "title": "เพลงรักที่ยังไม่ลืม (Glitch)", "channel": "Emi Thasorn - Topic", "thumbnail": "https://i.ytimg.com/vi/FFhL0UcYVTc/hqdefault.jpg"},
+            {"id": "g1UQm2IGhLA", "title": "เพลงรัก - Three Man Down [เนื้อเพลง]", "channel": "90's Lyrics", "thumbnail": "https://i.ytimg.com/vi/g1UQm2IGhLA/hqdefault.jpg"},
+            {"id": "Hc4OrO4LRWw", "title": "PURPEECH - กลัวว่าฉันจะไม่เสียใจ (Fear) [Official MV]", "channel": "PURPEECH Official", "thumbnail": "https://i.ytimg.com/vi/Hc4OrO4LRWw/hqdefault.jpg"},
+            {"id": "Jdzs-qcURQE", "title": "guncharlie - จากกันโดยสมบูรณ์ | OFFICIAL MV", "channel": "Kicks Records", "thumbnail": "https://i.ytimg.com/vi/Jdzs-qcURQE/hqdefault.jpg"},
+            {"id": "ReUGJf6FxhM", "title": "อกหัก - bodyslam【OFFICIAL MV】", "channel": "GMM GRAMMY OFFICIAL", "thumbnail": "https://i.ytimg.com/vi/ReUGJf6FxhM/hqdefault.jpg"},
+            {"id": "BQqAUhxSMOo", "title": "คำยินดี - Klear | ตำนานเพลงอกหัก 100 ล้านวิว | Songtopia Livehouse", "channel": "Songtopia", "thumbnail": "https://i.ytimg.com/vi/BQqAUhxSMOo/hqdefault.jpg"},
+            {"id": "hBK29bbOLS4", "title": "แก้บน - ก้านตอง ทุ่งเงิน【OFFICIAL MV】", "channel": "GRAMMY GOLD OFFICIAL", "thumbnail": "https://i.ytimg.com/vi/hBK29bbOLS4/hqdefault.jpg"},
         ]
         # simple filter by query substring
         q_lower = query.lower()
