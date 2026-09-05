@@ -629,6 +629,7 @@
                                     const soBreak = document.getElementById('sound-overlay');
                                     if (soBreak) { soBreak.classList.remove('hidden'); soBreak.style.display = 'flex'; }
                                     if (consecutive153 === 3) showToast("ตรวจพบปัญหาเล่นไม่ได้หลายเพลงติด แตะเพื่อลองใหม่", "error");
+                                    try { skipSong(); } catch(e) {}
                                     return;
                                 }
                             }

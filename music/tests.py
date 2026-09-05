@@ -677,3 +677,16 @@ class Error153BreakerRegressionTests(TestCase):
         self.assertContains(res, 'YT.PlayerState.PLAYING')
         self.assertContains(res, 'sound-overlay')
         self.assertContains(res, 'แตะเพื่อลองใหม่')
+
+
+class BreakerTripSkipRegressionTests(TestCase):
+    def test_breaker_trip_skips_song(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        trip_idx = html.find('consecutive153 >= 3')
+        self.assertNotEqual(trip_idx, -1, 'trip branch marker missing')
+        return_idx = html.find('return', trip_idx)
+        self.assertNotEqual(return_idx, -1, 'trip branch return missing')
+        trip_block = html[trip_idx:return_idx]
+        self.assertIn('skipSong()', trip_block)
