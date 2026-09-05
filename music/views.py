@@ -7,6 +7,7 @@ import socket
 import qrcode
 import urllib.parse
 import urllib.request
+import urllib.error
 import time
 from collections import defaultdict
 from datetime import timedelta
@@ -88,58 +89,85 @@ def _check_rate_limit(request, limit=30, window=10):
     return True
 
 
+def _youtube_api_keys():
+    """Return ordered unique non-empty API keys from env (never log values)."""
+    keys = []
+    for part in (os.environ.get('YOUTUBE_API_KEYS') or '').split(','):
+        candidate = part.strip()
+        if candidate and candidate not in keys:
+            keys.append(candidate)
+    for env_name in ('YOUTUBE_API_KEY', 'key', 'YOUTUBE_API_KEY_2'):
+        candidate = (os.environ.get(env_name) or '').strip()
+        if candidate and candidate not in keys:
+            keys.append(candidate)
+    return keys
+
+
 def youtube_api_search(query, max_results=8):
     """Search YouTube through the official API when a key is configured."""
-    # Accept the correctly named variable and the temporary `key` name
-    # currently used in some local .env files.
-    api_key = (os.environ.get('YOUTUBE_API_KEY') or os.environ.get('key', '')).strip()
-    if not api_key:
+    # Accept YOUTUBE_API_KEYS (comma-separated) plus the single-key names
+    # currently used in local .env files / hosting env.
+    api_keys = _youtube_api_keys()
+    if not api_keys:
         return []
 
-    params = urllib.parse.urlencode({
-        'part': 'snippet',
-        'q': query,
-        'type': 'video',
-        'maxResults': min(max_results, 50),
-        'regionCode': 'TH',
-        'videoCategoryId': '10',
-        'videoEmbeddable': 'true',
-        'videoSyndicated': 'true',
-        'key': api_key,
-    })
-    try:
-        with urllib.request.urlopen(
-            f'https://www.googleapis.com/youtube/v3/search?{params}',
-            timeout=8,
-        ) as response:
-            payload = json.loads(response.read().decode('utf-8'))
-    except Exception as exc:
-        print('YouTube API Error:', exc)
-        return []
-
-    results = []
-    for item in payload.get('items', []):
-        video_id = item.get('id', {}).get('videoId')
-        snippet = item.get('snippet', {})
-        if not video_id or not re.match(r'^[A-Za-z0-9_-]{11}$', video_id) or _is_blocked(video_id):
-            continue
-        title = snippet.get('title', 'Unknown Title')
-        if _is_album_title(title):
-            continue
-        channel = snippet.get('channelTitle', 'YouTube')
-        if _is_ai_title(title, channel):
-            continue
-        if _is_non_music(title, channel):
-            continue
-        thumbnails = snippet.get('thumbnails', {})
-        thumbnail = (thumbnails.get('medium') or thumbnails.get('default') or {}).get('url')
-        results.append({
-            'id': video_id,
-            'title': title,
-            'channel': channel,
-            'thumbnail': thumbnail or f'https://i.ytimg.com/vi/{video_id}/hqdefault.jpg',
+    for index, api_key in enumerate(api_keys, start=1):
+        params = urllib.parse.urlencode({
+            'part': 'snippet',
+            'q': query,
+            'type': 'video',
+            'maxResults': min(max_results, 50),
+            'regionCode': 'TH',
+            'videoCategoryId': '10',
+            'videoEmbeddable': 'true',
+            'videoSyndicated': 'true',
+            'key': api_key,
         })
-    return results
+        try:
+            with urllib.request.urlopen(
+                f'https://www.googleapis.com/youtube/v3/search?{params}',
+                timeout=8,
+            ) as response:
+                payload = json.loads(response.read().decode('utf-8'))
+        except urllib.error.HTTPError as exc:
+            try:
+                body = exc.read().decode('utf-8', errors='ignore')
+            except Exception:
+                body = ''
+            lowered = body.lower()
+            if exc.code == 403 and ('quotaexceeded' in lowered or 'ratelimitexceeded' in lowered or 'quota' in lowered):
+                print(f'YouTube API key {index} quota exceeded, trying next')
+                continue
+            print('YouTube API Error:', exc)
+            return []
+        except Exception as exc:
+            print('YouTube API Error:', exc)
+            return []
+
+        results = []
+        for item in payload.get('items', []):
+            video_id = item.get('id', {}).get('videoId')
+            snippet = item.get('snippet', {})
+            if not video_id or not re.match(r'^[A-Za-z0-9_-]{11}$', video_id) or _is_blocked(video_id):
+                continue
+            title = snippet.get('title', 'Unknown Title')
+            if _is_album_title(title):
+                continue
+            channel = snippet.get('channelTitle', 'YouTube')
+            if _is_ai_title(title, channel):
+                continue
+            if _is_non_music(title, channel):
+                continue
+            thumbnails = snippet.get('thumbnails', {})
+            thumbnail = (thumbnails.get('medium') or thumbnails.get('default') or {}).get('url')
+            results.append({
+                'id': video_id,
+                'title': title,
+                'channel': channel,
+                'thumbnail': thumbnail or f'https://i.ytimg.com/vi/{video_id}/hqdefault.jpg',
+            })
+        return results
+    return []
 
 
 def search_youtube(query, max_results=8):

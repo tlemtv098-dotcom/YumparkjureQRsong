@@ -485,3 +485,83 @@ class FallbackMismatchRegressionTests(TestCase):
             ids = [r['id'] for r in res.json().get('results', [])]
             self.assertNotIn('9bZkp7q19f0', ids)
             self.assertNotIn('kJQP7kiw5Fk', ids)
+
+
+class ApiKeyRotationRegressionTests(TestCase):
+    def _success_response(self, video_id='ks7p6DA0dKk'):
+        import json as json_lib
+        from unittest.mock import MagicMock
+        payload = {
+            'items': [
+                {
+                    'id': {'videoId': video_id},
+                    'snippet': {
+                        'title': 'Test Song',
+                        'channelTitle': 'Test Channel',
+                        'thumbnails': {'medium': {'url': 'https://i.ytimg.com/vi/%s/mqdefault.jpg' % video_id}},
+                    },
+                }
+            ]
+        }
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.__exit__.return_value = False
+        response.read.return_value = json_lib.dumps(payload).encode('utf-8')
+        return response
+
+    def test_rotation_on_quota_uses_second_key(self):
+        import io
+        import os
+        import urllib.error
+        from unittest.mock import patch
+        from music.views import youtube_api_search
+        quota_body = b'{"error": {"errors": [{"reason": "quotaExceeded"}]}}'
+        quota_error = urllib.error.HTTPError(
+            'https://www.googleapis.com/youtube/v3/search', 403,
+            'Forbidden', {}, io.BytesIO(quota_body),
+        )
+        env = {
+            'YOUTUBE_API_KEYS': 'TESTKEY1,TESTKEY2',
+            'YOUTUBE_API_KEY': '',
+            'key': '',
+            'YOUTUBE_API_KEY_2': '',
+        }
+        with patch.dict(os.environ, env):
+            with patch('music.views.urllib.request.urlopen',
+                       side_effect=[quota_error, self._success_response()]) as mock_urlopen:
+                results = youtube_api_search('test song', 5)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['id'], 'ks7p6DA0dKk')
+        self.assertEqual(mock_urlopen.call_count, 2)
+
+    def test_single_invalid_key_returns_empty_without_looping(self):
+        import io
+        import os
+        import urllib.error
+        from unittest.mock import patch
+        from music.views import youtube_api_search
+        invalid_body = b'{"error": {"errors": [{"reason": "keyInvalid"}]}}'
+        invalid_error = urllib.error.HTTPError(
+            'https://www.googleapis.com/youtube/v3/search', 400,
+            'Bad Request', {}, io.BytesIO(invalid_body),
+        )
+        env = {
+            'YOUTUBE_API_KEYS': 'TESTKEY1',
+            'YOUTUBE_API_KEY': '',
+            'key': '',
+            'YOUTUBE_API_KEY_2': '',
+        }
+        with patch.dict(os.environ, env):
+            with patch('music.views.urllib.request.urlopen',
+                       side_effect=invalid_error) as mock_urlopen:
+                results = youtube_api_search('test song', 5)
+        self.assertEqual(results, [])
+        self.assertEqual(mock_urlopen.call_count, 1)
+
+    def test_no_hardcoded_real_key_in_views(self):
+        import os
+        from django.conf import settings
+        views_path = os.path.join(settings.BASE_DIR, 'music', 'views.py')
+        with open(views_path, 'r', encoding='utf-8') as f:
+            source = f.read()
+        self.assertEqual(source.count('AIza'), 0)
