@@ -553,7 +553,7 @@ def clear_blocked(request):
         return JsonResponse({'error': 'method'}, status=405)
     if not _is_owner(request):
         return JsonResponse({'error':'forbidden'}, status=403)
-    deleted, _ = BlockedVideo.objects.filter(video_id__in=FALLBACK_IDS).delete()
+    deleted, _ = BlockedVideo.objects.all().delete()
     return JsonResponse({'status': 'cleared', 'deleted': deleted})
 
 def my_songs(request):

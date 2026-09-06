@@ -633,20 +633,20 @@ class FallbackUnblockRegressionTests(TestCase):
         self.assertEqual(res.json()['status'], 'skipped')
         self.assertEqual(BlockedVideo.objects.filter(video_id='ks7p6DA0dKk').count(), 0)
 
-    def test_clear_blocked_deletes_only_fallback_ids(self):
+    def test_clear_blocked_clears_all(self):
         from .models import BlockedVideo
         BlockedVideo.objects.create(video_id='ks7p6DA0dKk', reason='Error 153')
         BlockedVideo.objects.create(video_id='ZZZZZZZZZZZ', reason='Error 153')
+        BlockedVideo.objects.create(video_id='YYYYYYYYYYY', reason='Error 153')
         # without token -> 403, rows untouched
         res = self.client.post('/api/block/clear/')
         self.assertEqual(res.status_code, 403)
-        self.assertEqual(BlockedVideo.objects.filter(video_id='ks7p6DA0dKk').count(), 1)
-        self.assertEqual(BlockedVideo.objects.filter(video_id='ZZZZZZZZZZZ').count(), 1)
-        # owner clears only FALLBACK_IDS rows
+        self.assertEqual(BlockedVideo.objects.count(), 3)
+        # owner clears all rows
         res = self.client.post('/api/block/clear/', headers={'X-Player-Token': settings.PLAYER_TOKEN})
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(BlockedVideo.objects.filter(video_id='ks7p6DA0dKk').count(), 0)
-        self.assertEqual(BlockedVideo.objects.filter(video_id='ZZZZZZZZZZZ').count(), 1)
+        self.assertEqual(res.json()['deleted'], 3)
+        self.assertEqual(BlockedVideo.objects.count(), 0)
 
     def test_hits_fallback_not_filtered_by_non_fallback_db_blocks(self):
         from unittest.mock import patch
