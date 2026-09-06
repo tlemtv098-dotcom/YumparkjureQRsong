@@ -732,6 +732,11 @@ class EmbedTestPageTests(TestCase):
         self.assertContains(res, 'prefilled-player')
         self.assertContains(res, 'videoId')
 
+    def test_embed_test_has_noorigin_section(self):
+        res = self.client.get('/embed-test/')
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'noorigin-player')
+
 
 class MinimalPlayerVarsRegressionTests(TestCase):
     def test_player_minimal_vars(self):
