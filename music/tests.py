@@ -690,3 +690,26 @@ class BreakerTripSkipRegressionTests(TestCase):
         self.assertNotEqual(return_idx, -1, 'trip branch return missing')
         trip_block = html[trip_idx:return_idx]
         self.assertIn('skipSong()', trip_block)
+
+
+class BreakerFullStopRegressionTests(TestCase):
+    def test_breaker_full_stop_markers(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        # flag declared
+        self.assertIn('let breakerTripped = false', html)
+        # trip branch sets flag
+        trip_idx = html.find('consecutive153 >= 3')
+        self.assertNotEqual(trip_idx, -1, 'trip branch marker missing')
+        self.assertIn('breakerTripped = true', html[trip_idx:trip_idx + 800])
+        # autoplay guard blocks full-stop
+        self.assertIn('if (breakerTripped) return', html)
+        # tap handler clears flag
+        tap_idx = html.find('function handleOverlayTap')
+        self.assertNotEqual(tap_idx, -1, 'tap handler missing')
+        self.assertIn('breakerTripped = false', html[tap_idx:tap_idx + 800])
+        # PLAYING success clears flag
+        playing_idx = html.find('event.data === YT.PlayerState.PLAYING')
+        self.assertNotEqual(playing_idx, -1, 'PLAYING marker missing')
+        self.assertIn('breakerTripped = false', html[playing_idx:playing_idx + 800])

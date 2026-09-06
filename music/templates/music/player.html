@@ -351,6 +351,7 @@
         let playerStarting = false;
         let last153Time = 0;
         let consecutive153 = 0;
+        let breakerTripped = false;
 
         // Video IDs with embedding disabled
         const blockedVideoIds = new Set([
@@ -453,6 +454,7 @@
         // --- Sound overlay tap handler (single overlay) ---
         function handleOverlayTap() {
             consecutive153 = 0;
+            breakerTripped = false;
             userInteracted = true;
             soundEnabled = true;
             const soundOverlay = document.getElementById('sound-overlay');
@@ -626,6 +628,7 @@
                             if (event.data === 153) {
                                 consecutive153++;
                                 if (consecutive153 >= 3) {
+                                    breakerTripped = true;
                                     const soBreak = document.getElementById('sound-overlay');
                                     if (soBreak) { soBreak.classList.remove('hidden'); soBreak.style.display = 'flex'; }
                                     if (consecutive153 === 3) showToast("ตรวจพบปัญหาเล่นไม่ได้หลายเพลงติด แตะเพื่อลองใหม่", "error");
@@ -682,6 +685,7 @@
             // When video starts playing, hide sound overlays if user has interacted
             if (event.data === YT.PlayerState.PLAYING) {
                 consecutive153 = 0;
+                breakerTripped = false;
                 window._retryCount = 0;
                 if (userInteracted) {
                     const so = document.getElementById('sound-overlay');
@@ -799,6 +803,7 @@
         }
 
         function playNext(withSound) {
+            if (breakerTripped) return;
             if (playerStarting) { setTimeout(()=>playNext(withSound), 350); return; }
             const wantSound = typeof withSound === 'boolean' ? withSound : soundEnabled;
             const next = queue.find(song => !finishingSongIds.has(song.id));
