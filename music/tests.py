@@ -726,6 +726,12 @@ class EmbedTestPageTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, 'loadVideoById')
 
+    def test_embed_test_has_prefilled_section(self):
+        res = self.client.get('/embed-test/')
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'prefilled-player')
+        self.assertContains(res, 'videoId')
+
 
 class MinimalPlayerVarsRegressionTests(TestCase):
     def test_player_minimal_vars(self):

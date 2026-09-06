@@ -18,9 +18,13 @@ body { font-family: system-ui, sans-serif; margin: 16px; }
 <div id="api-player"></div>
 <button id="api-play-btn">โหลดและเล่น</button>
 <p id="api-error"></p>
+<h2>ส่วนที่ 3: สร้างพร้อม videoId</h2>
+<div id="prefilled-player"></div>
+<button id="prefilled-play-btn">เล่น</button>
+<p id="prefilled-error"></p>
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
-let apiPlayer=null; function onYouTubeIframeAPIReady(){ apiPlayer = new YT.Player('api-player',{height:'360',width:'100%',host:'https://www.youtube-nocookie.com',playerVars:{'controls':1,'origin':window.location.origin,'enablejsapi':1},events:{'onError':(e)=>{document.getElementById('api-error').textContent='Error: '+e.data;}}}); } document.getElementById('api-play-btn').addEventListener('click',()=>{ if(apiPlayer){ apiPlayer.loadVideoById('ks7p6DA0dKk'); apiPlayer.playVideo(); } });
+let apiPlayer=null; let prefilledPlayer=null; function onYouTubeIframeAPIReady(){ apiPlayer = new YT.Player('api-player',{height:'360',width:'100%',host:'https://www.youtube-nocookie.com',playerVars:{'controls':1,'origin':window.location.origin,'enablejsapi':1},events:{'onError':(e)=>{document.getElementById('api-error').textContent='Error: '+e.data;}}}); prefilledPlayer = new YT.Player('prefilled-player', {height:'360', width:'100%', host:'https://www.youtube-nocookie.com', videoId:'ks7p6DA0dKk', playerVars:{'controls':1,'origin':window.location.origin,'enablejsapi':1}, events:{'onError':(e)=>{document.getElementById('prefilled-error').textContent='Error: '+e.data;}}}); } document.getElementById('api-play-btn').addEventListener('click',()=>{ if(apiPlayer){ apiPlayer.loadVideoById('ks7p6DA0dKk'); apiPlayer.playVideo(); } }); document.getElementById('prefilled-play-btn').addEventListener('click',()=>{ if(prefilledPlayer){ prefilledPlayer.playVideo(); } });
 </script>
 </div>
 </body>
