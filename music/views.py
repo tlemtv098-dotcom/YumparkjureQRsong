@@ -210,6 +210,9 @@ def player_view(request):
     request_url = f'http://{local_ip}:8000/request/'
     return render(request, 'music/player.html', {'request_url': request_url, 'PLAYER_TOKEN': settings.PLAYER_TOKEN})
 
+def embed_test(request):
+    return render(request, 'music/embed_test.html')
+
 @ensure_csrf_cookie
 def request_view(request):
     return render(request, 'music/request.html')

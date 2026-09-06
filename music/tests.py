@@ -713,3 +713,10 @@ class BreakerFullStopRegressionTests(TestCase):
         playing_idx = html.find('event.data === YT.PlayerState.PLAYING')
         self.assertNotEqual(playing_idx, -1, 'PLAYING marker missing')
         self.assertIn('breakerTripped = false', html[playing_idx:playing_idx + 800])
+
+
+class EmbedTestPageTests(TestCase):
+    def test_embed_test_page_renders_with_nocookie_iframe(self):
+        res = self.client.get('/embed-test/')
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'youtube-nocookie.com/embed/ks7p6DA0dKk')

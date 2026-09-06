@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path('', views.player_view, name='player'),
+    path('embed-test/', views.embed_test, name='embed_test'),
     path('request/', views.request_view, name='request_view'),
     path('api/search/', views.search_song, name='search_song'),
     path('api/hits/', views.hits, name='hits'),
