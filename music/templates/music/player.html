@@ -833,7 +833,7 @@
                         window.noapiTimer = setTimeout(() => {
                             window.noapiTimer = null;
                             try { removePlayedSong(noapiSongId); } catch(e) {}
-                            setTimeout(() => { try { playNextNoApi(); } catch(e) {} }, 500);
+                            setTimeout(() => { try { if (!currentSong) playNextNoApi(); } catch(e) {} }, 500);
                         }, secs * 1000 + 5000);
                     });
             } else {

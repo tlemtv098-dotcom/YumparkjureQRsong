@@ -758,3 +758,10 @@ class NoApiModeRegressionTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, 'NOAPI_MODE')
         self.assertContains(res, 'playNextNoApi')
+
+    def test_noapi_retry_guarded_by_no_current_song(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        self.assertIn('window.noapiTimer', html)
+        self.assertIn('if (!currentSong) playNextNoApi()', html)
