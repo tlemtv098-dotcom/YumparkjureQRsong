@@ -720,3 +720,11 @@ class EmbedTestPageTests(TestCase):
         res = self.client.get('/embed-test/')
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, 'youtube-nocookie.com/embed/ks7p6DA0dKk')
+
+
+class MinimalPlayerVarsRegressionTests(TestCase):
+    def test_player_minimal_vars(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "'enablejsapi': 1")
+        self.assertNotContains(res, "'mute': 1")
