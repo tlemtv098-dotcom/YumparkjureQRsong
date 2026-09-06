@@ -340,6 +340,7 @@
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         const isMobileSafari = isIOS && isSafari;
         const isLineWebView = /Line\/|FBAN|FBAV|Messenger/i.test(navigator.userAgent);
+        const NOAPI_MODE = new URLSearchParams(location.search).has('noapi');
         function getCSRFToken(){return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')||'';}
         function getPlayerToken(){return document.querySelector('meta[name="player-token"]')?.getAttribute('content')||'dev-player-token';}
         function escapeHtml(str){if(!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
@@ -457,6 +458,15 @@
             breakerTripped = false;
             userInteracted = true;
             soundEnabled = true;
+            if (typeof NOAPI_MODE !== 'undefined' && NOAPI_MODE) {
+                const soN = document.getElementById('sound-overlay');
+                if (soN) { soN.classList.add('hidden'); soN.style.display = 'none'; }
+                const idleN = document.getElementById('idle-splash');
+                if (idleN) idleN.classList.add('hidden');
+                if (!currentSong && queue.length > 0) { try { playNextNoApi(); } catch(e) {} }
+                showToast("เปิดเสียงแล้ว", "success");
+                return;
+            }
             const soundOverlay = document.getElementById('sound-overlay');
             const idleSplash = document.getElementById('idle-splash');
             const videoContainer = document.getElementById('video-container');
@@ -595,6 +605,7 @@
 
         // --- YouTube Player (IFrame API only) with iOS Safari fixes ---
         function onYouTubeIframeAPIReady() {
+            if (typeof NOAPI_MODE !== 'undefined' && NOAPI_MODE) { isPlayerReady = true; try { fetchQueue(); } catch(e) {} try { fetchHits(); } catch(e) {} return; }
             // iOS Safari requires playsinline and mute:1 for autoplay
             // Use youtube-nocookie.com to bypass ITP / Private Relay cookie blocking (error 153 on iPad)
             player = new YT.Player('player', {
@@ -796,7 +807,46 @@
                 .catch(err => { console.error(err); showToast("เกิดข้อผิดพลาด", "error"); });
         }
 
+        function playNextNoApi() {
+            if (window.noapiTimer) { clearTimeout(window.noapiTimer); window.noapiTimer = null; }
+            const next = queue.find(song => !finishingSongIds.has(song.id));
+            const videoContainer = document.getElementById('video-container');
+            const soundOverlay = document.getElementById('sound-overlay');
+            const idleSplash = document.getElementById('idle-splash');
+            if (next) {
+                currentSong = next;
+                document.getElementById('now-playing-title').innerText = currentSong.title;
+                if (idleSplash) idleSplash.classList.add('hidden');
+                if (soundOverlay) { soundOverlay.classList.add('hidden'); soundOverlay.style.display = 'none'; }
+                if (videoContainer) { videoContainer.classList.remove('bg-white'); videoContainer.classList.add('bg-black'); }
+                const playerEl = document.getElementById('player');
+                if (playerEl) playerEl.style.display = '';
+                if (playerEl) playerEl.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + encodeURIComponent(currentSong.video_id) + '?autoplay=1&rel=0" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen frameborder="0" style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe>';
+                const noapiId = currentSong.video_id;
+                const noapiSongId = currentSong.id;
+                fetch('/api/duration/?id=' + encodeURIComponent(noapiId))
+                    .then(res => res.json())
+                    .then(data => { const s = parseInt(data && data.duration_sec, 10); return (!isNaN(s) && s > 0) ? s : 180; })
+                    .catch(() => 180)
+                    .then(secs => {
+                        if (window.noapiTimer) { clearTimeout(window.noapiTimer); window.noapiTimer = null; }
+                        window.noapiTimer = setTimeout(() => {
+                            window.noapiTimer = null;
+                            try { removePlayedSong(noapiSongId); } catch(e) {}
+                            setTimeout(() => { try { playNextNoApi(); } catch(e) {} }, 500);
+                        }, secs * 1000 + 5000);
+                    });
+            } else {
+                currentSong = null;
+                document.getElementById('now-playing-title').innerText = 'รอเพลงจากลูกค้า...';
+                if (idleSplash) idleSplash.classList.remove('hidden');
+                if (soundOverlay) { soundOverlay.classList.add('hidden'); soundOverlay.style.display = 'none'; }
+                if (videoContainer) { videoContainer.classList.remove('bg-white'); videoContainer.classList.add('bg-black'); }
+            }
+        }
+
         function playNext(withSound) {
+            if (typeof NOAPI_MODE !== 'undefined' && NOAPI_MODE) return playNextNoApi();
             if (breakerTripped) return;
             if (playerStarting) { setTimeout(()=>playNext(withSound), 350); return; }
             const wantSound = typeof withSound === 'boolean' ? withSound : soundEnabled;
@@ -888,6 +938,7 @@
         }
 
         function skipSong() {
+            if (window.noapiTimer) { clearTimeout(window.noapiTimer); window.noapiTimer = null; }
             // Do NOT delete autoPlayedIds entry when auto random is playing; keep random history intact
             const songToSkip = currentSong || queue.find(song => !finishingSongIds.has(song.id));
             if (songToSkip) removePlayedSong(songToSkip.id);
@@ -906,6 +957,7 @@
         }
 
         function clearQueue() {
+            if (window.noapiTimer) { clearTimeout(window.noapiTimer); window.noapiTimer = null; }
             if (!confirm('ล้างคิวเพลงทั้งหมด?')) return;
             fetch('/api/clear/', { method: 'POST', headers: {"X-CSRFToken": getCSRFToken(), "X-Player-Token": getPlayerToken()}, credentials: 'same-origin' })
                 .then(() => {

@@ -739,3 +739,22 @@ class MinimalPlayerVarsRegressionTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, "'enablejsapi': 1")
         self.assertNotContains(res, "'mute': 1")
+
+
+class NoApiModeRegressionTests(TestCase):
+    def test_duration_valid_id_returns_int(self):
+        res = self.client.get('/api/duration/?id=ks7p6DA0dKk')
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('duration_sec', res.json())
+        self.assertIsInstance(res.json()['duration_sec'], int)
+
+    def test_duration_invalid_id_returns_180(self):
+        res = self.client.get('/api/duration/?id=bad')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()['duration_sec'], 180)
+
+    def test_player_has_noapi_markers(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'NOAPI_MODE')
+        self.assertContains(res, 'playNextNoApi')

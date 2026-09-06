@@ -693,6 +693,74 @@ def ai_recommend(request):
 def healthz(request):
     return JsonResponse({"status": "ok"})
 
+def video_duration(request):
+    """Return YouTube video duration in seconds (cached 24h, fallback 180)."""
+    video_id = (request.GET.get('id') or '').strip()
+    if not re.match(r'^[A-Za-z0-9_-]{11}$', video_id):
+        return JsonResponse({"duration_sec": 180})
+    cache_key = f"dur:{video_id}"
+    try:
+        cached = cache.get(cache_key)
+    except Exception:
+        cached = None
+    if cached is not None:
+        try:
+            return JsonResponse({"duration_sec": int(cached)})
+        except Exception:
+            pass
+    api_keys = _youtube_api_keys()
+    if not api_keys:
+        return JsonResponse({"duration_sec": 180})
+    for index, api_key in enumerate(api_keys, start=1):
+        params = urllib.parse.urlencode({
+            'part': 'contentDetails',
+            'id': video_id,
+            'key': api_key,
+        })
+        try:
+            with urllib.request.urlopen(
+                f'https://www.googleapis.com/youtube/v3/videos?{params}',
+                timeout=8,
+            ) as response:
+                payload = json.loads(response.read().decode('utf-8'))
+        except urllib.error.HTTPError as exc:
+            try:
+                body = exc.read().decode('utf-8', errors='ignore')
+            except Exception:
+                body = ''
+            lowered = body.lower()
+            if exc.code == 403 and ('quotaexceeded' in lowered or 'ratelimitexceeded' in lowered or 'quota' in lowered):
+                print(f'YouTube API key {index} quota exceeded, trying next')
+                continue
+            print('YouTube API Error:', exc)
+            return JsonResponse({"duration_sec": 180})
+        except Exception as exc:
+            print(f'YouTube API key {index} network error: {exc}, trying next')
+            continue
+        try:
+            items = payload.get('items', [])
+            if not items:
+                return JsonResponse({"duration_sec": 180})
+            iso = items[0].get('contentDetails', {}).get('duration', '')
+            m = re.match(r'^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$', iso)
+            if not m:
+                return JsonResponse({"duration_sec": 180})
+            hours = int(m.group(1) or 0)
+            minutes = int(m.group(2) or 0)
+            seconds = int(m.group(3) or 0)
+            total = hours * 3600 + minutes * 60 + seconds
+            if total <= 0:
+                return JsonResponse({"duration_sec": 180})
+            try:
+                cache.set(cache_key, total, 86400)
+            except Exception as e:
+                print(f'video_duration cache.set failed: {e}')
+            return JsonResponse({"duration_sec": total})
+        except Exception as e:
+            print(f'video_duration parse failed: {e}')
+            return JsonResponse({"duration_sec": 180})
+    return JsonResponse({"duration_sec": 180})
+
 def stats(request):
     total_queued = SongQueue.objects.filter(is_played=False).count()
     total_played = SongQueue.objects.filter(is_played=True).count()
