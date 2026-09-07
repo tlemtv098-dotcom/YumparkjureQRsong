@@ -1709,11 +1709,7 @@
             const a = document.createElement('a'); a.href=url; a.download='playlists-'+new Date().toISOString().slice(0,10)+'.json'; a.click(); URL.revokeObjectURL(url);
             showToast('ส่งออก JSON แล้ว', 'success');
         }
-        function function importPlaylists(){
-            const inp = document.getElementById('import-file');
-            if (inp) inp.click();
-        }
-        function handleImportFile(event){
+        function importPlaylists(event){
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
