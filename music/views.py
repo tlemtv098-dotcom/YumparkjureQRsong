@@ -47,13 +47,12 @@ def _is_owner(request):
 class SignupView(CreateView):
     template_name = 'registration/signup.html'
     form_class = ThaiSignupForm
-    success_url = '/'
+    success_url = '/accounts/login/'
 
     def form_valid(self, form):
         user = form.save(commit=False)
         user.is_staff = True
         user.save()
-        login(self.request, user)
         return redirect(self.success_url)
 
 

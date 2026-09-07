@@ -313,10 +313,10 @@ class ErrorPagesTests(TestCase):
         import os
         from django.conf import settings
         self.assertTrue(os.path.exists(os.path.join(settings.BASE_DIR, 'music', 'templates', '404.html')))
-    def test_500_template_exists(self):
+    def test_500_template_removed(self):
         import os
         from django.conf import settings
-        self.assertTrue(os.path.exists(os.path.join(settings.BASE_DIR, 'music', 'templates', '500.html')))
+        self.assertFalse(os.path.exists(os.path.join(settings.BASE_DIR, 'music', 'templates', '500.html')))
 
 
 # --- Task 4: Regression tests for universal platform support ---
@@ -891,16 +891,17 @@ class AuthRegressionTests(TestCase):
         response = self.client.get('/request/')
         self.assertEqual(response.status_code, 200)
 
-    def test_signup_creates_staff_and_auto_login(self):
+    def test_signup_creates_staff_and_redirects_to_login(self):
         response = self.client.post('/accounts/signup/', {'username': 'owner1', 'password1': 'Testpass123!', 'password2': 'Testpass123!'})
-        # signup should redirect to /
+        # signup should redirect to login (not auto-login)
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, '/')
+        self.assertEqual(response.url, '/accounts/login/')
         user = User.objects.get(username='owner1')
         self.assertTrue(user.is_staff)
-        # client should be authenticated after signup
-        self.assertIn('_auth_user_id', self.client.session)
-        # staff can access player
+        # client should NOT be authenticated after signup (must login)
+        self.assertNotIn('_auth_user_id', self.client.session)
+        # after login, staff can access player
+        self.client.post('/accounts/login/', {'username': 'owner1', 'password': 'Testpass123!'})
         resp2 = self.client.get('/')
         self.assertEqual(resp2.status_code, 200)
 
