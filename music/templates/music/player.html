@@ -274,7 +274,7 @@
                 <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">ระบบคิวเพลงอัตโนมัติสำหรับลูกค้า</p>
             </div>
             <button onclick="toggleTheme()" id="theme-toggle" class="ml-auto bg-slate-100 dark:bg-slate-700 p-2 rounded-lg text-sm font-bold" title="สลับโหมดมืด/สว่าง" aria-label="สลับโหมดมืด/สว่าง">เปลี่ยนทีม</button>
-            <button id="playlist-btn" onclick="togglePlaylistPanel()" class="playlist-btn-header">📋 เพลย์ลิสต์</button>
+            <button id="playlist-btn" onclick="togglePlaylistPanel()" class="playlist-btn-header">เพลย์ลิสต์</button>
             {% if user.is_authenticated %}<span class="text-xs font-bold">{{ user.username }}</span><form method="post" action="{% url 'logout' %}" class="inline">{% csrf_token %}<button type="submit" class="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-lg">ออก</button></form>{% else %}<a href="{% url 'login' %}" class="text-xs bg-amber-500 text-white px-3 py-1 rounded-lg">เข้า</a>{% endif %}
         </header>
 
