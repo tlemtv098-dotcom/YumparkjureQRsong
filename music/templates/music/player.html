@@ -418,7 +418,7 @@
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         const isMobileSafari = isIOS && isSafari;
         const isLineWebView = /Line\/|FBAN|FBAV|Messenger/i.test(navigator.userAgent);
-        const NOAPI_MODE = new URLSearchParams(location.search).has('noapi');
+        const NOAPI_MODE = isIOS || new URLSearchParams(location.search).has('noapi'); // iOS default noapi to avoid 153
         function getCSRFToken(){return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')||'';}
         function getPlayerToken(){return document.querySelector('meta[name="player-token"]')?.getAttribute('content')||'dev-player-token';}
         window.IS_OWNER = true;
@@ -937,7 +937,8 @@
                 if (videoContainer) { videoContainer.classList.remove('bg-white'); videoContainer.classList.add('bg-black'); }
                 const playerEl = document.getElementById('player');
                 if (playerEl) playerEl.style.display = '';
-                if (playerEl) playerEl.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + encodeURIComponent(currentSong.video_id) + '?autoplay=1&rel=0" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen frameborder="0" style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe>';
+                const noapiHost = isIOS ? 'https://www.youtube.com' : 'https://www.youtube-nocookie.com';
+                if (playerEl) playerEl.innerHTML = '<iframe src="' + noapiHost + '/embed/' + encodeURIComponent(currentSong.video_id) + '?autoplay=1&rel=0&playsinline=1" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen frameborder="0" style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe>';
                 const noapiId = currentSong.video_id;
                 const noapiSongId = currentSong.id;
                 fetch('/api/duration/?id=' + encodeURIComponent(noapiId))
