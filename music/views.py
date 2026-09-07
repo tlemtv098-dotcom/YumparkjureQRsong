@@ -830,6 +830,32 @@ def playlist_load(request, pk):
     return JsonResponse({'status': 'loaded', 'added': created, 'playlist_id': pl.id})
 
 
+@login_required
+def playlist_add_song(request, pk):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'method not allowed'}, status=405)
+    try:
+        pl = Playlist.objects.get(pk=pk, user=request.user)
+    except Playlist.DoesNotExist:
+        return JsonResponse({'error': 'not found'}, status=404)
+    try:
+        data = json.loads(request.body.decode('utf-8') or '{}') if request.body else {}
+    except Exception:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    song = data.get('song')
+    if not song or not isinstance(song, dict):
+        return JsonResponse({'error': 'song required'}, status=400)
+    if pl.songs is None:
+        pl.songs = []
+    # Allow duplicates for now (no 400 on duplicate video_id)
+    pl.songs.append(song)
+    try:
+        pl.save()
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'id': pl.id, 'name': pl.name, 'songs': pl.songs, 'created_at': pl.created_at.isoformat()})
+
+
 
 
 def healthz(request):

@@ -368,12 +368,13 @@
                     </div>
 
                     <!-- เพลงแนะนำ -->
-                    <div class="bg-white dark:bg-slate-800 shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <div class="bg-white dark:bg-slate-800 shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 relative">
                         <div class="flex items-center justify-between mb-2">
                             <h3 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white">เพลงแนะนำ</h3>
                             <button onclick="fetchHits()" class="text-[10px] sm:text-xs bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-800 text-amber-700 dark:text-amber-200 px-2 py-1 rounded-lg font-bold border border-amber-200 dark:border-amber-700 transition">รีเฟรช</button>
                         </div>
                         <div id="hit-list" class="space-y-2 max-h-60 overflow-y-auto pr-1"><p class="text-xs text-slate-400 dark:text-slate-500 text-center py-2">กำลังโหลดเพลงแนะนำ...</p></div>
+                        <div id="add-playlist-dropdown" class="hidden absolute z-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-2 min-w-[180px] max-h-60 overflow-y-auto"></div>
                     </div>
                 </div>
             </div>
@@ -1245,6 +1246,7 @@
                                         class="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow transition flex-shrink-0 ml-1">
                                     เล่นทันที (ข้ามคิว)
                                 </button>
+                                <button onclick="openAddToPlaylist('manual', ${idx})" class="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 px-3 py-1.5 rounded-lg font-bold text-xs">เพิ่มลงเพลย์ลิสต์</button>
                                 </div>
                             </div>
                         `;
@@ -1411,11 +1413,130 @@
                                 class="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow transition flex-shrink-0 ml-1">
                             เล่น (ข้ามคิว)
                         </button>
+                        <button onclick="openAddToPlaylist('hit', ${idx})" class="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 px-3 py-1.5 rounded-lg font-bold text-xs">เพิ่มลงเพลย์ลิสต์</button>
                         </div>
                     </div>
                 `;
             });
         }
+
+        let addDropdownSong = null;
+        let addDropdownType = null;
+        async function openAddToPlaylist(type, idx){
+            const song = type==='hit' ? hitSongs[idx] : manualSearchResults[idx];
+            if (!song) return;
+            addDropdownSong = song;
+            addDropdownType = type;
+            const dd = document.getElementById('add-playlist-dropdown');
+            if (!dd) return;
+            let playlists = {};
+            try { playlists = await window.PlaylistManager.getAll(); } catch(e) { playlists = {}; }
+            if (Array.isArray(playlists)) { const m={}; playlists.forEach(p=>{ if(p&&p.name) m[p.name]=p.songs||[]}); playlists=m; }
+            else if (playlists && playlists.playlists && Array.isArray(playlists.playlists)) { const m={}; playlists.playlists.forEach(p=>{ m[p.name]=p.songs||[]}); playlists=m; }
+            const names = Object.keys(playlists || {});
+            if (names.length) {
+                dd.innerHTML = names.map(n=>`<button onclick="confirmAddToPlaylist('${n.replace(/'/g,"\\'")}')" class="block w-full text-left px-3 py-1.5 text-sm hover:bg-amber-50 dark:hover:bg-slate-700 rounded">${escapeHtml(n)}</button>`).join('') + `<div class="border-t mt-1 pt-1"><input id="new-add-playlist-name" placeholder="ชื่อใหม่" class="w-full border rounded px-2 py-1 text-sm mb-1"><button onclick="confirmAddToPlaylist(document.getElementById('new-add-playlist-name').value)" class="w-full bg-amber-500 text-white rounded py-1 text-xs">สร้างและเพิ่ม</button></div>`;
+            } else {
+                dd.innerHTML = `<p class="text-xs text-slate-400 p-2">ยังไม่มีเพลย์ลิสต์</p><input id="new-add-playlist-name" placeholder="ชื่อใหม่" class="w-full border rounded px-2 py-1 text-sm mb-1"><button onclick="confirmAddToPlaylist(document.getElementById('new-add-playlist-name').value)" class="w-full bg-amber-500 text-white rounded py-1 text-xs">สร้างและเพิ่ม</button>`;
+            }
+            dd.classList.remove('hidden');
+            let ev = null;
+            try {
+                ev = window.event;
+                if (ev && ev.target) {
+                    const rect = ev.target.getBoundingClientRect();
+                    dd.style.position = 'fixed';
+                    const top = rect.bottom + 6;
+                    const left = Math.min(rect.left, window.innerWidth - 190);
+                    dd.style.top = top + 'px';
+                    dd.style.left = Math.max(8, left) + 'px';
+                } else {
+                    dd.style.position = 'absolute';
+                    dd.style.top = '40px';
+                    dd.style.left = '10px';
+                }
+            } catch(e) {}
+            if (ev) { try { ev.stopPropagation(); } catch(e) {} }
+        }
+        async function confirmAddToPlaylist(name){
+            if (!name || !name.trim()) {showToast('กรุณาใส่ชื่อ', 'warning'); return;}
+            name=name.trim();
+            const song = addDropdownSong;
+            if (!song) return;
+            const dd=document.getElementById('add-playlist-dropdown');
+            if (dd) dd.classList.add('hidden');
+            const songPayload = {id: song.id, title: song.title, channel: song.channel, thumbnail: song.thumbnail, video_id: song.id, duration: song.duration};
+            try {
+                let playlistsData = [];
+                let authFailed = false;
+                try {
+                    const res = await fetch('/api/playlists/', {credentials:'same-origin'});
+                    if (res.ok) {
+                        const ct = res.headers.get('content-type')||'';
+                        if (ct.includes('text/html') || (res.redirected && res.url.includes('/accounts/login'))) {
+                            authFailed = true;
+                        } else {
+                            const data = await res.json();
+                            playlistsData = data.playlists || [];
+                        }
+                    } else if (res.status===401 || res.status===403 || (res.redirected && res.url.includes('/accounts/login'))) {
+                        authFailed = true;
+                    } else {
+                        const ct = res.headers.get('content-type')||'';
+                        if (ct.includes('text/html')) authFailed = true;
+                    }
+                } catch(e) { authFailed = true; }
+                if (authFailed) {
+                    const all = await window.PlaylistManager.getAll();
+                    const exists = all && all[name];
+                    if (!exists) {
+                        await window.PlaylistManager.save(name, []);
+                    }
+                    const cur = await window.PlaylistManager.getAll();
+                    const list = cur[name] || [];
+                    list.push(songPayload);
+                    await window.PlaylistManager.save(name, list);
+                    showToast('เพิ่มลง ' + name + ' แล้ว', 'success');
+                    return;
+                }
+                let pl = playlistsData.find(p=>p.name===name);
+                if (!pl) {
+                    try { await window.PlaylistManager.save(name, []); } catch(e) { if (e.status!==400) throw e; }
+                    const res2 = await fetch('/api/playlists/', {credentials:'same-origin'});
+                    if (res2.ok) {
+                        const data2 = await res2.json();
+                        playlistsData = data2.playlists || [];
+                        pl = playlistsData.find(p=>p.name===name);
+                    }
+                    if (!pl && window.PlaylistManager._idMap && window.PlaylistManager._idMap[name]) {
+                        pl = {id: window.PlaylistManager._idMap[name]};
+                    }
+                }
+                if (!pl || !pl.id) { showToast('ไม่พบเพลย์ลิสต์', 'error'); return; }
+                await window.PlaylistManager.addSongToPlaylist(pl.id, songPayload);
+                showToast('เพิ่มลง ' + name + ' แล้ว', 'success');
+            } catch(e) {
+                console.error(e);
+                if (e.status===401 || e.status===403) {
+                    try {
+                        const all = await window.PlaylistManager.getAll();
+                        const list = (all[name] || []);
+                        list.push(songPayload);
+                        await window.PlaylistManager.save(name, list);
+                        showToast('เพิ่มลง ' + name + ' แล้ว', 'success');
+                        return;
+                    } catch(e2) {}
+                }
+                showToast((e.data && e.data.error) || e.message || 'เพิ่มไม่สำเร็จ', 'error');
+            }
+        }
+        document.addEventListener('click', function(e){
+            const dd=document.getElementById('add-playlist-dropdown');
+            if (!dd || dd.classList.contains('hidden')) return;
+            if (e.target.closest && e.target.closest('#add-playlist-dropdown')) return;
+            if (e.target.closest && e.target.closest('button[onclick^="openAddToPlaylist"]')) return;
+            dd.classList.add('hidden');
+        });
 
         function hitPlay(idx) {
             const song = hitSongs[idx];

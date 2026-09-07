@@ -386,6 +386,41 @@ export class PlaylistManager {
     }
   }
 
+  static async addSongToPlaylist(playlistId, song) {
+    const res = await this._fetchJson(`/api/playlists/${playlistId}/add-song/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+      body: JSON.stringify({ song }),
+      credentials: 'same-origin',
+    });
+    if (res.ok) {
+      const data = await res.json();
+      this._apiAvailable = true;
+      return data;
+    }
+    if (isAuthFailure(res)) {
+      this._apiAvailable = false;
+      const err = new Error('Unauthorized');
+      err.status = 401;
+      throw err;
+    }
+    if (res.status === 404) {
+      const err = new Error('Playlist not found');
+      err.status = 404;
+      throw err;
+    }
+    if (res.status === 400) {
+      const d = await res.json().catch(() => ({}));
+      const err = new Error(d.error || 'Bad request');
+      err.status = 400;
+      err.data = d;
+      throw err;
+    }
+    const err = new Error('Failed to add song');
+    err.status = res.status;
+    throw err;
+  }
+
   static exportJSON() {
     return JSON.stringify(getAllFromStorage(), null, 2);
   }
