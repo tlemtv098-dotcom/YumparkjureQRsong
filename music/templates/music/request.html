@@ -179,7 +179,7 @@
         ];
 
         function filterBlockedSongs(songs) {
-            return songs.filter(song => !blockedVideoIds.has(song.id) && !isAlbumLike(song.title) && !isAI(song.title, song.channel));
+            return songs.filter(song => !blockedVideoIds.has(song.id) && !isAI(song.title, song.channel));
         }
 
         function renderHitList() {

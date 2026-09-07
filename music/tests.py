@@ -1,11 +1,27 @@
 import json
 from django.conf import settings
 from django.test import TestCase
+from django.contrib.auth.models import User
 
 LOGO = '/static/music/img/logo.jpg'
 
 
 class PlayerPageTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='player_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
+
+    def test_player_requires_login_anon_redirect(self):
+        self.client.logout()
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+        self.assertIn('next=/', response.url)
+
+    def test_player_allows_staff(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+
     def test_player_page_renders(self):
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
@@ -168,7 +184,7 @@ class ClearQueueApiTests(TestCase):
         res = client.post('/api/clear/')
         self.assertEqual(res.status_code, 403)
         # get csrf token
-        client.get('/')
+        client.get('/request/')
         csrf_token = client.cookies['csrftoken'].value
         # with csrf but without owner -> 403 forbidden
         res = client.post('/api/clear/', headers={'X-CSRFToken': csrf_token, 'X-Player-Token': 'wrong'})
@@ -280,6 +296,9 @@ class QueueApiTests(TestCase):
         self.assertIn('queue', res.json())
 
 class PwaTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='pwa_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
     def test_manifest_static_exists(self):
         # manifest should be served via static, but template link should exist
         res = self.client.get('/')
@@ -374,6 +393,9 @@ class UniversalSearchRegressionTests(TestCase):
 
 
 class UniversalPlayerRegressionTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='uni_player_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
     def test_player_no_autoplay_without_tap_gate(self):
         res = self.client.get('/')
         self.assertEqual(res.status_code, 200)
@@ -395,6 +417,9 @@ class UniversalPlayerRegressionTests(TestCase):
 
 
 class SingleSoundOverlayTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='sound_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
     def test_only_sound_overlay_exists(self):
         res = self.client.get('/')
         content = res.content.decode()
@@ -403,6 +428,9 @@ class SingleSoundOverlayTests(TestCase):
 
 
 class SearchFastFallbackRegressionTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='fast_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
     def test_search_returns_fast_when_api_empty(self):
         import time
         from unittest.mock import patch
@@ -430,6 +458,9 @@ class SearchFastFallbackRegressionTests(TestCase):
 
 
 class SearchColdstartRetryRegressionTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='cold_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
     def test_player_search_retries_once_and_thai_message(self):
         res = self.client.get('/')
         self.assertEqual(res.status_code, 200)
@@ -617,6 +648,9 @@ class FallbackPoolRegressionTests(TestCase):
 
 
 class SearchButtonsWrapRegressionTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='wrap_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
     def test_search_buttons_wrap(self):
         res = self.client.get('/')
         self.assertEqual(res.status_code, 200)
@@ -666,6 +700,9 @@ class FallbackUnblockRegressionTests(TestCase):
 
 
 class Error153BreakerRegressionTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='breaker_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
     def test_153_breaker_counter_and_reset_markers(self):
         res = self.client.get('/')
         self.assertEqual(res.status_code, 200)
@@ -680,6 +717,9 @@ class Error153BreakerRegressionTests(TestCase):
 
 
 class BreakerTripSkipRegressionTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='trip_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
     def test_breaker_trip_skips_song(self):
         res = self.client.get('/')
         self.assertEqual(res.status_code, 200)
@@ -693,6 +733,9 @@ class BreakerTripSkipRegressionTests(TestCase):
 
 
 class BreakerFullStopRegressionTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='fullstop_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
     def test_breaker_full_stop_markers(self):
         res = self.client.get('/')
         self.assertEqual(res.status_code, 200)
@@ -738,15 +781,29 @@ class EmbedTestPageTests(TestCase):
         self.assertContains(res, 'noorigin-player')
 
 
-class MinimalPlayerVarsRegressionTests(TestCase):
-    def test_player_minimal_vars(self):
+class FullPlayerVarsRegressionTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='fullvars_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
+    def test_player_full_vars(self):
         res = self.client.get('/')
         self.assertEqual(res.status_code, 200)
+        # Full 9-var set from playervars-revert Task 1
         self.assertContains(res, "'enablejsapi': 1")
-        self.assertNotContains(res, "'mute': 1")
+        self.assertContains(res, "'mute': 1")
+        self.assertContains(res, "'playsinline': 1")
+        self.assertContains(res, "'autoplay': 1")
+        self.assertContains(res, "'controls': 1")
+        self.assertContains(res, "'modestbranding': 1")
+        self.assertContains(res, "'rel': 0")
+        self.assertContains(res, "'iv_load_policy': 3")
+        self.assertContains(res, "'fs': 1")
 
 
 class NoApiModeRegressionTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='noapi_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
     def test_duration_valid_id_returns_int(self):
         res = self.client.get('/api/duration/?id=ks7p6DA0dKk')
         self.assertEqual(res.status_code, 200)
@@ -770,3 +827,99 @@ class NoApiModeRegressionTests(TestCase):
         html = res.content.decode()
         self.assertIn('window.noapiTimer', html)
         self.assertIn('if (!currentSong) playNextNoApi()', html)
+
+
+class AlbumAllowedRegressionTests(TestCase):
+    """Album titles (Longplay, รวมเพลง, ชั่วโมง, อัลบั้ม, etc.) must pass through search/hits."""
+
+    def test_search_allows_album_title(self):
+        from unittest.mock import patch
+        # Mock youtube_api_search to return an album-like title
+        album_item = {
+            'id': 'album1234567',
+            'title': 'Longplay รวมเพลงฮิต 2025 ชั่วโมงเต็ม',
+            'channel': 'Test Channel',
+            'thumbnail': 'https://i.ytimg.com/vi/album1234567/hqdefault.jpg',
+        }
+        with patch('music.views.youtube_api_search', return_value=[album_item]):
+            res = self.client.get('/api/search/?q=longplay')
+            self.assertEqual(res.status_code, 200)
+            results = res.json().get('results', [])
+            self.assertGreater(len(results), 0)
+            # Album title should NOT be filtered out
+            self.assertEqual(results[0]['id'], 'album1234567')
+            self.assertIn('Longplay', results[0]['title'])
+
+    def test_hits_allows_album_title(self):
+        from unittest.mock import patch
+        from django.core.cache import cache
+        # Mock search_youtube to return an album-like title
+        album_item = {
+            'id': 'album7654321',
+            'title': 'อัลบั้มรวมเพลง 60 minutes non-stop',
+            'channel': 'Test Channel',
+            'thumbnail': 'https://i.ytimg.com/vi/album7654321/hqdefault.jpg',
+        }
+        # Force cache miss and mock search_youtube
+        with patch('music.views.search_youtube', return_value=[album_item]), \
+             patch('music.views.cache.get', return_value=None):
+            cache.clear()
+            res = self.client.get('/api/hits/')
+            self.assertEqual(res.status_code, 200)
+            results = res.json().get('results', [])
+            self.assertGreater(len(results), 0)
+            # Album title should NOT be filtered out (may be mixed with fallback, so check presence)
+            ids = [r['id'] for r in results]
+            self.assertIn('album7654321', ids)
+            album_result = next(r for r in results if r['id'] == 'album7654321')
+            self.assertIn('อัลบั้ม', album_result['title'])
+
+class AuthRegressionTests(TestCase):
+    def test_player_requires_login_anon_redirect(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+        self.assertTrue(response.url.startswith('/accounts/login/?next=/'))
+
+    def test_player_allows_staff(self):
+        staff = User.objects.create_user(username='auth_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(staff)
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_request_still_public_anon_200(self):
+        response = self.client.get('/request/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_signup_creates_staff_and_auto_login(self):
+        response = self.client.post('/accounts/signup/', {'username': 'owner1', 'password1': 'Testpass123!', 'password2': 'Testpass123!'})
+        # signup should redirect to /
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, '/')
+        user = User.objects.get(username='owner1')
+        self.assertTrue(user.is_staff)
+        # client should be authenticated after signup
+        self.assertIn('_auth_user_id', self.client.session)
+        # staff can access player
+        resp2 = self.client.get('/')
+        self.assertEqual(resp2.status_code, 200)
+
+    def test_login_success(self):
+        User.objects.create_user(username='owner2', password='Testpass123!', is_staff=True)
+        response = self.client.post('/accounts/login/', {'username': 'owner2', 'password': 'Testpass123!'})
+        self.assertEqual(response.status_code, 302)
+        # after login, GET / should be 200
+        resp2 = self.client.get('/')
+        self.assertEqual(resp2.status_code, 200)
+
+    def test_logout_via_post(self):
+        staff = User.objects.create_user(username='stafflogout', password='Testpass123!', is_staff=True)
+        self.client.force_login(staff)
+        self.assertEqual(self.client.get('/').status_code, 200)
+        response = self.client.post('/accounts/logout/')
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+        # after logout, anon should be redirected
+        resp2 = self.client.get('/')
+        self.assertEqual(resp2.status_code, 302)
+

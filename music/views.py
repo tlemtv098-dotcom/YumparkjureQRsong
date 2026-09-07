@@ -13,15 +13,33 @@ from collections import defaultdict
 from datetime import timedelta
 from yt_dlp import YoutubeDL
 from django.conf import settings
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db.models import Count
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth import login
+from django.views.generic import CreateView
 from .models import SongQueue, BlockedVideo
 
 def _is_owner(request):
     return request.headers.get('X-Player-Token') == settings.PLAYER_TOKEN or (request.user.is_authenticated and request.user.is_staff)
+
+
+class SignupView(CreateView):
+    template_name = 'registration/signup.html'
+    form_class = UserCreationForm
+    success_url = '/'
+
+    def form_valid(self, form):
+        user = form.save(commit=False)
+        user.is_staff = True
+        user.save()
+        login(self.request, user)
+        return redirect(self.success_url)
+
 
 # Video IDs with embedding disabled (Error 153) - filtered server-side
 # Many Thai songs from GMM, etc. have embedding disabled
@@ -162,8 +180,6 @@ def youtube_api_search(query, max_results=8):
             if not video_id or not re.match(r'^[A-Za-z0-9_-]{11}$', video_id) or _is_blocked(video_id):
                 continue
             title = snippet.get('title', 'Unknown Title')
-            if _is_album_title(title):
-                continue
             channel = snippet.get('channelTitle', 'YouTube')
             if _is_ai_title(title, channel):
                 continue
@@ -204,6 +220,7 @@ def get_local_ip():
         s.close()
     return ip
 
+@login_required
 @ensure_csrf_cookie
 def player_view(request):
     local_ip = get_local_ip()
@@ -247,13 +264,13 @@ def search_song(request):
         if not results:
             results = fallback[:3]
         # filter blocked and album titles + non-music
-        results = [r for r in results if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
+        results = [r for r in results if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
         if not results:
             # Guarantee non-empty: album/ai/non-music filters must not silently empty fallback.
             results = [r for r in fallback[:3] if not _is_blocked(r['id'])]
     else:
         # also filter live results (defense in depth) for album titles + non-music
-        results = [r for r in results if not _is_album_title(r.get('title','')) and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
+        results = [r for r in results if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
     return JsonResponse({'results': results})
 
 def suggest_song(request):
@@ -311,7 +328,7 @@ def hits(request):
     if cached:
         # ensure cached results also filtered (defense in depth) + non-music
         try:
-            filtered_cached = [r for r in cached if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
+            filtered_cached = [r for r in cached if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
         except Exception as e:
             print(f'hits cached filter failed: {e}')
             filtered_cached = list(cached)
@@ -347,20 +364,20 @@ def hits(request):
     try:
         if not merged:
             # Fallback static hits for PythonAnywhere free (YouTube blocked) - shuffle and dedup
-            results = [r for r in _fallback_static if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
+            results = [r for r in _fallback_static if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
         else:
             # also ensure live search results are filtered (defense in depth) + non-music
-            results = [r for r in merged if not _is_blocked(r['id']) and not _is_album_title(r.get('title','')) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
+            results = [r for r in merged if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
         # dedup via seen set + shuffle
         seen = set()
         dedup = []
         for r in results:
-            if r['id'] not in seen and not _is_album_title(r.get('title','')) and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')):
+            if r['id'] not in seen and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')):
                 dedup.append(r); seen.add(r['id'])
         # if live results deduped to less than 15, pad with fallback to ensure 15 non-duplicate
         if len(dedup) < 15:
             for fb in _fallback_static:
-                if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_album_title(fb.get('title','')) and not _is_ai_title(fb.get('title',''), fb.get('channel','')) and not _is_non_music(fb.get('title',''), fb.get('channel','')):
+                if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_ai_title(fb.get('title',''), fb.get('channel','')) and not _is_non_music(fb.get('title',''), fb.get('channel','')):
                     dedup.append(fb); seen.add(fb['id'])
                 if len(dedup) >= 15:
                     break
@@ -373,7 +390,7 @@ def hits(request):
         return JsonResponse({'results': out})
     except Exception as e:
         print(f'hits failed, returning static fallback: {e}')
-        safe = [r for r in _fallback_static if r['id'] not in BLOCKED_VIDEO_IDS and not _is_album_title(r.get('title', '')) and not _is_ai_title(r.get('title', ''), r.get('channel', '')) and not _is_non_music(r.get('title', ''), r.get('channel', ''))]
+        safe = [r for r in _fallback_static if r['id'] not in BLOCKED_VIDEO_IDS and not _is_ai_title(r.get('title', ''), r.get('channel', '')) and not _is_non_music(r.get('title', ''), r.get('channel', ''))]
         random.shuffle(safe)
         return JsonResponse({'results': safe[:15]})
 
@@ -389,9 +406,6 @@ def add_to_queue(request):
         title_raw = str(data.get('title', '')).strip()
         if not video_id or not title_raw:
             return JsonResponse({'status': 'failed', 'error': 'กรุณาใส่ชื่อเพลง'}, status=400)
-        
-        if _is_album_title(title_raw):
-            return JsonResponse({'status':'failed','error':'เพลงอัลบั้ม/รวมเพลงยาวเกินไป กรุณาเลือกเพลงเดี่ยว'}, status=400)
 
         # Check if video is blocked
         if _is_blocked(video_id):
@@ -441,9 +455,6 @@ def add_to_queue_front(request):
         title_raw = str(data.get('title', '')).strip()
         if not video_id or not title_raw:
             return JsonResponse({'status': 'failed', 'error': 'กรุณาใส่ชื่อเพลง'}, status=400)
-        
-        if _is_album_title(title_raw):
-            return JsonResponse({'status':'failed','error':'เพลงอัลบั้ม/รวมเพลงยาวเกินไป กรุณาเลือกเพลงเดี่ยว'}, status=400)
 
         if _is_blocked(video_id):
             return JsonResponse({'status': 'failed', 'error': 'เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) ลองเลือกเพลงอื่นนะ'}, status=400)
@@ -649,9 +660,9 @@ def ai_recommend(request):
             {"id": "Bk4O_3WF8II", "title": "ซ่อน(ไม่)หา - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/Bk4O_3WF8II/hqdefault.jpg"},
         ]
         try:
-            fb_filtered = [r for r in _fallback_static if not _is_blocked(r["id"]) and not _is_album_title(r.get("title", "")) and not _is_ai_title(r.get("title", ""), r.get("channel", "")) and not _is_non_music(r.get("title", ""), r.get("channel", ""))]
+            fb_filtered = [r for r in _fallback_static if not _is_blocked(r["id"]) and not _is_ai_title(r.get("title", ""), r.get("channel", "")) and not _is_non_music(r.get("title", ""), r.get("channel", ""))]
         except Exception:
-            fb_filtered = [r for r in _fallback_static if r["id"] not in BLOCKED_VIDEO_IDS and not _is_album_title(r.get("title", "")) and not _is_ai_title(r.get("title", ""), r.get("channel", "")) and not _is_non_music(r.get("title", ""), r.get("channel", ""))]
+            fb_filtered = [r for r in _fallback_static if r["id"] not in BLOCKED_VIDEO_IDS and not _is_ai_title(r.get("title", ""), r.get("channel", "")) and not _is_non_music(r.get("title", ""), r.get("channel", ""))]
         random.shuffle(fb_filtered)
         existing_ids = {s.get("id") for s in songs}
         for r in fb_filtered:
