@@ -1213,7 +1213,7 @@
                 .then(data => {
                     clearTimeout(manualSearchTimeoutId);
                     document.getElementById("manual-loading").classList.add("hidden");
-                    manualSearchResults = data.results.filter(song => !blockedVideoIds.has(song.id) && !isAlbumLike(song.title) && !isAI(song.title, song.channel));
+                    manualSearchResults = data.results.filter(song => !blockedVideoIds.has(song.id) && !isAI(song.title, song.channel));
                     const container = document.getElementById("manual-results");
                     container.innerHTML = "";
                     if (manualSearchResults.length === 0) {
@@ -1362,7 +1362,7 @@
                 .then(res => { if (!res.ok) throw new Error('Hits '+res.status); return res.json(); })
                 .then(data => {
                     if (data.results && data.results.length > 0) {
-                        const filtered = data.results.filter(s => !blockedVideoIds.has(s.id) && !isAlbumLike(s.title) && !isAI(s.title, s.channel));
+                        const filtered = data.results.filter(s => !blockedVideoIds.has(s.id) && !isAI(s.title, s.channel));
                         hitSongs = filtered.slice(0, 15); renderHitList();
                         if (autoRandomEnabled && !currentSong && queue.length===0 && isPlayerReady) {
                           clearTimeout(autoRandomTimer);
