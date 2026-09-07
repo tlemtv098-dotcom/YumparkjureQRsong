@@ -19,7 +19,22 @@ from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db.models import Count
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django import forms
+
+class ThaiSignupForm(UserCreationForm):
+    username = forms.CharField(label="ชื่อผู้ใช้", max_length=150, help_text="ตัวอักษร ตัวเลข และ @/./+/-/_ เท่านั้น", error_messages={"required": "กรุณากรอกชื่อผู้ใช้", "unique": "ชื่อผู้ใช้นี้มีคนใช้แล้ว", "invalid": "ชื่อผู้ใช้ไม่ถูกต้อง"})
+    password1 = forms.CharField(label="รหัสผ่าน", widget=forms.PasswordInput, help_text="อย่างน้อย 8 ตัวอักษร ห้ามใช้รหัสผ่านง่ายเกินไป", error_messages={"required": "กรุณากรอกรหัสผ่าน"})
+    password2 = forms.CharField(label="ยืนยันรหัสผ่าน", widget=forms.PasswordInput, help_text="พิมพ์รหัสผ่านอีกครั้งเพื่อยืนยัน", error_messages={"required": "กรุณายืนยันรหัสผ่าน"})
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["password1"].help_text = "อย่างน้อย 8 ตัวอักษร"
+        self.fields["password2"].help_text = "พิมพ์รหัสผ่านอีกครั้ง"
+
+class ThaiLoginForm(AuthenticationForm):
+    username = forms.CharField(label="ชื่อผู้ใช้", widget=forms.TextInput(attrs={"autofocus": True}), error_messages={"required": "กรุณากรอกชื่อผู้ใช้"})
+    password = forms.CharField(label="รหัสผ่าน", widget=forms.PasswordInput, error_messages={"required": "กรุณากรอกรหัสผ่าน"})
+    error_messages = {"invalid_login": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง ลองใหม่อีกครั้ง", "inactive": "บัญชีนี้ถูกปิดใช้งาน"}
 from django.contrib.auth import login
 from django.views.generic import CreateView
 from .models import SongQueue, BlockedVideo
@@ -30,7 +45,7 @@ def _is_owner(request):
 
 class SignupView(CreateView):
     template_name = 'registration/signup.html'
-    form_class = UserCreationForm
+    form_class = ThaiSignupForm
     success_url = '/'
 
     def form_valid(self, form):
