@@ -155,7 +155,8 @@ class RequestPageTests(TestCase):
         self.assertNotContains(response, 'new-checkbox')
     def test_request_has_genre_tabs(self):
         response = self.client.get('/request/')
-        self.assertContains(response, 'genre-tab')
+        # Tabs removed per 2026-09-07 plan - request should NOT have genre tabs
+        self.assertNotContains(response, 'genre-tab')
 
 
 class ClearQueueApiTests(TestCase):
@@ -330,7 +331,7 @@ class UniversalHitsRegressionTests(TestCase):
         # Case 1: fallback path (search_youtube returns [] -> static fallback)
         with patch('music.views.search_youtube', return_value=[]):
             cache.clear()
-            res = self.client.get('/api/hits/')
+            res = self.client.get('/api/hits/?player=1')
             self.assertEqual(res.status_code, 200)
             ids = [r['id'] for r in res.json().get('results', [])]
             for bid in BLOCKED_VIDEO_IDS:
@@ -864,11 +865,11 @@ class AlbumAllowedRegressionTests(TestCase):
         with patch('music.views.search_youtube', return_value=[album_item]), \
              patch('music.views.cache.get', return_value=None):
             cache.clear()
-            res = self.client.get('/api/hits/')
+            res = self.client.get('/api/hits/?player=1')
             self.assertEqual(res.status_code, 200)
             results = res.json().get('results', [])
             self.assertGreater(len(results), 0)
-            # Album title should NOT be filtered out (may be mixed with fallback, so check presence)
+            # Album title should NOT be filtered out for player (with ?player=1)
             ids = [r['id'] for r in results]
             self.assertIn('album7654321', ids)
             album_result = next(r for r in results if r['id'] == 'album7654321')

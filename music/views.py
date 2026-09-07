@@ -322,6 +322,7 @@ def hits(request):
     genre = request.GET.get('genre', '').strip().lower()
     ua = request.META.get('HTTP_USER_AGENT','')
     is_ios = bool(re.search(r'iPhone|iPad|iPod', ua, re.I) or ('MacIntel' in ua and 'Mobile' in ua))
+    is_player = request.GET.get('player') == '1'
     genre_queries = {
         'pop': ['เพลงป๊อปฮิต', 'เพลงป๊อป 2025'],
         'rock': ['เพลงร็อกฮิต', 'เพลงร็อกไทย'],
@@ -337,7 +338,7 @@ def hits(request):
     k = min(2, len(queries))
     picked = random.sample(queries, k) if k else []
     # cache key versioned to avoid stale single-query cache; keep 60s but shuffle on hit
-    cache_key = f"hits:{genre}:v3:{'ios' if is_ios else 'other'}"
+    cache_key = f"hits:{genre}:v3:{'player' if is_player else 'request'}:{'ios' if is_ios else 'other'}"
     try:
         cached = cache.get(cache_key)
     except Exception as e:
@@ -346,7 +347,7 @@ def hits(request):
     if cached:
         # ensure cached results also filtered (defense in depth) + non-music
         try:
-            filtered_cached = [r for r in cached if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
+            filtered_cached = [r for r in cached if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title','')))]
         except Exception as e:
             print(f'hits cached filter failed: {e}')
             filtered_cached = list(cached)
@@ -382,20 +383,20 @@ def hits(request):
     try:
         if not merged:
             # Fallback static hits for PythonAnywhere free (YouTube blocked) - shuffle and dedup
-            results = [r for r in _fallback_static if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
+            results = [r for r in _fallback_static if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title','')))]
         else:
             # also ensure live search results are filtered (defense in depth) + non-music
-            results = [r for r in merged if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
+            results = [r for r in merged if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title','')))]
         # dedup via seen set + shuffle
         seen = set()
         dedup = []
         for r in results:
-            if r['id'] not in seen and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')):
+            if r['id'] not in seen and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))):
                 dedup.append(r); seen.add(r['id'])
         # if live results deduped to less than 15, pad with fallback to ensure 15 non-duplicate
         if len(dedup) < 15:
             for fb in _fallback_static:
-                if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_ai_title(fb.get('title',''), fb.get('channel','')) and not _is_non_music(fb.get('title',''), fb.get('channel','')):
+                if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_ai_title(fb.get('title',''), fb.get('channel','')) and not _is_non_music(fb.get('title',''), fb.get('channel','')) and (is_player or not _is_album_title(fb.get('title',''))):
                     dedup.append(fb); seen.add(fb['id'])
                 if len(dedup) >= 15:
                     break
@@ -408,7 +409,7 @@ def hits(request):
         return JsonResponse({'results': out})
     except Exception as e:
         print(f'hits failed, returning static fallback: {e}')
-        safe = [r for r in _fallback_static if r['id'] not in BLOCKED_VIDEO_IDS and not _is_ai_title(r.get('title', ''), r.get('channel', '')) and not _is_non_music(r.get('title', ''), r.get('channel', ''))]
+        safe = [r for r in _fallback_static if r['id'] not in BLOCKED_VIDEO_IDS and not _is_ai_title(r.get('title', ''), r.get('channel', '')) and not _is_non_music(r.get('title', ''), r.get('channel', '')) and (is_player or not _is_album_title(r.get('title','')))]
         random.shuffle(safe)
         return JsonResponse({'results': safe[:15]})
 

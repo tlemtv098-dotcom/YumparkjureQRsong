@@ -113,13 +113,6 @@
                     รีเฟรชเพลง
                 </button>
             </div>
-            <div class="flex gap-1.5 mb-3 overflow-x-auto pb-1">
-                <button onclick="fetchHits('')" data-genre="" class="genre-tab active bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">ทั้งหมด</button>
-                <button onclick="fetchHits('pop')" data-genre="pop" class="genre-tab bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">ป๊อป</button>
-                <button onclick="fetchHits('rock')" data-genre="rock" class="genre-tab bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">ร็อก</button>
-                <button onclick="fetchHits('lukthung')" data-genre="lukthung" class="genre-tab bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">ลูกทุ่ง</button>
-                <button onclick="fetchHits('tiktok')" data-genre="tiktok" class="genre-tab bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">TikTok</button>
-            </div>
             <div id="hit-list" class="space-y-2"></div>
         </div>
 
@@ -212,18 +205,10 @@
             });
         }
 
-        function fetchHits(genre) {
-            if (genre === undefined) genre = currentGenre || "";
-            currentGenre = genre;
-            // update active tab styling
-            document.querySelectorAll('.genre-tab').forEach(b => {
-                if (b.dataset.genre === genre) { b.className = "genre-tab active bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"; }
-                else { b.className = "genre-tab bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"; }
-            });
+        function fetchHits() {
             const btn = document.getElementById("refresh-hits");
             if (btn) { btn.disabled = true; btn.textContent = "กำลังโหลด..."; }
-            const url = genre ? "/api/hits/?genre=" + encodeURIComponent(genre) : "/api/hits/";
-            fetch(url)
+            fetch("/api/hits/")
                 .then(res => { if (!res.ok) throw new Error('Hits '+res.status); return res.json(); })
                 .then(data => {
                     if (data.results && data.results.length > 0) {
@@ -236,7 +221,6 @@
                     if (btn) { btn.disabled = false; btn.textContent = "รีเฟรชเพลง"; }
                 });
         }
-        let currentGenre = "";
 
         function requestHit(idx) {
             const song = hitSongs[idx];
