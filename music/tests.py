@@ -996,3 +996,58 @@ class PlaylistAccountTests(TestCase):
         dupe_count = [p for p in resp2.json()['playlists'] if p['name'] == 'Dupe']
         self.assertEqual(len(dupe_count), 1)
 
+
+class HostSwitchTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='host_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
+
+    def test_player_host_switch(self):
+        iphone_ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
+        res = self.client.get('/', HTTP_USER_AGENT=iphone_ua)
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        # iOS UA response should contain youtube.com host logic (not nocookie exclusively)
+        self.assertIn('youtube.com', html)
+        self.assertIn('ytHost', html)
+        self.assertIn('https://www.youtube.com', html)
+        self.assertIn('https://www.youtube-nocookie.com', html)
+        self.assertIn('host: ytHost', html)
+        self.assertIn('const ytHost = isIOS', html)
+        self.assertIn('widget_referrer', html)
+
+
+class Fallback153NoApiTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='fallback_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
+
+    def test_onerror_153_fallback_to_noapi(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        self.assertIn('onError', html)
+        self.assertIn('playNextNoApi', html)
+        self.assertIn('window._triedNoApi', html)
+        self.assertIn('153 fallback to noapi', html)
+        # fallback must be before breaker
+        fallback_idx = html.find('window._triedNoApi')
+        breaker_idx = html.find('consecutive153 >= 3')
+        self.assertNotEqual(fallback_idx, -1)
+        self.assertNotEqual(breaker_idx, -1)
+        self.assertLess(fallback_idx, breaker_idx)
+        # check pEl display reset and playNextNoApi call inside fallback
+        self.assertIn("pEl.style.display = ''", html)
+
+    def test_tried_noapi_reset_on_playing(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        self.assertIn('YT.PlayerState.PLAYING', html)
+        self.assertIn('window._triedNoApi = false', html)
+        playing_idx = html.find('YT.PlayerState.PLAYING')
+        reset_idx = html.find('window._triedNoApi = false')
+        self.assertNotEqual(playing_idx, -1)
+        self.assertNotEqual(reset_idx, -1)
+        self.assertGreater(reset_idx, playing_idx)
+

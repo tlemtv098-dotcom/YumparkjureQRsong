@@ -414,6 +414,7 @@
         let isPlayerReady = false;
         // Detect iOS Safari specifically (not just isMobile)
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const ytHost = isIOS ? 'https://www.youtube.com' : 'https://www.youtube-nocookie.com';
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         const isMobileSafari = isIOS && isSafari;
         const isLineWebView = /Line\/|FBAN|FBAV|Messenger/i.test(navigator.userAgent);
@@ -689,7 +690,7 @@
             player = new YT.Player('player', {
                 height: '100%',
                 width: '100%',
-                host: 'https://www.youtube-nocookie.com',
+                host: ytHost,
                 playerVars: {
                     'autoplay': 1,
                     'mute': 1,
@@ -702,6 +703,7 @@
                     'origin': window.location.origin,
                     'enablejsapi': 1
                 },
+                widget_referrer: isIOS ? window.location.origin : undefined,
                 events: {
                     'onReady': () => {
                         isPlayerReady = true;
@@ -739,6 +741,12 @@
                     'onError': (event) => {
                         // Embedding disabled / video unavailable errors
                         if ([2, 5, 100, 101, 150, 153].includes(event.data)) {
+                            if (event.data === 153 && !window._triedNoApi) { window._triedNoApi = true; console.warn('153 fallback to noapi', currentSong); try { if (typeof playNextNoApi === 'function') { // hide player error, try noapi
+   const pEl = document.getElementById('player'); if (pEl) pEl.style.display = '';
+   // try noapi for same song
+   playNextNoApi();
+   return;
+ } } catch(e) {} }
                             if (event.data === 153) {
                                 consecutive153++;
                                 if (consecutive153 >= 3) {
@@ -799,6 +807,7 @@
                 consecutive153 = 0;
                 breakerTripped = false;
                 window._retryCount = 0;
+                window._triedNoApi = false;
                 if (userInteracted) {
                     const so = document.getElementById('sound-overlay');
                     if (so) { so.classList.add('hidden'); so.style.display = 'none'; }

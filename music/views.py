@@ -319,6 +319,8 @@ def suggest_song(request):
 
 def hits(request):
     genre = request.GET.get('genre', '').strip().lower()
+    ua = request.META.get('HTTP_USER_AGENT','')
+    is_ios = bool(re.search(r'iPhone|iPad|iPod', ua, re.I) or ('MacIntel' in ua and 'Mobile' in ua))
     genre_queries = {
         'pop': ['เพลงป๊อปฮิต', 'เพลงป๊อป 2025'],
         'rock': ['เพลงร็อกฮิต', 'เพลงร็อกไทย'],
@@ -334,7 +336,7 @@ def hits(request):
     k = min(2, len(queries))
     picked = random.sample(queries, k) if k else []
     # cache key versioned to avoid stale single-query cache; keep 60s but shuffle on hit
-    cache_key = f"hits:{genre}:v3"
+    cache_key = f"hits:{genre}:v3:{'ios' if is_ios else 'other'}"
     try:
         cached = cache.get(cache_key)
     except Exception as e:
