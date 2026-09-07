@@ -23,6 +23,7 @@ from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django import forms
 
 class ThaiSignupForm(UserCreationForm):
+    error_messages = {"password_mismatch": "รหัสผ่านทั้งสองช่องไม่ตรงกัน"}
     username = forms.CharField(label="ชื่อผู้ใช้", max_length=150, help_text="ตัวอักษร ตัวเลข และ @/./+/-/_ เท่านั้น", error_messages={"required": "กรุณากรอกชื่อผู้ใช้", "unique": "ชื่อผู้ใช้นี้มีคนใช้แล้ว", "invalid": "ชื่อผู้ใช้ไม่ถูกต้อง"})
     password1 = forms.CharField(label="รหัสผ่าน", widget=forms.PasswordInput, help_text="อย่างน้อย 8 ตัวอักษร ห้ามใช้รหัสผ่านง่ายเกินไป", error_messages={"required": "กรุณากรอกรหัสผ่าน"})
     password2 = forms.CharField(label="ยืนยันรหัสผ่าน", widget=forms.PasswordInput, help_text="พิมพ์รหัสผ่านอีกครั้งเพื่อยืนยัน", error_messages={"required": "กรุณายืนยันรหัสผ่าน"})
