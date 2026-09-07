@@ -30,6 +30,5 @@ urlpatterns = [
     path('api/playlists/<int:pk>/', views.playlist_detail, name='playlist_detail'),
     path('api/playlists/<int:pk>/load/', views.playlist_load, name='playlist_load'),
     path('healthz/', views.healthz, name='healthz'),
-    path('clear-users/', views.clear_all_users, name='clear_users'),
     path('api/stats/', views.stats, name='stats'),
 ]
