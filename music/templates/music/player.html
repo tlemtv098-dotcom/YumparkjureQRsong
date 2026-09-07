@@ -392,11 +392,7 @@
                 <button onclick="createPlaylist()" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-lg font-bold text-xs">สร้าง</button>
                 <button onclick="saveCurrentQueue()" class="flex-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 px-3 py-2 rounded-lg font-bold text-xs">บันทึกคิวปัจจุบัน</button>
             </div>
-            <div class="flex gap-2">
-                <button onclick="exportPlaylists()" class="flex-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 px-3 py-2 rounded-lg font-bold text-xs">ส่งออก JSON</button>
-                <button onclick="document.getElementById('import-json').click()" class="flex-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 px-3 py-2 rounded-lg font-bold text-xs">นำเข้า JSON</button>
-                <input type="file" id="import-json" accept=".json" class="hidden" onchange="importPlaylists(event)">
-            </div>
+
         </div>
     </div>
     <!-- YouTube IFrame API -->
@@ -763,10 +759,8 @@
                                 if (so153) { so153.classList.add('hidden'); so153.style.display = 'none'; }
                                 const idle153 = document.getElementById('idle-splash');
                                 if (idle153 && queue.length === 0) idle153.classList.remove('hidden');
-                                if (Date.now() - last153Time > 5000) showToast("ข้ามเพลงที่เล่นไม่ได้", "info");
                                 last153Time = Date.now();
                             } else {
-                                showToast("ข้ามเพลงที่เล่นไม่ได้", "info");
                             }
                             skipSong();
                             setTimeout(()=>{ if (queue.length>0) playNext(soundEnabled); else fetchQueue(); }, 500);
@@ -1612,7 +1606,7 @@
                 listEl.innerHTML += `
                     <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
                         <div class="flex-1 min-w-0">
-                            <p class="font-bold text-sm truncate text-slate-900 dark:text-white">${safeName}</p>
+                            <p class="font-bold text-sm truncate text-slate-900 dark:text-white cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/20 px-1 rounded" onclick="startInlineRename(this, '${safeName.replace(/\'/g, "\\\'")}')" title="คลิกเพื่อแก้ชื่อ">${safeName}</p><input class="playlist-rename-input hidden w-full mt-1 border border-amber-300 rounded px-2 py-1 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value="${safeName}" onblur="finishInlineRename(this, '${safeName.replace(/\'/g, "\\\'")}')" onkeydown="if(event.key==='Enter')this.blur(); if(event.key==='Escape'){this.value='${safeName.replace(/\'/g, "\\\'")}'; this.blur();}">
                             <p class="text-xs text-slate-500 dark:text-slate-300">${songs.length} เพลง</p>
                         </div>
                         <button onclick="loadPlaylist('${safeName.replace(/'/g, "\'")}')" class="text-[10px] bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg font-bold">โหลด</button>
@@ -1687,7 +1681,36 @@
             showToast('โหลด ' + mapped.length + ' เพลงแล้ว', 'success');
             togglePlaylistPanel();
         }
+        function startInlineRename(spanEl, oldName){
+            const container = spanEl.parentElement;
+            const input = container.querySelector('.playlist-rename-input');
+            if (!input) return;
+            spanEl.classList.add('hidden');
+            input.classList.remove('hidden');
+            input.focus();
+            input.select();
+        }
+        function finishInlineRename(inputEl, oldName){
+            const newName = inputEl.value.trim();
+            const spanEl = inputEl.parentElement.querySelector('.playlist-item-name');
+            if (!newName || newName===oldName) {
+                inputEl.classList.add('hidden');
+                if (spanEl) spanEl.classList.remove('hidden');
+                return;
+            }
+            if (window.PlaylistManager.getAll()[newName]) { showToast('มีเพลย์ลิสต์ชื่อนี้แล้ว', 'warning'); inputEl.classList.add('hidden'); if (spanEl) spanEl.classList.remove('hidden'); return; }
+            window.PlaylistManager.rename(oldName, newName);
+            renderPlaylistPanel();
+            showToast('เปลี่ยนชื่อเป็น "' + escapeHtml(newName) + '" แล้ว', 'success');
+        }
         function renamePlaylist(oldName){
+            // Trigger inline edit instead of prompt
+            const all = document.querySelectorAll('.playlist-item');
+            for (const item of all) {
+                const span = item.querySelector('.playlist-item-name');
+                if (span && span.textContent.trim()===oldName) { startInlineRename(span, oldName); return; }
+            }
+            // fallback prompt
             const newName = prompt('ชื่อใหม่สำหรับ "' + oldName + '":', oldName);
             if (!newName || !newName.trim() || newName.trim()===oldName) return;
             const trimmed = newName.trim();
