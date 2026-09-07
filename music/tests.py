@@ -924,3 +924,75 @@ class AuthRegressionTests(TestCase):
         resp2 = self.client.get('/')
         self.assertEqual(resp2.status_code, 302)
 
+
+class PlaylistAccountTests(TestCase):
+    def setUp(self):
+        self.user_a = User.objects.create_user(username='playlist_a', password='Testpass123!', is_staff=True)
+        self.user_b = User.objects.create_user(username='playlist_b', password='Testpass123!', is_staff=True)
+
+    def test_playlist_persists_across_sessions(self):
+        # login as user_a, create playlist via API, check persists after re-login (simulate second device)
+        self.client.force_login(self.user_a)
+        resp = self.client.post('/api/playlists/create/', data=json.dumps({'name': 'MyPlaylist', 'songs': [{'id': 'abc12345678', 'title': 'Test Song', 'channel': 'Test', 'thumbnail': '', 'video_id': 'abc12345678'}]}), content_type='application/json')
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.json()['name'], 'MyPlaylist')
+        # check exists
+        resp2 = self.client.get('/api/playlists/')
+        self.assertEqual(resp2.status_code, 200)
+        names = [p['name'] for p in resp2.json()['playlists']]
+        self.assertIn('MyPlaylist', names)
+        # simulate second device: logout and login same user
+        self.client.logout()
+        self.client.force_login(self.user_a)
+        resp3 = self.client.get('/api/playlists/')
+        self.assertEqual(resp3.status_code, 200)
+        names3 = [p['name'] for p in resp3.json()['playlists']]
+        self.assertIn('MyPlaylist', names3)
+
+    def test_playlist_isolation_between_users(self):
+        # user_a creates playlist
+        self.client.force_login(self.user_a)
+        self.client.post('/api/playlists/create/', data=json.dumps({'name': 'A Playlist', 'songs': [{'id': 'a1b2c3d4e5f', 'title': 'A Song'}]}), content_type='application/json')
+        self.client.logout()
+        # user_b should see empty
+        self.client.force_login(self.user_b)
+        resp = self.client.get('/api/playlists/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.json()['playlists']), 0)
+        # user_b creates own
+        self.client.post('/api/playlists/create/', data=json.dumps({'name': 'B Playlist', 'songs': []}), content_type='application/json')
+        resp2 = self.client.get('/api/playlists/')
+        names_b = [p['name'] for p in resp2.json()['playlists']]
+        self.assertIn('B Playlist', names_b)
+        self.assertNotIn('A Playlist', names_b)
+        # back to user_a should still only see A
+        self.client.logout()
+        self.client.force_login(self.user_a)
+        resp3 = self.client.get('/api/playlists/')
+        names_a = [p['name'] for p in resp3.json()['playlists']]
+        self.assertIn('A Playlist', names_a)
+        self.assertNotIn('B Playlist', names_a)
+
+    def test_local_fallback_when_anon(self):
+        # anon GET should redirect to login (302), not 200
+        self.client.logout()
+        resp = self.client.get('/api/playlists/')
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn('/accounts/login/', resp.url)
+        # anon POST should also redirect
+        resp2 = self.client.post('/api/playlists/create/', data=json.dumps({'name': 'Anon', 'songs': []}), content_type='application/json')
+        self.assertEqual(resp2.status_code, 302)
+
+    def test_migrate_local_to_account_duplicate_ignored(self):
+        # Simulate migration: local playlists POSTed, duplicate ignored (400)
+        self.client.force_login(self.user_a)
+        self.client.post('/api/playlists/create/', data=json.dumps({'name': 'Dupe', 'songs': [{'id': 'dup12345678', 'title': 'X'}]}), content_type='application/json')
+        # second POST same name should be 400 duplicate
+        resp = self.client.post('/api/playlists/create/', data=json.dumps({'name': 'Dupe', 'songs': [{'id': 'dup12345678', 'title': 'X'}]}), content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('already exists', resp.json()['error'])
+        # only one remains
+        resp2 = self.client.get('/api/playlists/')
+        dupe_count = [p for p in resp2.json()['playlists'] if p['name'] == 'Dupe']
+        self.assertEqual(len(dupe_count), 1)
+

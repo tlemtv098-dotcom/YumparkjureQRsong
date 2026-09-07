@@ -1,4 +1,18 @@
+from django.contrib.auth.models import User
 from django.db import models
+
+class Playlist(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='playlists')
+    name = models.CharField(max_length=100)
+    songs = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'name')
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.user.username}/{self.name}"
 
 class BlockedVideo(models.Model):
     video_id = models.CharField(max_length=50, unique=True)

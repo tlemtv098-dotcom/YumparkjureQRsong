@@ -38,7 +38,7 @@ class ThaiLoginForm(AuthenticationForm):
     error_messages = {"invalid_login": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง ลองใหม่อีกครั้ง", "inactive": "บัญชีนี้ถูกปิดใช้งาน"}
 from django.contrib.auth import login
 from django.views.generic import CreateView
-from .models import SongQueue, BlockedVideo
+from .models import SongQueue, BlockedVideo, Playlist
 
 def _is_owner(request):
     return request.headers.get('X-Player-Token') == settings.PLAYER_TOKEN or (request.user.is_authenticated and request.user.is_staff)
@@ -714,6 +714,118 @@ def ai_recommend(request):
                 songs.append(r)
         songs = songs[:5]
     return JsonResponse({"songs": songs[:5]})
+
+
+@login_required
+def playlist_list(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'method not allowed'}, status=405)
+    playlists = Playlist.objects.filter(user=request.user)
+    data = [{'id': p.id, 'name': p.name, 'songs': p.songs, 'created_at': p.created_at.isoformat()} for p in playlists]
+    return JsonResponse({'playlists': data})
+
+
+@login_required
+def playlist_create(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'method not allowed'}, status=405)
+    try:
+        data = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    name = str(data.get('name') or '').strip()
+    if not name:
+        return JsonResponse({'error': 'name required'}, status=400)
+    if len(name) > 100:
+        return JsonResponse({'error': 'name too long'}, status=400)
+    songs = data.get('songs', [])
+    if not isinstance(songs, list):
+        return JsonResponse({'error': 'songs must be list'}, status=400)
+    if Playlist.objects.filter(user=request.user, name=name).exists():
+        return JsonResponse({'error': 'playlist with this name already exists'}, status=400)
+    try:
+        pl = Playlist.objects.create(user=request.user, name=name, songs=songs)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'id': pl.id, 'name': pl.name, 'songs': pl.songs, 'created_at': pl.created_at.isoformat()}, status=201)
+
+
+@login_required
+def playlist_detail(request, pk):
+    try:
+        pl = Playlist.objects.get(pk=pk, user=request.user)
+    except Playlist.DoesNotExist:
+        return JsonResponse({'error': 'not found'}, status=404)
+    if request.method == 'GET':
+        return JsonResponse({'id': pl.id, 'name': pl.name, 'songs': pl.songs, 'created_at': pl.created_at.isoformat()})
+    elif request.method == 'PUT':
+        try:
+            data = json.loads(request.body.decode('utf-8') or '{}')
+        except Exception:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        new_name = data.get('name')
+        if new_name is not None:
+            new_name = str(new_name).strip()
+            if not new_name:
+                return JsonResponse({'error': 'name required'}, status=400)
+            if len(new_name) > 100:
+                return JsonResponse({'error': 'name too long'}, status=400)
+            if new_name != pl.name and Playlist.objects.filter(user=request.user, name=new_name).exists():
+                return JsonResponse({'error': 'playlist with this name already exists'}, status=400)
+            pl.name = new_name
+        if 'songs' in data:
+            songs = data['songs']
+            if not isinstance(songs, list):
+                return JsonResponse({'error': 'songs must be list'}, status=400)
+            pl.songs = songs
+        try:
+            pl.save()
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+        return JsonResponse({'id': pl.id, 'name': pl.name, 'songs': pl.songs, 'created_at': pl.created_at.isoformat()})
+    elif request.method == 'DELETE':
+        pl.delete()
+        return JsonResponse({'status': 'deleted'})
+    else:
+        return JsonResponse({'error': 'method not allowed'}, status=405)
+
+
+@login_required
+def playlist_load(request, pk):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'method not allowed'}, status=405)
+    try:
+        pl = Playlist.objects.get(pk=pk, user=request.user)
+    except Playlist.DoesNotExist:
+        return JsonResponse({'error': 'not found'}, status=404)
+    try:
+        data = json.loads(request.body.decode('utf-8') or '{}') if request.body else {}
+    except Exception:
+        data = {}
+    clear = bool(data.get('clear', False))
+    if clear:
+        SongQueue.objects.filter(is_played=False).delete()
+    created = 0
+    for s in (pl.songs or []):
+        if not isinstance(s, dict):
+            continue
+        vid = s.get('id') or s.get('video_id') or ''
+        title = str(s.get('title', '')).strip()
+        if not vid or not title:
+            continue
+        channel = str(s.get('channel', 'YouTube')).strip()[:255] or 'YouTube'
+        thumb = str(s.get('thumbnail') or s.get('thumb') or f'https://i.ytimg.com/vi/{vid}/hqdefault.jpg').strip()[:500]
+        title = title[:255]
+        SongQueue.objects.create(
+            title=title,
+            video_id=vid,
+            thumbnail=thumb,
+            channel=channel,
+            requested_by=request.user.username,
+            client_id=f'playlist_{pl.id}',
+        )
+        created += 1
+    return JsonResponse({'status': 'loaded', 'added': created, 'playlist_id': pl.id})
 
 
 def healthz(request):

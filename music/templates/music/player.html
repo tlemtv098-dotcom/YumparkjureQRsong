@@ -267,15 +267,17 @@
     <div class="max-w-6xl mx-auto overflow-hidden">
 
         <!-- หัวข้อแบรนด์ + โลโก้ -->
-        <header class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-            <img src="{% static 'music/img/logo.jpg' %}" alt="ร้านยำปากเจ่อ" class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 object-cover rounded-xl ring-4 ring-amber-400/60 shadow-xl">
-            <div>
-                <h1 class="text-lg sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white">ร้านยำปากเจ่อKPP</h1>
-                <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">ระบบคิวเพลงอัตโนมัติสำหรับลูกค้า</p>
+        <header class="flex flex-wrap items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+            <img src="{% static 'music/img/logo.jpg' %}" alt="ร้านยำปากเจ่อ" class="flex-shrink-0 aspect-square w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 object-cover rounded-xl ring-4 ring-amber-400/60 shadow-xl">
+            <div class="flex-1 min-w-0">
+                <h1 class="text-base sm:text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white truncate">ร้านยำปากเจ่อ KPP</h1>
+                <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">ระบบคิวเพลงอัตโนมัติสำหรับลูกค้า</p>
             </div>
-            <button onclick="toggleTheme()" id="theme-toggle" class="ml-auto bg-slate-100 dark:bg-slate-700 p-2 rounded-lg text-sm font-bold" title="สลับโหมดมืด/สว่าง" aria-label="สลับโหมดมืด/สว่าง">เปลี่ยนทีม</button>
-            <button id="playlist-btn" onclick="togglePlaylistPanel()" class="playlist-btn-header">เพลย์ลิสต์</button>
-            {% if user.is_authenticated %}<span class="text-xs font-bold">{{ user.username }}</span><form method="post" action="{% url 'logout' %}" class="inline">{% csrf_token %}<button type="submit" class="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-lg">ออก</button></form>{% else %}<a href="{% url 'login' %}" class="text-xs bg-amber-500 text-white px-3 py-1 rounded-lg">เข้า</a>{% endif %}
+            <div class="w-full sm:w-auto sm:ml-auto flex flex-wrap gap-2 justify-end sm:justify-start mt-2 sm:mt-0 items-center">
+                <button onclick="toggleTheme()" id="theme-toggle" class="bg-slate-100 dark:bg-slate-700 p-2 rounded-lg text-sm font-bold" title="สลับโหมดมืด/สว่าง" aria-label="สลับโหมดมืด/สว่าง">เปลี่ยนทีม</button>
+                <button id="playlist-btn" onclick="togglePlaylistPanel()" class="playlist-btn-header">เพลย์ลิสต์</button>
+                {% if user.is_authenticated %}<span class="text-xs font-bold">{{ user.username }}</span><form method="post" action="{% url 'logout' %}" class="inline">{% csrf_token %}<button type="submit" class="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-lg">ออก</button></form>{% else %}<a href="{% url 'login' %}" class="text-xs bg-amber-500 text-white px-3 py-1 rounded-lg">เข้า</a>{% endif %}
+            </div>
         </header>
 
         <div id="webview-banner" class="hidden bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
@@ -711,20 +713,22 @@
                             const last = localStorage.getItem('ym_last_playlist');
                             if (last && queue.length === 0) {
                                 const pm = window.PlaylistManager;
-                                const pl = pm ? pm.load(last) : [];
-                                if (pl && pl.length) {
-                                    // non-destructive: only local queue, no server sync
-                                    queue = pl.map(s => ({
-                                        id: 'pl_' + Date.now() + '_' + Math.random().toString(36).slice(2),
-                                        title: s.title,
-                                        video_id: s.video_id || s.id,
-                                        thumbnail: s.thumbnail || s.thumb || '',
-                                        channel: s.channel || '',
-                                        requested_by: 'เพลย์ลิสต์'
-                                    }));
-                                    renderQueue();
-                                    const qc = document.getElementById('queue-count');
-                                    if (qc) qc.innerText = queue.length;
+                                if (pm) {
+                                    Promise.resolve(pm.load(last)).then(pl => {
+                                        if (pl && pl.length) {
+                                            queue = pl.map(s => ({
+                                                id: 'pl_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+                                                title: s.title,
+                                                video_id: s.video_id || s.id,
+                                                thumbnail: s.thumbnail || s.thumb || '',
+                                                channel: s.channel || '',
+                                                requested_by: 'เพลย์ลิสต์'
+                                            }));
+                                            renderQueue();
+                                            const qc = document.getElementById('queue-count');
+                                            if (qc) qc.innerText = queue.length;
+                                        }
+                                    }).catch(()=>{});
                                 }
                             }
                         } catch(e) {}
@@ -1571,7 +1575,7 @@
         });
 
         // --- Playlist Feature ---
-        function togglePlaylistPanel(){
+        async function togglePlaylistPanel(){
             const panel = document.getElementById('playlist-panel');
             if (!panel) return;
             const isOpen = panel.classList.contains('open');
@@ -1579,11 +1583,11 @@
                 panel.classList.remove('open');
             } else {
                 panel.classList.add('open');
-                renderPlaylistPanel();
+                await renderPlaylistPanel();
                 updatePlaylistFooterGating();
             }
         }
-        function renderPlaylistPanel(){
+        async function renderPlaylistPanel(){
             const listEl = document.getElementById('playlist-list');
             if (!listEl) return;
             const pm = window.PlaylistManager;
@@ -1591,8 +1595,23 @@
                 listEl.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">ไม่พบระบบเพลย์ลิสต์</p>';
                 return;
             }
-            const all = pm.getAll();
-            const names = Object.keys(all);
+            let all;
+            try {
+                all = await pm.getAll();
+            } catch (e) {
+                all = {};
+            }
+            // normalize: handle array or {playlists:[]} just in case
+            if (Array.isArray(all)) {
+                const map = {};
+                all.forEach(p => { if (p && p.name) map[p.name] = p.songs || []; });
+                all = map;
+            } else if (all && all.playlists && Array.isArray(all.playlists)) {
+                const map = {};
+                all.playlists.forEach(p => { map[p.name] = p.songs || []; });
+                all = map;
+            }
+            const names = Object.keys(all || {});
             if (names.length === 0) {
                 listEl.innerHTML = '<p class="text-xs text-slate-400 dark:text-slate-500 text-center py-4">ยังไม่มีเพลย์ลิสต์<br><span class="text-xs">กด "สร้าง" หรือ "บันทึกคิวปัจจุบัน" เพื่อเริ่มต้น</span></p>';
                 return;
@@ -1616,18 +1635,26 @@
             });
             updatePlaylistFooterGating();
         }
-        function createPlaylist(){
+        async function createPlaylist(){
             const input = document.getElementById('new-playlist-name');
             const raw = input ? input.value : '';
             const name = raw.trim();
             if (!name) { showToast('กรุณาใส่ชื่อเพลย์ลิสต์', 'warning'); return; }
-            if (window.PlaylistManager.getAll()[name]) { showToast('มีเพลย์ลิสต์ชื่อนี้แล้ว', 'warning'); return; }
-            window.PlaylistManager.save(name, []);
+            let all;
+            try { all = await window.PlaylistManager.getAll(); } catch(e){ all = {}; }
+            if (Array.isArray(all)) { const m={}; all.forEach(p=>{ if(p&&p.name) m[p.name]=p.songs||[]}); all=m; }
+            if (all && all[name]) { showToast('มีเพลย์ลิสต์ชื่อนี้แล้ว', 'warning'); return; }
+            try {
+                await window.PlaylistManager.save(name, []);
+            } catch(e) {
+                if (e.status === 400 || (e.data && e.data.error && e.data.error.includes('already exists'))) { showToast('มีเพลย์ลิสต์ชื่อนี้แล้ว', 'warning'); return; }
+                showToast('สร้างไม่สำเร็จ', 'error'); return;
+            }
             if (input) input.value = '';
-            renderPlaylistPanel();
+            await renderPlaylistPanel();
             showToast('สร้างเพลย์ลิสต์ "' + escapeHtml(name) + '" แล้ว', 'success');
         }
-        function saveCurrentQueue() {
+        async function saveCurrentQueue() {
             if (!window.PlaylistManager) return;
             if (!queue || queue.length===0) { showToast('คิวว่าง ไม่มีเพลงให้บันทึก', 'warning'); return; }
             const input = document.getElementById('new-playlist-name');
@@ -1639,14 +1666,45 @@
                 if (!name) return;
             }
             const songs = queue.map(s => ({id: s.id, title: s.title, channel: s.channel, thumb: s.thumbnail, duration: s.duration, video_id: s.video_id}));
-            window.PlaylistManager.save(name, songs);
+            try {
+                await window.PlaylistManager.save(name, songs);
+            } catch(e) {
+                if (e.status === 400) { showToast('มีเพลย์ลิสต์ชื่อนี้แล้ว', 'warning'); return; }
+                showToast('บันทึกไม่สำเร็จ', 'error'); return;
+            }
             if (input) input.value = '';
-            renderPlaylistPanel();
+            await renderPlaylistPanel();
             showToast('บันทึกแล้ว', 'success');
         }
         async function loadPlaylist(name) {
             if (!window.PlaylistManager) return;
-            const songs = window.PlaylistManager.load(name);
+            // Try API load endpoint first (requires id)
+            try {
+                const resList = await fetch('/api/playlists/', { credentials: 'same-origin' });
+                if (resList.ok && !(resList.redirected && resList.url.includes('/accounts/login'))) {
+                    const ct = resList.headers.get('content-type') || '';
+                    if (!ct.includes('text/html')) {
+                        const data = await resList.json();
+                        const pl = (data.playlists || []).find(p => p.name === name);
+                        if (pl) {
+                            const loadRes = await fetch(`/api/playlists/${pl.id}/load/`, {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCSRFToken()}, credentials:'same-origin', body: JSON.stringify({clear:true})});
+                            if (loadRes.ok) {
+                                localStorage.setItem('ym_last_playlist', name);
+                                showToast('โหลด ' + (pl.songs||[]).length + ' เพลงแล้ว', 'success');
+                                // close panel, refresh queue
+                                const panel = document.getElementById('playlist-panel');
+                                if (panel) panel.classList.remove('open');
+                                fetchQueue(()=>{ if(queue.length>0 && isPlayerReady && !currentSong) playNext(true); });
+                                return;
+                            }
+                            // if auth failure or other error, fall through to fallback
+                        }
+                    }
+                }
+            } catch(e) { /* fallback */ }
+            // fallback: previous clear+add logic using PlaylistManager.load
+            let songs;
+            try { songs = await window.PlaylistManager.load(name); } catch(e){ songs = []; }
             if (!songs || songs.length === 0) {
                 showToast('เพลย์ลิสต์ว่างเปล่า', 'warning');
                 return;
@@ -1679,7 +1737,8 @@
                 setTimeout(()=>fetchQueue(), 500);
             }
             showToast('โหลด ' + mapped.length + ' เพลงแล้ว', 'success');
-            togglePlaylistPanel();
+            const panel2 = document.getElementById('playlist-panel');
+            if (panel2) panel2.classList.remove('open');
         }
         function startInlineRename(spanEl, oldName){
             const container = spanEl.parentElement;
@@ -1690,7 +1749,7 @@
             input.focus();
             input.select();
         }
-        function finishInlineRename(inputEl, oldName){
+        async function finishInlineRename(inputEl, oldName){
             const newName = inputEl.value.trim();
             const spanEl = inputEl.parentElement.querySelector('.playlist-item-name');
             if (!newName || newName===oldName) {
@@ -1698,15 +1757,23 @@
                 if (spanEl) spanEl.classList.remove('hidden');
                 return;
             }
-            if (window.PlaylistManager.getAll()[newName]) { showToast('มีเพลย์ลิสต์ชื่อนี้แล้ว', 'warning'); inputEl.classList.add('hidden'); if (spanEl) spanEl.classList.remove('hidden'); return; }
-            window.PlaylistManager.rename(oldName, newName);
-            renderPlaylistPanel();
+            let all;
+            try { all = await window.PlaylistManager.getAll(); } catch(e){ all={}; }
+            if (Array.isArray(all)) { const m={}; all.forEach(p=>{ if(p&&p.name) m[p.name]=p.songs||[]}); all=m; }
+            if (all[newName]) { showToast('มีเพลย์ลิสต์ชื่อนี้แล้ว', 'warning'); inputEl.classList.add('hidden'); if (spanEl) spanEl.classList.remove('hidden'); return; }
+            try {
+                await window.PlaylistManager.rename(oldName, newName);
+            } catch(e) {
+                if (e.status === 400) { showToast('มีเพลย์ลิสต์ชื่อนี้แล้ว', 'warning'); } else { showToast('เปลี่ยนชื่อไม่สำเร็จ','error'); }
+                inputEl.classList.add('hidden'); if (spanEl) spanEl.classList.remove('hidden'); return;
+            }
+            await renderPlaylistPanel();
             showToast('เปลี่ยนชื่อเป็น "' + escapeHtml(newName) + '" แล้ว', 'success');
         }
-        function renamePlaylist(oldName){
+        async function renamePlaylist(oldName){
             // Trigger inline edit instead of prompt
-            const all = document.querySelectorAll('.playlist-item');
-            for (const item of all) {
+            const allEls = document.querySelectorAll('.playlist-item');
+            for (const item of allEls) {
                 const span = item.querySelector('.playlist-item-name');
                 if (span && span.textContent.trim()===oldName) { startInlineRename(span, oldName); return; }
             }
@@ -1714,15 +1781,18 @@
             const newName = prompt('ชื่อใหม่สำหรับ "' + oldName + '":', oldName);
             if (!newName || !newName.trim() || newName.trim()===oldName) return;
             const trimmed = newName.trim();
-            if (window.PlaylistManager.getAll()[trimmed]) { showToast('มีเพลย์ลิสต์ชื่อนี้แล้ว', 'warning'); return; }
-            window.PlaylistManager.rename(oldName, trimmed);
-            renderPlaylistPanel();
+            let all;
+            try { all = await window.PlaylistManager.getAll(); } catch(e){ all={}; }
+            if (Array.isArray(all)) { const m={}; all.forEach(p=>{ if(p&&p.name) m[p.name]=p.songs||[]}); all=m; }
+            if (all[trimmed]) { showToast('มีเพลย์ลิสต์ชื่อนี้แล้ว', 'warning'); return; }
+            try { await window.PlaylistManager.rename(oldName, trimmed); } catch(e){ if(e.status===400){ showToast('มีเพลย์ลิสต์ชื่อนี้แล้ว','warning'); return;} showToast('เปลี่ยนชื่อไม่สำเร็จ','error'); return; }
+            await renderPlaylistPanel();
             showToast('เปลี่ยนชื่อเป็น "' + escapeHtml(trimmed) + '" แล้ว', 'success');
         }
-        function deletePlaylist(name){
+        async function deletePlaylist(name){
             if (!confirm('ลบเพลย์ลิสต์ "' + name + '"?')) return;
-            window.PlaylistManager.delete(name);
-            renderPlaylistPanel();
+            try { await window.PlaylistManager.delete(name); } catch(e){ showToast('ลบไม่สำเร็จ','error'); return; }
+            await renderPlaylistPanel();
             showToast('ลบเพลย์ลิสต์ "' + escapeHtml(name) + '" แล้ว', 'success');
         }
         function exportPlaylists(){
@@ -1740,7 +1810,7 @@
                 const text = e.target.result;
                 const pm = window.PlaylistManager;
                 if (pm && pm.importJSON(text)) {
-                    renderPlaylistPanel();
+                    Promise.resolve(renderPlaylistPanel()).catch(()=>{});
                     showToast('นำเข้าแล้ว', 'success');
                 } else {
                     showToast('ไฟล์ไม่ถูกต้อง', 'error');

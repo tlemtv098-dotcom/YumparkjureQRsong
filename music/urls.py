@@ -25,6 +25,10 @@ urlpatterns = [
     path('api/block/clear/', views.clear_blocked, name='clear_blocked'),
     path('api/block/<str:video_id>/', views.block_video, name='block_video'),
     path('api/ai/recommend/', views.ai_recommend, name='ai_recommend'),
+    path('api/playlists/', views.playlist_list, name='playlist_list'),
+    path('api/playlists/create/', views.playlist_create, name='playlist_create'),
+    path('api/playlists/<int:pk>/', views.playlist_detail, name='playlist_detail'),
+    path('api/playlists/<int:pk>/load/', views.playlist_load, name='playlist_load'),
     path('healthz/', views.healthz, name='healthz'),
     path('api/stats/', views.stats, name='stats'),
 ]
