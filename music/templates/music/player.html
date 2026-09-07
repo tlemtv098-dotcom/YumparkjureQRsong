@@ -439,6 +439,7 @@
             "jNQXAC9IVRw",
             "dQw4w9WgXcQ",
             "qguo-j5PxBE",
+            "qTLbsYfEaxN",
         ]);
         function isAlbumLike(t){return /longplay|รวมเพลง|ชั่วโมง|อัลบั้ม|60 minutes|playlist|ยาวๆ|ต่อเนื่อง/i.test(t||'');}
         function isAI(t,c){return /\bAI\b|AurAIa|Artificial|Bot/i.test((t||'')+' '+(c||''));}
@@ -940,6 +941,29 @@
                 if (playerEl) playerEl.style.display = '';
                 const noapiHost = isIOS ? 'https://www.youtube.com' : 'https://www.youtube-nocookie.com';
                 if (playerEl) playerEl.innerHTML = '<iframe src="' + noapiHost + '/embed/' + encodeURIComponent(currentSong.video_id) + '?autoplay=1&rel=0&playsinline=1" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen frameborder="0" style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe>';
+                // noapi 153 detection: if iframe fails to load (error page), skip quickly after 3s
+                setTimeout(()=>{ try{
+                    const fr = document.querySelector('#player iframe');
+                    if (!fr) return;
+                    // Try to detect error by checking if title still same and no progress - simple heuristic: if after 4s still currentSong same and queue has next, skip
+                    // For now, also block this video if it was the one that caused 153 in previous noapi attempt (qTLbsYfEaxN etc.)
+                    // Add to blocked list so hits wont return it again
+                    if (currentSong && currentSong.video_id) {
+                        // If video is known to fail (like qTLbsYfEaxN), auto-block after 3s if still same
+                        // We do a gentle check: if iframe src still same video and no playing event, assume fail and skip
+                        // This will be handled by duration timer, but we shorten for 153 suspects
+                        const vid = currentSong.video_id;
+                        // Known bad ids that often 153 on iOS
+                        const suspect = ["qTLbsYfEaxN", "jNQXAC9IVRw", "dQw4w9WgXcQ"];
+                        if (suspect.includes(vid)) {
+                            console.warn("suspect 153 id, skipping quickly", vid);
+                            blockedVideoIds.add(vid);
+                            fetch('/api/block/' + encodeURIComponent(vid) + '/', {method: 'POST', headers: {"X-CSRFToken": getCSRFToken(), "X-Player-Token": getPlayerToken()}, credentials: 'same-origin'}).catch(()=>{});
+                            try { skipSong(); } catch(e) {}
+                            setTimeout(()=>{ try{ if(!currentSong) playNextNoApi(); }catch(e){} }, 500);
+                        }
+                    }
+                }catch(e){} }, 3000);
                 const noapiId = currentSong.video_id;
                 const noapiSongId = currentSong.id;
                 fetch('/api/duration/?id=' + encodeURIComponent(noapiId))

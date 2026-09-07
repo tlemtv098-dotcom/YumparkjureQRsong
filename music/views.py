@@ -62,6 +62,7 @@ BLOCKED_VIDEO_IDS = {
     'jNQXAC9IVRw',
     'dQw4w9WgXcQ',
     'qguo-j5PxBE',
+    'qTLbsYfEaxN',
 }
 # Fallback hits that must never be permanently blocked (matches _fallback_static in hits/ai_recommend)
 FALLBACK_IDS = {
