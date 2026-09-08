@@ -937,6 +937,43 @@ def video_duration(request):
             return JsonResponse({"duration_sec": 180})
     return JsonResponse({"duration_sec": 180})
 
+def audio_stream(request):
+    video_id = (request.GET.get('id') or '').strip()
+    if not re.match(r'^[A-Za-z0-9_-]{11}$', video_id):
+        return JsonResponse({'error': 'กรุณาใส่ id เพลง'}, status=400)
+    if _is_blocked(video_id):
+        return JsonResponse({'error': 'เพลงนี้เล่นไม่ได้ (ลิขสิทธิ์) ลองเลือกเพลงอื่นนะ'}, status=400)
+    cache_key = f"aud:{video_id}"
+    try:
+        cached = cache.get(cache_key)
+    except Exception:
+        cached = None
+    if cached is not None:
+        return JsonResponse(cached)
+    for client in ['android', 'web', 'tv']:
+        try:
+            opts = {'format': 'bestaudio/best', 'quiet': True, 'skip_download': True,
+                    'noplaylist': True, 'socket_timeout': 8,
+                    'extractor_args': {'youtube': {'player_client': [client]}}}
+            with YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(f'https://www.youtube.com/watch?v={video_id}', download=False)
+            if not info or not info.get('url'):
+                continue
+            try:
+                duration = int(info.get('duration') or 180)
+            except Exception:
+                duration = 180
+            data = {'audio_url': info['url'], 'duration_sec': duration}
+            try:
+                cache.set(cache_key, data, 21600)
+            except Exception as e:
+                print(f'audio_stream cache.set failed: {e}')
+            return JsonResponse(data)
+        except Exception as e:
+            print(f'audio_stream {client} failed for {video_id}: {e}')
+            continue
+    return JsonResponse({'error': 'ดึงเสียงไม่ได้ ลองใหม่'}, status=503)
+
 def stats(request):
     total_queued = SongQueue.objects.filter(is_played=False).count()
     total_played = SongQueue.objects.filter(is_played=True).count()

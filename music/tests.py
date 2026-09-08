@@ -1052,3 +1052,61 @@ class Fallback153NoApiTests(TestCase):
         self.assertNotEqual(reset_idx, -1)
         self.assertGreater(reset_idx, playing_idx)
 
+class AudioApiTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def tearDown(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def _mock_ydl(self, mock_ydl_class, info):
+        from unittest.mock import MagicMock
+        mock_ydl_instance = MagicMock()
+        mock_ydl_instance.extract_info.return_value = info
+        mock_ydl_class.return_value.__enter__.return_value = mock_ydl_instance
+        mock_ydl_class.return_value.__exit__.return_value = False
+        return mock_ydl_instance
+
+    def test_audio_success_returns_url_and_duration(self):
+        from unittest.mock import patch
+        from django.core.cache import cache
+        with patch('music.views.YoutubeDL') as mock_ydl_class:
+            self._mock_ydl(mock_ydl_class, {'url': 'https://example.com/audio.m4a', 'duration': 200})
+            res = self.client.get('/api/audio/?id=ks7p6DA0dKk')
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data['audio_url'], 'https://example.com/audio.m4a')
+        self.assertEqual(data['duration_sec'], 200)
+        self.assertEqual(cache.get('aud:ks7p6DA0dKk')['audio_url'], 'https://example.com/audio.m4a')
+
+    def test_audio_bad_id_400(self):
+        res = self.client.get('/api/audio/?id=bad')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('id', res.json()['error'])
+
+    def test_audio_all_fail_503(self):
+        from unittest.mock import patch
+        with patch('music.views.YoutubeDL', side_effect=Exception('bot blocked')):
+            res = self.client.get('/api/audio/?id=ks7p6DA0dKk')
+        self.assertEqual(res.status_code, 503)
+        self.assertIn('ดึงเสียงไม่ได้', res.json()['error'])
+
+
+class YouTubeAppFallbackTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='ytapp_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
+
+    def test_player_has_youtube_app_fallback(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'youtube://watch?v=')
+        self.assertContains(res, 'openInYouTubeApp')
+
+    def test_request_has_youtube_links(self):
+        res = self.client.get('/request/')
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'youtube.com/watch?v=')
+

@@ -324,6 +324,9 @@
                         <button onclick="skipSong()" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow transition flex-shrink-0">
                             ข้ามเพลง
                         </button>
+                        <button onclick="openInYouTubeApp()" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow transition flex-shrink-0">
+                            เปิดในแอป
+                        </button>
                     </div>
                 </div>
             </div>
@@ -420,6 +423,7 @@
         const isMobileSafari = isIOS && isSafari;
         const isLineWebView = /Line\/|FBAN|FBAV|Messenger/i.test(navigator.userAgent);
         const NOAPI_MODE = isIOS || new URLSearchParams(location.search).has('noapi'); // iOS default noapi to avoid 153
+        const AUDIO_MODE = new URLSearchParams(location.search).has('audio'); let audioEl = null; let audioFailedCount = 0; function getAudioEl(){ if(!audioEl){ audioEl = new Audio(); audioEl.preload='auto'; } return audioEl; }
         function getCSRFToken(){return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')||'';}
         function getPlayerToken(){return document.querySelector('meta[name="player-token"]')?.getAttribute('content')||'dev-player-token';}
         window.IS_OWNER = true;
@@ -536,6 +540,7 @@
 
         // --- Sound overlay tap handler (single overlay) ---
         function handleOverlayTap() {
+            if(AUDIO_MODE){ userInteracted=true; soundEnabled=true; const _so=document.getElementById('sound-overlay'); if(_so){ _so.classList.add('hidden'); _so.style.display='none'; } if(!currentSong && queue.length>0) playNextAudio(); else if(audioEl && audioEl.paused) audioEl.play().catch(()=>{}); showToast('เปิดเสียงแล้ว','success'); return; }
             consecutive153 = 0;
             breakerTripped = false;
             userInteracted = true;
@@ -744,6 +749,7 @@
                     'onError': (event) => {
                         // Embedding disabled / video unavailable errors
                         if ([2, 5, 100, 101, 150, 153].includes(event.data)) {
+                            if (event.data === 153) { window._embedFail=(window._embedFail||0)+1; if(window._embedFail>=2 && !AUDIO_MODE){ showToast('สลับโหมดเสียง','warning'); const u=new URL(location.href); u.searchParams.set('audio','1'); location.href=u.toString(); return; } }
                             if (event.data === 153 && !window._triedNoApi) { window._triedNoApi = true; console.warn('153 fallback to noapi', currentSong); try { if (typeof playNextNoApi === 'function') { // hide player error, try noapi
    const pEl = document.getElementById('player'); if (pEl) pEl.style.display = '';
    // try noapi for same song
@@ -992,7 +998,10 @@
             }
         }
 
+        async function playNextAudio(){ const next = queue.find(s=>!finishingSongIds.has(s.id)); const playerElA = document.getElementById('player'); const idleA = document.getElementById('idle-splash'); const soA = document.getElementById('sound-overlay'); if(!next){ currentSong=null; document.getElementById('now-playing-title').innerText='รอเพลงจากลูกค้า...'; if(idleA) idleA.classList.remove('hidden'); if(soA){ soA.classList.add('hidden'); soA.style.display='none'; } return; } currentSong=next; document.getElementById('now-playing-title').innerText=next.title; if(playerElA) playerElA.style.display='none'; if(idleA) idleA.classList.add('hidden'); if(soA){ soA.classList.add('hidden'); soA.style.display='none'; } try{ const r=await fetch('/api/audio/?id='+encodeURIComponent(next.video_id)); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||'audio fail'); const a=getAudioEl(); a.src=d.audio_url; a.onended=()=>{ removePlayedSong(next.id); setTimeout(()=>playNextAudio(),500); }; a.onerror=()=>{ audioFailedCount++; showToast('เสียงเล่นไม่ได้ ข้ามเพลง','error'); removePlayedSong(next.id); setTimeout(()=>playNextAudio(),500); }; await a.play(); if('mediaSession' in navigator){ try{ navigator.mediaSession.metadata=new MediaMetadata({title:currentSong.title||'',artist:'ร้านยำปากเจ่อKPP',artwork:currentSong.thumbnail?[{src:currentSong.thumbnail,sizes:'512x512',type:'image/jpeg'}]:[]}); navigator.mediaSession.setActionHandler('play',()=>{ try{getAudioEl().play();}catch(e){} }); navigator.mediaSession.setActionHandler('pause',()=>{ try{getAudioEl().pause();}catch(e){} }); navigator.mediaSession.setActionHandler('nexttrack',()=>skipSong()); }catch(e){} } }catch(e){ showToast('ดึงเสียงไม่ได้','error'); removePlayedSong(next.id); setTimeout(()=>playNextAudio(),800); } }
+
         function playNext(withSound) {
+            if(AUDIO_MODE) return playNextAudio();
             if (typeof NOAPI_MODE !== 'undefined' && NOAPI_MODE) return playNextNoApi();
             if (breakerTripped) return;
             if (playerStarting) { setTimeout(()=>playNext(withSound), 350); return; }
@@ -1090,6 +1099,8 @@
             const songToSkip = currentSong || queue.find(song => !finishingSongIds.has(song.id));
             if (songToSkip) removePlayedSong(songToSkip.id);
         }
+
+        function openInYouTubeApp(){ if(!currentSong) {showToast('ยังไม่มีเพลง','warning'); return;} const id=currentSong.video_id; try{ location.href='youtube://watch?v='+id; }catch(e){} setTimeout(()=>{ window.open('https://youtube.com/watch?v='+id,'_blank'); },800); }
 
         function printQR() {
             const qrImg = document.querySelector('#idle-splash img[alt="QR Code"]') ||
