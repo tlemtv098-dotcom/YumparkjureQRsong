@@ -711,7 +711,7 @@
                     'origin': window.location.origin,
                     'enablejsapi': 1
                 },
-                widget_referrer: isIOS ? window.location.origin : undefined,
+                ...(isIOS ? {widget_referrer: window.location.origin} : {}),
                 events: {
                     'onReady': () => {
                         isPlayerReady = true;

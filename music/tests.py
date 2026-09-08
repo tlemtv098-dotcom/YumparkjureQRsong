@@ -998,6 +998,13 @@ class PlaylistAccountTests(TestCase):
         self.assertEqual(len(dupe_count), 1)
 
 
+class WidgetReferrerRegressionTests(TestCase):
+    def test_no_undefined_widget_referrer(self):
+        self.client.force_login(User.objects.create_user(username='wr1', password='Testpass123!', is_staff=True))
+        html = self.client.get('/').content.decode()
+        self.assertNotIn('widget_referrer: isIOS', html)
+        self.assertIn('widget_referrer', html)
+
 class HostSwitchTests(TestCase):
     def setUp(self):
         self.staff_user = User.objects.create_user(username='host_staff', password='Testpass123!', is_staff=True)
