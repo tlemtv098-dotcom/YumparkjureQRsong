@@ -749,7 +749,7 @@
                     'onError': (event) => {
                         // Embedding disabled / video unavailable errors
                         if ([2, 5, 100, 101, 150, 153].includes(event.data)) {
-                            if (event.data === 153) { window._embedFail=(window._embedFail||0)+1; if(window._embedFail>=2 && !AUDIO_MODE){ showToast('สลับโหมดเสียง','warning'); const u=new URL(location.href); u.searchParams.set('audio','1'); location.href=u.toString(); return; } }
+                            if (event.data === 153) { window._embedFail=(window._embedFail||0)+1; if(window._embedFail>=2 && !AUDIO_MODE){ showToast('เพลงนี้เล่นในหน้านี้ไม่ได้ กดเปิดในแอป','warning'); } }
                             if (event.data === 153 && !window._triedNoApi) { window._triedNoApi = true; console.warn('153 fallback to noapi', currentSong); try { if (typeof playNextNoApi === 'function') { // hide player error, try noapi
    const pEl = document.getElementById('player'); if (pEl) pEl.style.display = '';
    // try noapi for same song
