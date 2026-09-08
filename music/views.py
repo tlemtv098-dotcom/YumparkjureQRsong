@@ -63,6 +63,7 @@ BLOCKED_VIDEO_IDS = {
     'dQw4w9WgXcQ',
     'qguo-j5PxBE',
     'qTLbsYfEaxN',
+    'qULrk5AASjyI',
 }
 # Fallback hits that must never be permanently blocked (matches _fallback_static in hits/ai_recommend)
 FALLBACK_IDS = {
@@ -333,11 +334,16 @@ def hits(request):
     if genre in genre_queries:
         queries = genre_queries[genre]
     else:
-        queries = ['เพลงไทยฮิต', 'เพลงฮิต 2025', 'เพลงดัง', 'เพลงใหม่ 2025', 'เพลงไทยเพราะๆ', 'เพลงฮิตติดชาร์ต']
+        queries = ['เพลงไทยฮิต', 'เพลงฮิต 2025', 'เพลงดัง', 'เพลงใหม่ 2025', 'เพลงไทยเพราะๆ', 'เพลงฮิตติดชาร์ต', 'ชาร์ตเพลงไทย 2026', 'เพลงมาแรง 2026', 'เพลงฮิต TikTok 2026', 'เพลงใหม่ 2026']
     # pick 2 random queries to broaden pool and return 10 unique (+fallback pad to 15) for speed
     k = min(2, len(queries))
     picked = random.sample(queries, k) if k else []
-    # cache key versioned to avoid stale single-query cache; keep 60s but shuffle on hit
+    # ensure at least one recent 2026/ชาร์ต query when using default pool
+    if genre not in genre_queries and picked and not any('2026' in q or 'ชาร์ต' in q for q in picked):
+        recent_pool = [q for q in queries if '2026' in q or 'ชาร์ต' in q]
+        if recent_pool:
+            picked[0] = random.choice(recent_pool)
+    # cache key versioned to avoid stale single-query cache; keep 30s but shuffle on hit
     cache_key = f"hits:{genre}:v3:{'player' if is_player else 'request'}:{'ios' if is_ios else 'other'}"
     try:
         cached = cache.get(cache_key)
@@ -357,7 +363,7 @@ def hits(request):
         for r in filtered_cached:
             if r['id'] not in seen_c:
                 dedup_c.append(r); seen_c.add(r['id'])
-        # shuffle a copy to avoid same order on refresh within 60s
+        # shuffle a copy to avoid same order on refresh within 30s
         out_cached = list(dedup_c)
         random.shuffle(out_cached)
         return JsonResponse({'results': out_cached[:15]})
@@ -403,7 +409,7 @@ def hits(request):
         random.shuffle(dedup)
         out = dedup[:15]
         try:
-            cache.set(cache_key, out, 60)
+            cache.set(cache_key, out, 30)
         except Exception as e:
             print(f'hits cache.set failed: {e}')
         return JsonResponse({'results': out})

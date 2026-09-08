@@ -309,6 +309,7 @@
                     document.getElementById("searchInput").value = "";
                     document.getElementById("results").innerHTML = "";
                     fetchMySongs();
+                    fetchHits();
                     showToast("ส่งคำขอเพลงแล้ว!", "success");
                 } else {
                     showToast(data.error || "เพิ่มเพลงไม่สำเร็จ", "error");
@@ -429,6 +430,7 @@
             .then(data => {
                 fetchMySongs();
                 fetchNowPlaying();
+                fetchHits();
             })
             .catch(err => console.error(err));
         }
@@ -448,8 +450,9 @@
             }, 3000);
             setInterval(updateMyStatus, 3000);
             // Auto-refresh recommended songs every 60 seconds
-            setInterval(fetchHits, 30000);
+            setInterval(fetchHits, 60000);
         });
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') fetchHits(); });
 
         document.addEventListener("touchstart", function() {}, { once: true });
         document.addEventListener("click", function() {}, { once: true });

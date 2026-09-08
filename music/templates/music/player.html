@@ -440,6 +440,7 @@
             "dQw4w9WgXcQ",
             "qguo-j5PxBE",
             "qTLbsYfEaxN",
+            "qULrk5AASjyI",
         ]);
         function isAlbumLike(t){return /longplay|รวมเพลง|ชั่วโมง|อัลบั้ม|60 minutes|playlist|ยาวๆ|ต่อเนื่อง/i.test(t||'');}
         function isAI(t,c){return /\bAI\b|AurAIa|Artificial|Bot/i.test((t||'')+' '+(c||''));}
@@ -957,8 +958,9 @@
                         // This will be handled by duration timer, but we shorten for 153 suspects
                         const vid = currentSong.video_id;
                         // Known bad ids that often 153 on iOS
-                        const suspect = ["qTLbsYfEaxN", "jNQXAC9IVRw", "dQw4w9WgXcQ"];
-                        if (suspect.includes(vid)) {
+                        const suspect = ["qTLbsYfEaxN", "qULrk5AASjyI", "jNQXAC9IVRw", "dQw4w9WgXcQ"];
+                        // Quick skip for any 153, suspect or not - iOS 153 should not wait 180s
+                        if (true) { // always quick skip for noapi 153 suspects, keep suspect list for logging
                             console.warn("suspect 153 id, skipping quickly", vid);
                             blockedVideoIds.add(vid); autoPlayedIds.add(vid);
                             fetch('/api/block/' + encodeURIComponent(vid) + '/', {method: 'POST', headers: {"X-CSRFToken": getCSRFToken(), "X-Player-Token": getPlayerToken()}, credentials: 'same-origin'}).catch(()=>{});
@@ -1109,6 +1111,7 @@
                     currentSong = null;
                     lastPlayedVideoId = null;
                     fetchQueue();
+                    fetchHits();
                     showToast("ล้างคิวแล้ว", "success");
                 })
                 .catch(err => { console.error(err); showToast("เกิดข้อผิดพลาด", "error"); });
@@ -1324,6 +1327,7 @@
                             }
                         }, 100);
                     });
+                    fetchHits();
                     document.getElementById("manual-search").value = "";
                     document.getElementById("manual-results").innerHTML = "";
                     toggleSearchPanel();
@@ -1418,6 +1422,8 @@
             // Load recommendations independently of the YouTube iframe state.
             fetchHits();
         });
+        setInterval(fetchHits, 60000);
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') fetchHits(); });
 
         function renderHitList() {
             const container = document.getElementById("hit-list");
@@ -1598,6 +1604,7 @@
                             }
                         }, 100);
                     });
+                    fetchHits();
                     showToast("เพิ่มเพลงเข้าคิวแล้ว", "success");
             })
             .catch(err => {
@@ -1644,6 +1651,7 @@
                             }
                         }, 300);
                     });
+                    fetchHits();
             })
             .catch(err => {
                 if (err && err.data) {
