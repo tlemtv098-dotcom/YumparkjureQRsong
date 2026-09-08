@@ -260,14 +260,14 @@ def get_local_ip():
 def player_view(request):
     local_ip = get_local_ip()
     request_url = f'http://{local_ip}:8000/request/'
-    return render(request, 'music/player.html', {'request_url': request_url, 'PLAYER_TOKEN': settings.PLAYER_TOKEN})
+    return render(request, 'music/player.html', {'request_url': request_url, 'PLAYER_TOKEN': settings.PLAYER_TOKEN, 'APP_VERSION': os.environ.get('RENDER_GIT_COMMIT', 'dev')[:7]})
 
 def embed_test(request):
     return render(request, 'music/embed_test.html')
 
 @ensure_csrf_cookie
 def request_view(request):
-    return render(request, 'music/request.html')
+    return render(request, 'music/request.html', {'APP_VERSION': os.environ.get('RENDER_GIT_COMMIT', 'dev')[:7]})
 
 def search_song(request):
     query = request.GET.get('q', '').strip()
