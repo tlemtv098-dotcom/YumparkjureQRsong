@@ -181,6 +181,10 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 
+# Render terminates TLS at its proxy and forwards plain HTTP.
+# Trust X-Forwarded-Proto so is_secure()/Secure cookies/CSRF referer checks see https.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # CSRF trusted origins for production
 _csrf_env = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
 if _csrf_env:
