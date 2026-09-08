@@ -1245,6 +1245,18 @@ class EmbedOkTests(TestCase):
         cache.clear()
 
 
+class NoStoreAndEmbed5Tests(TestCase):
+    def test_player_no_store(self):
+        self.client.force_login(User.objects.create_user(username='ns1', password='Testpass123!', is_staff=True))
+        resp = self.client.get('/')
+        self.assertIn('no-store', resp.get('Cache-Control', ''))
+    def test_request_no_store(self):
+        resp = self.client.get('/request/')
+        self.assertIn('no-store', resp.get('Cache-Control', ''))
+    def test_embed_section5_youtube_host(self):
+        resp = self.client.get('/embed-test/')
+        self.assertContains(resp, 'youtube.com/embed/ks7p6DA0dKk')
+
 class SwCompatTests(TestCase):
     def test_sw_compat_hashed_url_serves_current_sw(self):
         res = self.client.get('/static/music/sw.deadbeef1234.js')

@@ -16,6 +16,7 @@ from django.conf import settings
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.views.decorators.cache import never_cache
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db.models import Count
@@ -255,6 +256,7 @@ def get_local_ip():
         s.close()
     return ip
 
+@never_cache
 @login_required
 @ensure_csrf_cookie
 def player_view(request):
@@ -262,10 +264,12 @@ def player_view(request):
     request_url = f'http://{local_ip}:8000/request/'
     return render(request, 'music/player.html', {'request_url': request_url, 'PLAYER_TOKEN': settings.PLAYER_TOKEN, 'APP_VERSION': os.environ.get('RENDER_GIT_COMMIT', 'dev')[:7]})
 
+@never_cache
 def embed_test(request):
     return render(request, 'music/embed_test.html')
 
 @ensure_csrf_cookie
+@never_cache
 def request_view(request):
     return render(request, 'music/request.html', {'APP_VERSION': os.environ.get('RENDER_GIT_COMMIT', 'dev')[:7]})
 
