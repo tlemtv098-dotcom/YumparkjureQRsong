@@ -950,7 +950,8 @@
                 const playerEl = document.getElementById('player');
                 if (playerEl) playerEl.style.display = '';
                 const noapiHost = isIOS ? 'https://www.youtube.com' : 'https://www.youtube-nocookie.com';
-                if (playerEl) playerEl.innerHTML = '<iframe src="' + noapiHost + '/embed/' + encodeURIComponent(currentSong.video_id) + '?autoplay=1&rel=0&playsinline=1" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen frameborder="0" style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe>';
+                if (playerEl) playerEl.innerHTML = '<iframe src="' + noapiHost + '/embed/' + encodeURIComponent(currentSong.video_id) + '?autoplay=1&mute=1&rel=0&playsinline=1" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen frameborder="0" style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe>';
+                if (isIOS && !window._unmuteHintShown) { window._unmuteHintShown = true; setTimeout(()=>showToast('แตะปุ่มลำโพงในวิดีโอเพื่อเปิดเสียง', 'info'), 1200); }
                 // noapi has no iframe error events; rely on duration timer (pool is oEmbed-verified)
                 const noapiId = currentSong.video_id;
                 const noapiSongId = currentSong.id;
