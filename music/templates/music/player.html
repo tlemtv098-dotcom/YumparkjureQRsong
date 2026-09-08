@@ -279,7 +279,7 @@
                 {% if user.is_authenticated %}<span class="text-xs font-bold">{{ user.username }}</span><form method="post" action="{% url 'logout' %}" class="inline">{% csrf_token %}<button type="submit" class="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-lg">ออก</button></form>{% else %}<a href="{% url 'login' %}" class="text-xs bg-amber-500 text-white px-3 py-1 rounded-lg">เข้า</a>{% endif %}
             </div>
         </header>
-        <p class="text-[10px] text-slate-300 dark:text-slate-600 text-right select-none">v{{ APP_VERSION }}</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 text-right select-none">v{{ APP_VERSION }}</p>
 
         <div id="webview-banner" class="hidden bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
             <span class="text-sm font-medium">เปิดในเบราว์เซอร์ภายนอกเพื่อประสบการณ์ที่ดีขึ้น</span>
