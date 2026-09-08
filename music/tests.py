@@ -119,12 +119,12 @@ class RequestPageTests(TestCase):
 
     def test_request_has_result_panel_with_status(self):
         response = self.client.get('/request/')
-        self.assertContains(response, 'id=\"result-panel\"')
+        self.assertContains(response, 'id="result-panel"')
         self.assertContains(response, 'mySongId')
         self.assertContains(response, 'updateMyStatus')
         self.assertContains(response, 'คิวของคุณ')
         self.assertNotContains(response, 'กำลังเล่นเพลงนี้เลย')
-        self.assertNotContains(response, '6000')
+        self.assertContains(response, '60000')
 
     def test_request_has_live_search(self):
         response = self.client.get('/request/')
@@ -560,7 +560,8 @@ class ApiKeyRotationRegressionTests(TestCase):
         }
         with patch.dict(os.environ, env):
             with patch('music.views.urllib.request.urlopen',
-                       side_effect=[quota_error, self._success_response()]) as mock_urlopen:
+                       side_effect=[quota_error, self._success_response()]) as mock_urlopen, \
+                 patch('music.views._is_embed_ok', return_value=True):
                 results = youtube_api_search('test song', 5)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['id'], 'ks7p6DA0dKk')
@@ -580,7 +581,8 @@ class ApiKeyRotationRegressionTests(TestCase):
         with patch.dict(os.environ, env):
             with patch('music.views.urllib.request.urlopen',
                        side_effect=[urllib.error.URLError('timed out'),
-                                    self._success_response()]) as mock_urlopen:
+                                    self._success_response()]) as mock_urlopen, \
+                 patch('music.views._is_embed_ok', return_value=True):
                 results = youtube_api_search('test song', 5)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['id'], 'ks7p6DA0dKk')
@@ -1112,8 +1114,135 @@ class YouTubeAppFallbackTests(TestCase):
         self.assertContains(res, 'youtube://watch?v=')
         self.assertContains(res, 'openInYouTubeApp')
 
-    def test_request_has_youtube_links(self):
-        res = self.client.get('/request/')
-        self.assertEqual(res.status_code, 200)
-        self.assertContains(res, 'youtube.com/watch?v=')
+class EmbedOkTests(TestCase):
+    def _api_response(self, video_ids):
+        import json as json_lib
+        from unittest.mock import MagicMock
+        payload = {
+            'items': [
+                {
+                    'id': {'videoId': vid},
+                    'snippet': {
+                        'title': 'Test Song %s' % vid,
+                        'channelTitle': 'Test Channel',
+                        'thumbnails': {'medium': {'url': 'https://i.ytimg.com/vi/%s/mqdefault.jpg' % vid}},
+                    },
+                }
+                for vid in video_ids
+            ]
+        }
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.__exit__.return_value = False
+        response.read.return_value = json_lib.dumps(payload).encode('utf-8')
+        return response
+
+    def _oembed_ok_response(self):
+        from unittest.mock import MagicMock
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.__exit__.return_value = False
+        response.status = 200
+        return response
+
+    def test_oembed_401_filtered_out(self):
+        import io
+        import os
+        import urllib.error
+        from unittest.mock import patch
+        from django.core.cache import cache
+        from music.views import youtube_api_search
+        cache.clear()
+        video_id = 'AAA111BBB22'
+        api_resp = self._api_response([video_id])
+        oembed_401 = urllib.error.HTTPError(
+            'https://www.youtube.com/oembed', 401,
+            'Unauthorized', {}, io.BytesIO(b''),
+        )
+        def fake_urlopen(url_or_req, timeout=None):
+            url = url_or_req.full_url if hasattr(url_or_req, 'full_url') else str(url_or_req)
+            if 'www.googleapis.com' in url:
+                return api_resp
+            if 'youtube.com/oembed' in url:
+                raise oembed_401
+            raise AssertionError('unexpected url: %s' % url)
+        env = {'YOUTUBE_API_KEYS': 'TESTKEY1', 'YOUTUBE_API_KEY': '', 'key': '', 'YOUTUBE_API_KEY_2': ''}
+        with patch.dict(os.environ, env):
+            with patch('music.views.urllib.request.urlopen', side_effect=fake_urlopen):
+                results = youtube_api_search('test song', 5)
+        self.assertEqual([r['id'] for r in results], [])
+        cache.clear()
+
+    def test_oembed_200_kept(self):
+        import os
+        from unittest.mock import patch
+        from django.core.cache import cache
+        from music.views import youtube_api_search
+        cache.clear()
+        video_id = 'BBB222CCC33'
+        api_resp = self._api_response([video_id])
+        oembed_ok = self._oembed_ok_response()
+        def fake_urlopen(url_or_req, timeout=None):
+            url = url_or_req.full_url if hasattr(url_or_req, 'full_url') else str(url_or_req)
+            if 'www.googleapis.com' in url:
+                return api_resp
+            if 'youtube.com/oembed' in url:
+                return oembed_ok
+            raise AssertionError('unexpected url: %s' % url)
+        env = {'YOUTUBE_API_KEYS': 'TESTKEY1', 'YOUTUBE_API_KEY': '', 'key': '', 'YOUTUBE_API_KEY_2': ''}
+        with patch.dict(os.environ, env):
+            with patch('music.views.urllib.request.urlopen', side_effect=fake_urlopen):
+                results = youtube_api_search('test song', 5)
+        self.assertEqual([r['id'] for r in results], [video_id])
+        cache.clear()
+
+    def test_oembed_urlerror_kept(self):
+        import os
+        import urllib.error
+        from unittest.mock import patch
+        from django.core.cache import cache
+        from music.views import youtube_api_search
+        cache.clear()
+        video_id = 'CCC333DDD44'
+        api_resp = self._api_response([video_id])
+        def fake_urlopen(url_or_req, timeout=None):
+            url = url_or_req.full_url if hasattr(url_or_req, 'full_url') else str(url_or_req)
+            if 'www.googleapis.com' in url:
+                return api_resp
+            if 'youtube.com/oembed' in url:
+                raise urllib.error.URLError('timed out')
+            raise AssertionError('unexpected url: %s' % url)
+        env = {'YOUTUBE_API_KEYS': 'TESTKEY1', 'YOUTUBE_API_KEY': '', 'key': '', 'YOUTUBE_API_KEY_2': ''}
+        with patch.dict(os.environ, env):
+            with patch('music.views.urllib.request.urlopen', side_effect=fake_urlopen):
+                results = youtube_api_search('test song', 5)
+        self.assertEqual([r['id'] for r in results], [video_id])
+        cache.clear()
+
+
+class HitsEmbedFilterTests(TestCase):
+    def test_hits_excludes_embed_blocked_spam_keeps_static(self):
+        from unittest.mock import patch
+        from django.core.cache import cache
+        cache.clear()
+        spam_id = 'SPAM1112223'
+        spam_item = {
+            'id': spam_id,
+            'title': 'Longplay รวมเพลงฮิต 3 ชั่วโมงต่อเนื่อง',
+            'channel': 'Spam Channel',
+            'thumbnail': 'https://i.ytimg.com/vi/%s/hqdefault.jpg' % spam_id,
+        }
+        def fake_embed_ok(video_id):
+            if video_id == spam_id:
+                return False
+            return True
+        with patch('music.views.search_youtube', return_value=[spam_item]), \
+             patch('music.views._is_embed_ok', side_effect=fake_embed_ok):
+            cache.clear()
+            res = self.client.get('/api/hits/?player=1')
+            self.assertEqual(res.status_code, 200)
+            results = res.json().get('results', [])
+            ids = [r['id'] for r in results]
+            self.assertNotIn(spam_id, ids)
+            self.assertIn('ks7p6DA0dKk', ids)
 

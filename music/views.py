@@ -80,6 +80,23 @@ def _is_blocked(video_id):
     if video_id in BLOCKED_VIDEO_IDS:
         return True
     return BlockedVideo.objects.filter(video_id=video_id).exists()
+def _is_embed_ok(video_id):
+    try: cached = cache.get(f"embed_ok:{video_id}")
+    except Exception: cached = None
+    if cached is not None: return cached
+    url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            ok = resp.status == 200
+    except urllib.error.HTTPError as exc:
+        ok = False if exc.code in (401, 404) else None
+    except Exception as exc:
+        print(f"oEmbed check failed for {video_id}: {exc}")
+        ok = None
+    try: cache.set(f"embed_ok:{video_id}", ok, 86400)
+    except Exception: pass
+    return ok
 def _get_blocked_ids():
     db_ids = set(BlockedVideo.objects.values_list('video_id', flat=True))
     return BLOCKED_VIDEO_IDS | db_ids
@@ -202,6 +219,7 @@ def youtube_api_search(query, max_results=8):
                 continue
             if _is_non_music(title, channel):
                 continue
+            if _is_embed_ok(video_id) is False: continue
             thumbnails = snippet.get('thumbnails', {})
             thumbnail = (thumbnails.get('medium') or thumbnails.get('default') or {}).get('url')
             results.append({
@@ -353,7 +371,7 @@ def hits(request):
     if cached:
         # ensure cached results also filtered (defense in depth) + non-music
         try:
-            filtered_cached = [r for r in cached if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title','')))]
+            filtered_cached = [r for r in cached if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and _is_embed_ok(r['id']) is not False]
         except Exception as e:
             print(f'hits cached filter failed: {e}')
             filtered_cached = list(cached)
@@ -389,20 +407,20 @@ def hits(request):
     try:
         if not merged:
             # Fallback static hits for PythonAnywhere free (YouTube blocked) - shuffle and dedup
-            results = [r for r in _fallback_static if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title','')))]
+            results = [r for r in _fallback_static if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and _is_embed_ok(r['id']) is not False]
         else:
             # also ensure live search results are filtered (defense in depth) + non-music
-            results = [r for r in merged if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title','')))]
+            results = [r for r in merged if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and _is_embed_ok(r['id']) is not False]
         # dedup via seen set + shuffle
         seen = set()
         dedup = []
         for r in results:
-            if r['id'] not in seen and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))):
+            if r['id'] not in seen and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and _is_embed_ok(r['id']) is not False:
                 dedup.append(r); seen.add(r['id'])
         # if live results deduped to less than 15, pad with fallback to ensure 15 non-duplicate
         if len(dedup) < 15:
             for fb in _fallback_static:
-                if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_ai_title(fb.get('title',''), fb.get('channel','')) and not _is_non_music(fb.get('title',''), fb.get('channel','')) and (is_player or not _is_album_title(fb.get('title',''))):
+                if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_ai_title(fb.get('title',''), fb.get('channel','')) and not _is_non_music(fb.get('title',''), fb.get('channel','')) and (is_player or not _is_album_title(fb.get('title',''))) and _is_embed_ok(fb['id']) is not False:
                     dedup.append(fb); seen.add(fb['id'])
                 if len(dedup) >= 15:
                     break
