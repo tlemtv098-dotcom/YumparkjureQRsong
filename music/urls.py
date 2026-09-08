@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from django.contrib.auth import views as auth_views
 from . import views
 
@@ -32,6 +32,7 @@ urlpatterns = [
     path('api/playlists/<int:pk>/', views.playlist_detail, name='playlist_detail'),
     path('api/playlists/<int:pk>/load/', views.playlist_load, name='playlist_load'),
     path('api/playlists/<int:pk>/add-song/', views.playlist_add_song, name='playlist_add_song'),
+    re_path(r"^static/music/sw\.[0-9a-f]+\.js$", views.sw_compat, name="sw_compat"),
     path('healthz/', views.healthz, name='healthz'),
     path('api/stats/', views.stats, name='stats'),
 ]

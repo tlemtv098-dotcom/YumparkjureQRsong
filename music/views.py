@@ -892,6 +892,15 @@ def playlist_add_song(request, pk):
 
 
 
+def sw_compat(request):
+    path = settings.BASE_DIR / "music" / "static" / "music" / "sw.js"
+    with open(path, "rb") as f:
+        content = f.read()
+    resp = HttpResponse(content, content_type="application/javascript")
+    resp["Cache-Control"] = "no-store"
+    return resp
+
+
 def healthz(request):
     return JsonResponse({"status": "ok"})
 

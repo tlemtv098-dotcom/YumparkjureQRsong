@@ -1245,6 +1245,34 @@ class EmbedOkTests(TestCase):
         cache.clear()
 
 
+class SwCompatTests(TestCase):
+    def test_sw_compat_hashed_url_serves_current_sw(self):
+        res = self.client.get('/static/music/sw.deadbeef1234.js')
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('javascript', res['Content-Type'])
+        self.assertEqual(res['Cache-Control'], 'no-store')
+        self.assertIn('yum-juke-v3', res.content.decode())
+
+    def test_sw_source_has_no_document_precache(self):
+        import os
+        from django.conf import settings
+        with open(os.path.join(settings.BASE_DIR, 'music', 'static', 'music', 'sw.js'), encoding='utf-8') as f:
+            source = f.read()
+        shell_lines = [line for line in source.splitlines() if 'SHELL' in line and '=' in line]
+        self.assertTrue(shell_lines)
+        shell_line = shell_lines[0]
+        self.assertNotIn('"/"', shell_line)
+        self.assertNotIn('"/request/"', shell_line)
+        self.assertNotIn('"/request/"', source)
+
+    def test_sw_source_bypasses_navigate(self):
+        import os
+        from django.conf import settings
+        with open(os.path.join(settings.BASE_DIR, 'music', 'static', 'music', 'sw.js'), encoding='utf-8') as f:
+            source = f.read()
+        self.assertIn('request.mode === "navigate"', source)
+
+
 class HitsEmbedFilterTests(TestCase):
     def test_hits_excludes_embed_blocked_spam_keeps_static(self):
         from unittest.mock import patch
