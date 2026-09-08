@@ -1000,6 +1000,25 @@ class PlaylistAccountTests(TestCase):
         self.assertEqual(len(dupe_count), 1)
 
 
+class NoApiQuickSkipRegressionTests(TestCase):
+    def test_no_auto_skip_in_noapi(self):
+        self.client.force_login(User.objects.create_user(username='nq1', password='Testpass123!', is_staff=True))
+        html = self.client.get('/').content.decode()
+        self.assertNotIn('suspect 153 id, skipping quickly', html)
+
+class UnblockApiTests(TestCase):
+    def test_unblock_requires_owner(self):
+        resp = self.client.delete('/api/unblock/abc123/')
+        self.assertEqual(resp.status_code, 403)
+    def test_unblock_removes_block(self):
+        from music.models import BlockedVideo
+        staff = User.objects.create_user(username='ub1', password='Testpass123!', is_staff=True)
+        self.client.force_login(staff)
+        BlockedVideo.objects.create(video_id='yEbv0QiI1Ns')
+        resp = self.client.delete('/api/unblock/yEbv0QiI1Ns/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(BlockedVideo.objects.filter(video_id='yEbv0QiI1Ns').exists())
+
 class WidgetReferrerRegressionTests(TestCase):
     def test_no_undefined_widget_referrer(self):
         self.client.force_login(User.objects.create_user(username='wr1', password='Testpass123!', is_staff=True))

@@ -637,6 +637,14 @@ def block_video(request, video_id):
     return JsonResponse({'status': 'failed'}, status=405)
 
 @csrf_exempt
+def unblock_video(request, video_id):
+    if request.method != 'DELETE':
+        return JsonResponse({'status': 'failed'}, status=405)
+    if not _is_owner(request):
+        return JsonResponse({'error':'forbidden'}, status=403)
+    deleted, _ = BlockedVideo.objects.filter(video_id=video_id).delete()
+    return JsonResponse({'status': 'unblocked' if deleted else 'not_found', 'video_id': video_id})
+
 def ai_recommend(request):
     if request.method != "POST":
         return JsonResponse({"error": "method not allowed"}, status=405)
