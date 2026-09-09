@@ -1350,3 +1350,27 @@ class ClientLogTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertLessEqual(ClientLog.objects.count(), 500)
 
+
+class DatabaseSwitchTests(TestCase):
+    def test_settings_source_has_database_url_switch(self):
+        import os
+        from django.conf import settings
+        settings_path = os.path.join(settings.BASE_DIR, 'yum_jukebox', 'settings.py')
+        with open(settings_path, 'r', encoding='utf-8') as f:
+            source = f.read()
+        self.assertIn('dj_database_url', source)
+        self.assertIn('DATABASE_URL', source)
+
+    def test_parse_postgres_url_in_isolation(self):
+        try:
+            import dj_database_url
+        except ImportError:
+            self.skipTest('dj_database_url not installed')
+        parsed = dj_database_url.parse(
+            'postgres://u:p@localhost:5432/db',
+            conn_max_age=600,
+            ssl_require=True,
+        )
+        self.assertIn('postgres', parsed.get('ENGINE', ''))
+        self.assertEqual(parsed.get('NAME'), 'db')
+
