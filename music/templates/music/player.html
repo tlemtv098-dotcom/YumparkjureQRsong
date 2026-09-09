@@ -424,7 +424,7 @@
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         const isMobileSafari = isIOS && isSafari;
         const isLineWebView = /Line\/|FBAN|FBAV|Messenger/i.test(navigator.userAgent);
-        const NOAPI_MODE = isIOS || new URLSearchParams(location.search).has('noapi'); // iOS default noapi to avoid 153
+        const NOAPI_MODE = new URLSearchParams(location.search).has('noapi'); // API path default on all devices (proven to play); noapi only via ?noapi=1
         const AUDIO_MODE = new URLSearchParams(location.search).has('audio'); let audioEl = null; let audioFailedCount = 0; function getAudioEl(){ if(!audioEl){ audioEl = new Audio(); audioEl.preload='auto'; } return audioEl; }
         function getCSRFToken(){return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')||'';}
         function clog(ev,dt){ try{ fetch('/api/clientlog/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCSRFToken()},credentials:'same-origin',body:JSON.stringify({event:ev,detail:String(dt||'').slice(0,500)})}).catch(()=>{});}catch(e){} }
