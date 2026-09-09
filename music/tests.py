@@ -1033,8 +1033,8 @@ class WidgetReferrerRegressionTests(TestCase):
     def test_no_undefined_widget_referrer(self):
         self.client.force_login(User.objects.create_user(username='wr1', password='Testpass123!', is_staff=True))
         html = self.client.get('/').content.decode()
-        self.assertNotIn('widget_referrer: isIOS', html)
-        self.assertIn('widget_referrer', html)
+        self.assertNotIn('widget_referrer', html)
+        self.assertIn("host: 'https://www.youtube-nocookie.com'", html)
 
 class HostSwitchTests(TestCase):
     def setUp(self):
@@ -1046,14 +1046,11 @@ class HostSwitchTests(TestCase):
         res = self.client.get('/', HTTP_USER_AGENT=iphone_ua)
         self.assertEqual(res.status_code, 200)
         html = res.content.decode()
-        # iOS UA response should contain youtube.com host logic (not nocookie exclusively)
-        self.assertIn('youtube.com', html)
-        self.assertIn('ytHost', html)
-        self.assertIn('https://www.youtube.com', html)
+        # uniform nocookie host on all devices (proven to play on desktop)
         self.assertIn('https://www.youtube-nocookie.com', html)
-        self.assertIn('host: ytHost', html)
-        self.assertIn('const ytHost = isIOS', html)
-        self.assertIn('widget_referrer', html)
+        self.assertIn("host: 'https://www.youtube-nocookie.com'", html)
+        self.assertNotIn('ytHost', html)
+        self.assertNotIn('widget_referrer', html)
 
 
 class Fallback153NoApiTests(TestCase):

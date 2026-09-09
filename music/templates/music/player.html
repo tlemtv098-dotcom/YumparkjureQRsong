@@ -420,7 +420,6 @@
         let isPlayerReady = false;
         // Detect iOS Safari specifically (not just isMobile)
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        const ytHost = isIOS ? 'https://www.youtube.com' : 'https://www.youtube-nocookie.com';
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         const isMobileSafari = isIOS && isSafari;
         const isLineWebView = /Line\/|FBAN|FBAV|Messenger/i.test(navigator.userAgent);
@@ -704,7 +703,7 @@
             player = new YT.Player('player', {
                 height: '100%',
                 width: '100%',
-                host: ytHost,
+                host: 'https://www.youtube-nocookie.com',
                 playerVars: {
                     'autoplay': 1,
                     'mute': 1,
@@ -717,7 +716,6 @@
                     'origin': window.location.origin,
                     'enablejsapi': 1
                 },
-                ...(isIOS ? {widget_referrer: window.location.origin} : {}),
                 events: {
                     'onReady': () => {
                         isPlayerReady = true;
