@@ -1,11 +1,13 @@
 const STORAGE_KEY = 'ym_playlists_v1';
 
-let storage = localStorage;
+let storage = null;
+try { storage = localStorage; } catch (e) { storage = null; }
 let useMemoryFallback = false;
 const memoryStore = new Map();
 
 function initStorage() {
   try {
+    if (!storage) throw new Error('no localStorage');
     const testKey = '__storage_test__';
     storage.setItem(testKey, testKey);
     storage.removeItem(testKey);
@@ -26,8 +28,13 @@ function getStorage() {
 function getAllFromStorage() {
   const store = getStorage();
   if (useMemoryFallback) {
-    const data = store.get(STORAGE_KEY);
-    return data ? JSON.parse(data) : {};
+    try {
+      const data = store.get(STORAGE_KEY);
+      return data ? JSON.parse(data) : {};
+    } catch (e) {
+      console.warn('Failed to read playlists from memory fallback:', e);
+      return {};
+    }
   }
   try {
     const raw = store.getItem(STORAGE_KEY);
@@ -42,12 +49,19 @@ function setAllToStorage(data) {
   const store = getStorage();
   const json = JSON.stringify(data);
   if (useMemoryFallback) {
-    store.set(STORAGE_KEY, json);
+    try { store.set(STORAGE_KEY, json); } catch (e) {
+      console.warn('Failed to write playlists to memory fallback:', e);
+    }
   } else {
     try {
       store.setItem(STORAGE_KEY, json);
     } catch (e) {
       console.warn('Failed to write playlists to localStorage:', e);
+      try {
+        useMemoryFallback = true;
+        memoryStore.set(STORAGE_KEY, json);
+      } catch (_) {}
+    }
     }
   }
 }

@@ -1374,3 +1374,155 @@ class DatabaseSwitchTests(TestCase):
         self.assertIn('postgres', parsed.get('ENGINE', ''))
         self.assertEqual(parsed.get('NAME'), 'db')
 
+
+class CompatSyntaxTests(TestCase):
+    """Task 1 cross-browser hardening: no ?. / ?? operators in templates.
+
+    Optional-chaining pattern requires an identifier-like token before
+    ``? .`` so the garbled ``????...`` loading placeholder in player.html
+    (plain text, not JS) does not false-positive. Nullish pattern uses
+    lookarounds so runs of ``?`` in that placeholder do not match.
+    """
+
+    TEMPLATES = [
+        ('music', 'templates', 'music', 'player.html'),
+        ('music', 'templates', 'music', 'request.html'),
+    ]
+
+    def _read_template(self, parts):
+        import os
+        from django.conf import settings
+        path = os.path.join(settings.BASE_DIR, *parts)
+        with open(path, 'r', encoding='utf-8') as f:
+            return path, f.read()
+
+    def test_no_optional_chaining_in_templates(self):
+        import re
+        pattern = re.compile(r"[A-Za-z0-9_$\]\)]\?\.\s*[A-Za-z0-9_$\[]")
+        for parts in self.TEMPLATES:
+            path, content = self._read_template(parts)
+            hits = pattern.findall(content)
+            self.assertEqual(hits, [], 'optional chaining found in %s: %r' % (path, hits))
+
+    def test_no_nullish_coalescing_in_templates(self):
+        import re
+        pattern = re.compile(r"(?<!\?)\?\?(?!\?)")
+        for parts in self.TEMPLATES:
+            path, content = self._read_template(parts)
+            hits = pattern.findall(content)
+            self.assertEqual(hits, [], 'nullish coalescing found in %s' % path)
+
+    def test_no_replacement_character_in_templates(self):
+        for parts in self.TEMPLATES:
+            path, content = self._read_template(parts)
+            self.assertNotIn('�', content, 'garble introduced in %s' % path)
+
+    def test_guards_present_after_replace(self):
+        import os
+        from django.conf import settings
+        player = os.path.join(settings.BASE_DIR, 'music', 'templates', 'music', 'player.html')
+        request = os.path.join(settings.BASE_DIR, 'music', 'templates', 'music', 'request.html')
+        with open(player, encoding='utf-8') as f:
+            player_content = f.read()
+        with open(request, encoding='utf-8') as f:
+            request_content = f.read()
+        self.assertIn('(currentSong&&currentSong.title)', player_content)
+        self.assertIn('getAttribute', player_content)
+        self.assertIn('getAttribute', request_content)
+
+
+class CompatGuardTests(TestCase):
+    """Task 2 cross-browser hardening: ES5 boot guard on both pages."""
+
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='compat_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
+
+    def test_player_has_compat_guard(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        self.assertIn('COMPAT_GUARD', html)
+        self.assertIn('กรุณาอัปเดตเบราว์เซอร์เป็นเวอร์ชันใหม่เพื่อใช้งาน', html)
+
+    def test_request_has_compat_guard(self):
+        res = self.client.get('/request/')
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        self.assertIn('COMPAT_GUARD', html)
+        self.assertIn('กรุณาอัปเดตเบราว์เซอร์เป็นเวอร์ชันใหม่เพื่อใช้งาน', html)
+
+    def test_compat_guard_is_es5_and_first_before_tailwind(self):
+        import os
+        from django.conf import settings
+        for name in ('player.html', 'request.html'):
+            path = os.path.join(settings.BASE_DIR, 'music', 'templates', 'music', name)
+            with open(path, encoding='utf-8') as f:
+                content = f.read()
+            guard_idx = content.find('COMPAT_GUARD')
+            tailwind_idx = content.find('cdn.tailwindcss.com')
+            self.assertNotEqual(guard_idx, -1, 'guard missing in %s' % name)
+            self.assertNotEqual(tailwind_idx, -1, 'tailwind missing in %s' % name)
+            self.assertLess(guard_idx, tailwind_idx, 'guard must precede tailwind in %s' % name)
+            segment = content[max(0, guard_idx - 600):guard_idx + 600]
+            self.assertNotIn('=>', segment, 'guard must be ES5 (no arrow) in %s' % name)
+            self.assertNotIn('?.', segment, 'guard must be ES5 (no ?.) in %s' % name)
+
+
+class WebViewExtTests(TestCase):
+    """Task 3 cross-browser hardening: WebView external-open buttons."""
+
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='webview_ext_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
+
+    def _player_html(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        return res.content.decode()
+
+    def _request_html(self):
+        res = self.client.get('/request/')
+        self.assertEqual(res.status_code, 200)
+        return res.content.decode()
+
+    def test_player_has_intent_builder(self):
+        html = self._player_html()
+        self.assertIn('intent://', html)
+        self.assertIn('location.host', html)
+        self.assertIn('location.pathname', html)
+        self.assertIn('#Intent;scheme=https;package=com.android.chrome;end', html)
+        self.assertIn('เปิดใน Chrome', html)
+
+    def test_player_has_ext_open_marker(self):
+        html = self._player_html()
+        self.assertIn('EXT_OPEN', html)
+        self.assertIn('webview-banner', html)
+        self.assertIn('isLineWebView', html)
+        self.assertIn('isIOS', html)
+
+    def test_player_has_copy_link_marker(self):
+        html = self._player_html()
+        self.assertIn('คัดลอกลิงก์แล้ว', html)
+        self.assertIn('เปิดใน Safari', html)
+
+    def test_request_has_intent_builder(self):
+        html = self._request_html()
+        self.assertIn('intent://', html)
+        self.assertIn('location.host', html)
+        self.assertIn('location.pathname', html)
+        self.assertIn('#Intent;scheme=https;package=com.android.chrome;end', html)
+        self.assertIn('เปิดใน Chrome', html)
+
+    def test_request_has_ext_open_marker(self):
+        html = self._request_html()
+        self.assertIn('EXT_OPEN', html)
+        self.assertIn('webview-banner', html)
+        self.assertIn('isLineWebView', html)
+        self.assertIn('isIOS', html)
+
+    def test_request_has_copy_link_marker(self):
+        html = self._request_html()
+        self.assertIn('คัดลอกลิงก์แล้ว', html)
+        self.assertIn('เปิดใน Safari', html)
+

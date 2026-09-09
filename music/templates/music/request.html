@@ -15,6 +15,7 @@
     <meta name="theme-color" content="#f59e0b">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <link rel="apple-touch-icon" href="{% static 'music/img/logo.jpg' %}">
+    <script>if(!window.fetch||!window.URLSearchParams||!window.Promise){document.addEventListener('DOMContentLoaded',function(){document.body.innerHTML='<div style="padding:40px;text-align:center;font-family:sans-serif">COMPAT_GUARD: กรุณาอัปเดตเบราว์เซอร์เป็นเวอร์ชันใหม่เพื่อใช้งาน</div>';});}</script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -69,8 +70,57 @@
 
         <div id="webview-banner" class="hidden bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
             <span class="text-sm font-medium">เปิดในเบราว์เซอร์ภายนอกเพื่อประสบการณ์ที่ดีขึ้น</span>
+            <!-- EXT_OPEN -->
+            <a id="ext-open-android" class="hidden bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex-shrink-0" style="display:none">เปิดใน Chrome</a>
+            <button id="ext-open-ios" type="button" class="hidden bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex-shrink-0" style="display:none">เปิดใน Safari (คัดลอกลิงก์แล้ว)</button>
             <button onclick="window.open(location.href,'_blank')" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex-shrink-0">เปิดในเบราว์เซอร์ภายนอก</button>
         </div>
+        <script>
+        // EXT_OPEN: runtime external-open for LINE WebView (ES5 only)
+        (function(){
+            function extCopyUrl(url, done){
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(function(){ done(true); }, function(){ done(false); });
+                } else {
+                    try {
+                        var ta = document.createElement('textarea');
+                        ta.value = url;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        try { document.execCommand('copy'); } catch (e) {}
+                        document.body.removeChild(ta);
+                        done(true);
+                    } catch (e) { done(false); }
+                }
+            }
+            document.addEventListener('DOMContentLoaded', function(){
+                var ua = navigator.userAgent || '';
+                var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                var isLineWebView = /Line\/|FBAN|FBAV|Messenger/i.test(ua);
+                if (!isLineWebView) { return; }
+                var isAndroid = /Android/i.test(ua);
+                if (isAndroid) {
+                    var a = document.getElementById('ext-open-android');
+                    if (a) {
+                        a.href = 'intent://' + location.host + location.pathname + '#Intent;scheme=https;package=com.android.chrome;end';
+                        a.classList.remove('hidden');
+                        a.style.display = '';
+                    }
+                } else if (isIOS) {
+                    var b = document.getElementById('ext-open-ios');
+                    if (b) {
+                        b.classList.remove('hidden');
+                        b.style.display = '';
+                        b.onclick = function(){
+                            extCopyUrl(location.href, function(){
+                                try { alert('คัดลอกลิงก์แล้ว เปิดใน Safari วางลิงก์ได้เลย'); } catch (e) {}
+                            });
+                        };
+                    }
+                }
+            });
+        })();
+        </script>
 
         <div id="now-playing-card" class="bg-amber-50 dark:bg-slate-800 shadow-md border border-amber-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 mb-4">
             <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white mb-2">เพลงถัดไปในคิว</h2>
@@ -124,7 +174,7 @@
 
     <script>
         const isLineWebView = /Line\/|FBAN|FBAV|Messenger/i.test(navigator.userAgent);
-        function getCSRFToken(){return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')||'';}
+        function getCSRFToken(){return (document.querySelector('meta[name="csrf-token"]')&&document.querySelector('meta[name="csrf-token"]').getAttribute('content'))||'';}
         function escapeHtml(str){if(!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
         let clientId = localStorage.getItem("jukebox_client_id");
         if (!clientId) {

@@ -22,6 +22,7 @@
     <link rel="preconnect" href="https://www.youtube.com">
     <link rel="preconnect" href="https://i.ytimg.com">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>if(!window.fetch||!window.URLSearchParams||!window.Promise){document.addEventListener('DOMContentLoaded',function(){document.body.innerHTML='<div style="padding:40px;text-align:center;font-family:sans-serif">COMPAT_GUARD: กรุณาอัปเดตเบราว์เซอร์เป็นเวอร์ชันใหม่เพื่อใช้งาน</div>';});}</script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -283,8 +284,57 @@
 
         <div id="webview-banner" class="hidden bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
             <span class="text-sm font-medium">เปิดในเบราว์เซอร์ภายนอกเพื่อประสบการณ์ที่ดีขึ้น</span>
+            <!-- EXT_OPEN -->
+            <a id="ext-open-android" class="hidden bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex-shrink-0" style="display:none">เปิดใน Chrome</a>
+            <button id="ext-open-ios" type="button" class="hidden bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex-shrink-0" style="display:none">เปิดใน Safari (คัดลอกลิงก์แล้ว)</button>
             <button onclick="window.open(location.href,'_blank')" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex-shrink-0">เปิด</button>
         </div>
+        <script>
+        // EXT_OPEN: runtime external-open for LINE WebView (ES5 only)
+        (function(){
+            function extCopyUrl(url, done){
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(function(){ done(true); }, function(){ done(false); });
+                } else {
+                    try {
+                        var ta = document.createElement('textarea');
+                        ta.value = url;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        try { document.execCommand('copy'); } catch (e) {}
+                        document.body.removeChild(ta);
+                        done(true);
+                    } catch (e) { done(false); }
+                }
+            }
+            document.addEventListener('DOMContentLoaded', function(){
+                var ua = navigator.userAgent || '';
+                var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                var isLineWebView = /Line\/|FBAN|FBAV|Messenger/i.test(ua);
+                if (!isLineWebView) { return; }
+                var isAndroid = /Android/i.test(ua);
+                if (isAndroid) {
+                    var a = document.getElementById('ext-open-android');
+                    if (a) {
+                        a.href = 'intent://' + location.host + location.pathname + '#Intent;scheme=https;package=com.android.chrome;end';
+                        a.classList.remove('hidden');
+                        a.style.display = '';
+                    }
+                } else if (isIOS) {
+                    var b = document.getElementById('ext-open-ios');
+                    if (b) {
+                        b.classList.remove('hidden');
+                        b.style.display = '';
+                        b.onclick = function(){
+                            extCopyUrl(location.href, function(){
+                                try { alert('คัดลอกลิงก์แล้ว เปิดใน Safari วางลิงก์ได้เลย'); } catch (e) {}
+                            });
+                        };
+                    }
+                }
+            });
+        })();
+        </script>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 max-w-full overflow-hidden min-w-0">
 
@@ -425,11 +475,11 @@
         const isLineWebView = /Line\/|FBAN|FBAV|Messenger/i.test(navigator.userAgent);
         const NOAPI_MODE = new URLSearchParams(location.search).has('noapi'); // API path default on all devices (proven to play); noapi only via ?noapi=1
         const AUDIO_MODE = new URLSearchParams(location.search).has('audio'); let audioEl = null; let audioFailedCount = 0; function getAudioEl(){ if(!audioEl){ audioEl = new Audio(); audioEl.preload='auto'; } return audioEl; }
-        function getCSRFToken(){return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')||'';}
+        function getCSRFToken(){return (document.querySelector('meta[name="csrf-token"]')&&document.querySelector('meta[name="csrf-token"]').getAttribute('content'))||'';}
         function clog(ev,dt){ try{ fetch('/api/clientlog/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCSRFToken()},credentials:'same-origin',body:JSON.stringify({event:ev,detail:String(dt||'').slice(0,500)})}).catch(()=>{});}catch(e){} }
         window.onerror = function(msg, src, line){ try{ clog('js_error', String(msg||'')+'|'+String(src||'')+'|'+String(line||'')); }catch(e){} };
         setInterval(()=>{ try{ clog('beat', (currentSong?currentSong.video_id:'-')+'|q'+queue.length+'|'+document.visibilityState); }catch(e){} },15000);
-        function getPlayerToken(){return document.querySelector('meta[name="player-token"]')?.getAttribute('content')||'dev-player-token';}
+        function getPlayerToken(){return (document.querySelector('meta[name="player-token"]')&&document.querySelector('meta[name="player-token"]').getAttribute('content'))||'dev-player-token';}
         window.IS_OWNER = true;
         function escapeHtml(str){if(!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
         let wakeLock = null;
@@ -774,7 +824,7 @@
                                     return;
                                 }
                             }
-                            console.warn('YouTube video cannot be embedded (Error ' + event.data + '), skipping:', currentSong?.title);
+                            console.warn('YouTube video cannot be embedded (Error ' + event.data + '), skipping:', (currentSong&&currentSong.title));
                             if (currentSong) { blockedVideoIds.add(currentSong.video_id); autoPlayedIds.add(currentSong.video_id); }
                             // persist so /api/hits/search won't return it again
                             if (currentSong) fetch('/api/block/' + encodeURIComponent(currentSong.video_id) + '/', {method: 'POST', headers: {"X-CSRFToken": getCSRFToken(), "X-Player-Token": getPlayerToken()}, credentials: 'same-origin'}).catch(()=>{});
