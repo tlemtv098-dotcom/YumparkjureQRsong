@@ -1005,6 +1005,10 @@ class NoApiMuteRegressionTests(TestCase):
         self.client.force_login(User.objects.create_user(username='nm1', password='Testpass123!', is_staff=True))
         html = self.client.get('/?noapi=1').content.decode()
         self.assertIn('autoplay=1&mute=1', html)
+    def test_noapi_iframe_has_origin(self):
+        self.client.force_login(User.objects.create_user(username='nm2', password='Testpass123!', is_staff=True))
+        html = self.client.get('/?noapi=1').content.decode()
+        self.assertIn('enablejsapi=1&origin=', html)
 
 class NoApiQuickSkipRegressionTests(TestCase):
     def test_no_auto_skip_in_noapi(self):

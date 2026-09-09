@@ -268,7 +268,7 @@
 
         <!-- หัวข้อแบรนด์ + โลโก้ -->
         <header class="flex flex-wrap items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-            <img src="{% static 'music/img/logo.jpg' %}" alt="ร้านยำปากเจ่อ" class="flex-shrink-0 aspect-square w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 object-cover rounded-full ring-4 ring-amber-400/60 shadow-xl bg-white">
+            <img src="{% static 'music/img/logo.jpg' %}" alt="ร้านยำปากเจ่อ" class="flex-shrink-0 aspect-square w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain rounded-2xl ring-4 ring-amber-400/60 shadow-xl bg-white p-1">
             <div class="flex-1 min-w-0">
                 <h1 class="text-base sm:text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white truncate">ร้านยำปากเจ่อ KPP</h1>
                 <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">ระบบคิวเพลงอัตโนมัติสำหรับลูกค้า</p>
@@ -279,7 +279,7 @@
                 {% if user.is_authenticated %}<span class="text-xs font-bold">{{ user.username }}</span><form method="post" action="{% url 'logout' %}" class="inline">{% csrf_token %}<button type="submit" class="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-lg">ออก</button></form>{% else %}<a href="{% url 'login' %}" class="text-xs bg-amber-500 text-white px-3 py-1 rounded-lg">เข้า</a>{% endif %}
             </div>
         </header>
-        <p class="text-xs text-slate-500 dark:text-slate-400 text-right select-none">v{{ APP_VERSION }}</p>
+
 
         <div id="webview-banner" class="hidden bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
             <span class="text-sm font-medium">เปิดในเบราว์เซอร์ภายนอกเพื่อประสบการณ์ที่ดีขึ้น</span>
@@ -383,6 +383,7 @@
                 </div>
             </div>
         </div>
+    <p class="text-center text-[10px] text-slate-300 dark:text-slate-600 select-none mt-6">{{ APP_VERSION }}</p>
     <!-- Toast container: respects safe area -->
     <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 dark:bg-slate-800 text-white dark:text-slate-100 border border-transparent dark:border-slate-700 px-4 py-2 rounded-xl shadow-lg text-sm font-medium"></div>
     </div>
@@ -956,7 +957,7 @@
                 const playerEl = document.getElementById('player');
                 if (playerEl) playerEl.style.display = '';
                 const noapiHost = isIOS ? 'https://www.youtube.com' : 'https://www.youtube-nocookie.com';
-                if (playerEl) playerEl.innerHTML = '<iframe src="' + noapiHost + '/embed/' + encodeURIComponent(currentSong.video_id) + '?autoplay=1&mute=1&rel=0&playsinline=1" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen frameborder="0" style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe>';
+                if (playerEl) playerEl.innerHTML = '<iframe src="' + noapiHost + '/embed/' + encodeURIComponent(currentSong.video_id) + '?autoplay=1&mute=1&rel=0&playsinline=1&enablejsapi=1&origin=' + encodeURIComponent(window.location.origin) + '" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen frameborder="0" style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe>';
                 if (isIOS && !window._unmuteHintShown) { window._unmuteHintShown = true; setTimeout(()=>showToast('แตะปุ่มลำโพงในวิดีโอเพื่อเปิดเสียง', 'info'), 1200); }
                 // noapi has no iframe error events; rely on duration timer (pool is oEmbed-verified)
                 const noapiId = currentSong.video_id;
