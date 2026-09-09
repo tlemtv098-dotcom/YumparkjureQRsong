@@ -39,7 +39,7 @@ class ThaiLoginForm(AuthenticationForm):
     error_messages = {"invalid_login": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง ลองใหม่อีกครั้ง", "inactive": "บัญชีนี้ถูกปิดใช้งาน"}
 from django.contrib.auth import login
 from django.views.generic import CreateView
-from .models import SongQueue, BlockedVideo, Playlist
+from .models import SongQueue, BlockedVideo, Playlist, ClientLog
 
 def _is_owner(request):
     return request.headers.get('X-Player-Token') == settings.PLAYER_TOKEN or (request.user.is_authenticated and request.user.is_staff)
@@ -907,6 +907,54 @@ def sw_compat(request):
 
 def healthz(request):
     return JsonResponse({"status": "ok"})
+
+def client_log(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'method not allowed'}, status=405)
+    if not _check_rate_limit(request, limit=60, window=60):
+        return JsonResponse({'error': 'rate limited'}, status=429)
+    try:
+        data = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    event = str(data.get('event') or '')[:64]
+    if not event:
+        return JsonResponse({'error': 'event required'}, status=400)
+    detail = str(data.get('detail') or '')[:2000]
+    try:
+        session_key = request.session.session_key
+        if not session_key:
+            request.session.save()
+            session_key = request.session.session_key or ''
+    except Exception:
+        session_key = ''
+    try:
+        ua = (request.META.get('HTTP_USER_AGENT') or '')[:300]
+    except Exception:
+        ua = ''
+    ClientLog.objects.create(session=session_key or '', ua=ua, event=event, detail=detail)
+    try:
+        count = ClientLog.objects.count()
+        if count > 500:
+            excess = count - 500
+            old_ids = list(ClientLog.objects.order_by('created_at').values_list('id', flat=True)[:excess])
+            if old_ids:
+                ClientLog.objects.filter(id__in=old_ids).delete()
+    except Exception:
+        pass
+    return JsonResponse({'status': 'ok'})
+
+def client_log_recent(request):
+    if not _is_owner(request):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+    try:
+        n = int(request.GET.get('n', '50'))
+    except Exception:
+        n = 50
+    n = max(1, min(n, 200))
+    rows = ClientLog.objects.all()[:n]
+    items = [{'event': r.event, 'detail': r.detail, 'ua': (r.ua or '')[:80], 'created_at': r.created_at.isoformat()} for r in rows]
+    return JsonResponse({'logs': items})
 
 def video_duration(request):
     """Return YouTube video duration in seconds (cached 24h, fallback 180)."""

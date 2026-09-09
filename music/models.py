@@ -36,3 +36,13 @@ class SongQueue(models.Model):
 
     def __str__(self):
         return self.title
+
+class ClientLog(models.Model):
+    session = models.CharField(max_length=64, blank=True)
+    ua = models.CharField(max_length=300, blank=True)
+    event = models.CharField(max_length=64)
+    detail = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']

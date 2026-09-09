@@ -426,6 +426,9 @@
         const NOAPI_MODE = isIOS || new URLSearchParams(location.search).has('noapi'); // iOS default noapi to avoid 153
         const AUDIO_MODE = new URLSearchParams(location.search).has('audio'); let audioEl = null; let audioFailedCount = 0; function getAudioEl(){ if(!audioEl){ audioEl = new Audio(); audioEl.preload='auto'; } return audioEl; }
         function getCSRFToken(){return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')||'';}
+        function clog(ev,dt){ try{ fetch('/api/clientlog/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCSRFToken()},credentials:'same-origin',body:JSON.stringify({event:ev,detail:String(dt||'').slice(0,500)})}).catch(()=>{});}catch(e){} }
+        window.onerror = function(msg, src, line){ try{ clog('js_error', String(msg||'')+'|'+String(src||'')+'|'+String(line||'')); }catch(e){} };
+        setInterval(()=>{ try{ clog('beat', (currentSong?currentSong.video_id:'-')+'|q'+queue.length+'|'+document.visibilityState); }catch(e){} },15000);
         function getPlayerToken(){return document.querySelector('meta[name="player-token"]')?.getAttribute('content')||'dev-player-token';}
         window.IS_OWNER = true;
         function escapeHtml(str){if(!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
@@ -541,6 +544,7 @@
 
         // --- Sound overlay tap handler (single overlay) ---
         function handleOverlayTap() {
+            try{ clog('overlay_tap', ''); }catch(e){}
             if(AUDIO_MODE){ userInteracted=true; soundEnabled=true; const _so=document.getElementById('sound-overlay'); if(_so){ _so.classList.add('hidden'); _so.style.display='none'; } if(!currentSong && queue.length>0) playNextAudio(); else if(audioEl && audioEl.paused) audioEl.play().catch(()=>{}); showToast('เปิดเสียงแล้ว','success'); return; }
             consecutive153 = 0;
             breakerTripped = false;
@@ -944,6 +948,7 @@
             const idleSplash = document.getElementById('idle-splash');
             if (next) {
                 currentSong = next;
+                try{ clog('noapi_start', currentSong.video_id); }catch(e){}
                 document.getElementById('now-playing-title').innerText = currentSong.title;
                 if (idleSplash) idleSplash.classList.add('hidden');
                 if (soundOverlay) { soundOverlay.classList.add('hidden'); soundOverlay.style.display = 'none'; }
@@ -1034,6 +1039,7 @@
                 videoContainer.classList.add('bg-black');
                 try {
                     player.loadVideoById(currentSong.video_id);
+                    try{ clog('yt_start', currentSong.video_id); }catch(e){}
                 } catch(e) {
                     console.warn('loadVideoById failed', e);
                     showToast("กำลังโหลดเพลง...", "info");
@@ -1108,6 +1114,7 @@
         }
 
         function removePlayedSong(songId) {
+            try{ clog('song_done', songId); }catch(e){}
             if (!songId || finishingSongIds.has(songId)) return;
             finishingSongIds.add(songId);
             if (currentSong && currentSong.id === songId) currentSong = null;

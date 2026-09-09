@@ -1311,3 +1311,41 @@ class HitsEmbedFilterTests(TestCase):
             self.assertNotIn(spam_id, ids)
             self.assertIn('ks7p6DA0dKk', ids)
 
+
+class ClientLogTests(TestCase):
+    def setUp(self):
+        from .views import _rate_limit_store
+        _rate_limit_store.clear()
+
+    def test_post_saves_anon(self):
+        from .models import ClientLog
+        res = self.client.post('/api/clientlog/', data=json.dumps({'event': 'overlay_tap', 'detail': 'x'}), content_type='application/json')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json().get('status'), 'ok')
+        self.assertEqual(ClientLog.objects.filter(event='overlay_tap').count(), 1)
+
+    def test_recent_403_anon(self):
+        res = self.client.get('/api/clientlog/recent/')
+        self.assertEqual(res.status_code, 403)
+
+    def test_recent_200_staff(self):
+        from .models import ClientLog
+        staff = User.objects.create_user(username='clog_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(staff)
+        ClientLog.objects.create(event='beat', detail='q1')
+        res = self.client.get('/api/clientlog/recent/?n=50')
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('logs', res.json())
+        self.assertGreaterEqual(len(res.json()['logs']), 1)
+
+    def test_pruning_keeps_lte_500(self):
+        from .models import ClientLog
+        from .views import _rate_limit_store
+        for i in range(500):
+            ClientLog.objects.create(event='beat', detail=str(i))
+        self.assertEqual(ClientLog.objects.count(), 500)
+        _rate_limit_store.clear()
+        res = self.client.post('/api/clientlog/', data=json.dumps({'event': 'beat', 'detail': 'new'}), content_type='application/json')
+        self.assertEqual(res.status_code, 200)
+        self.assertLessEqual(ClientLog.objects.count(), 500)
+
