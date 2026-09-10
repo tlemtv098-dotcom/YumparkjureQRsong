@@ -770,7 +770,6 @@
                 events: {
                     'onReady': () => {
                         isPlayerReady = true;
-                        safePlayMuted();
                         fetchQueue();
                         fetchHits();
                         // auto-load last playlist only if queue empty (non-destructive local render)

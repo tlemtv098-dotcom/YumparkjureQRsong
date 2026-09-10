@@ -64,8 +64,6 @@ function setAllToStorage(data) {
     }
     }
   }
-}
-
 function getCSRFToken() {
   try {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
