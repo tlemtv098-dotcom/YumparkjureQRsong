@@ -29,6 +29,18 @@ class PlayerPageTests(TestCase):
     def test_player_has_logo(self):
         response = self.client.get('/')
         self.assertContains(response, LOGO)
+        self.assertContains(response, 'object-contain')
+
+    def test_player_header_logo_not_cropped(self):
+        import re
+        response = self.client.get('/')
+        html = response.content.decode()
+        logos = re.findall(r'<img[^>]*logo\.jpg[^>]*>', html)
+        self.assertGreater(len(logos), 0)
+        header_logo = logos[0]
+        self.assertIn('object-contain', header_logo)
+        self.assertNotIn('object-cover', header_logo)
+        self.assertNotIn('rounded-full', header_logo)
 
     def test_player_has_idle_splash(self):
         response = self.client.get('/')
@@ -91,6 +103,18 @@ class RequestPageTests(TestCase):
     def test_request_has_logo(self):
         response = self.client.get('/request/')
         self.assertContains(response, LOGO)
+        self.assertContains(response, 'object-contain')
+
+    def test_request_header_logo_not_cropped(self):
+        import re
+        response = self.client.get('/request/')
+        html = response.content.decode()
+        logos = re.findall(r'<img[^>]*logo\.jpg[^>]*>', html)
+        self.assertGreater(len(logos), 0)
+        header_logo = logos[0]
+        self.assertIn('object-contain', header_logo)
+        self.assertNotIn('object-cover', header_logo)
+        self.assertNotIn('rounded-full', header_logo)
 
     def test_request_has_no_old_images(self):
         response = self.client.get('/request/')
