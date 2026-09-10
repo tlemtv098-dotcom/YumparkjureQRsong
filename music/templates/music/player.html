@@ -478,7 +478,7 @@
         function getCSRFToken(){return (document.querySelector('meta[name="csrf-token"]')&&document.querySelector('meta[name="csrf-token"]').getAttribute('content'))||'';}
         function clog(ev,dt){ try{ fetch('/api/clientlog/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCSRFToken()},credentials:'same-origin',body:JSON.stringify({event:ev,detail:String(dt||'').slice(0,500)})}).catch(()=>{});}catch(e){} }
         window.onerror = function(msg, src, line){ try{ clog('js_error', String(msg||'')+'|'+String(src||'')+'|'+String(line||'')); }catch(e){} };
-        setInterval(()=>{ try{ clog('beat', (currentSong?currentSong.video_id:'-')+'|q'+queue.length+'|'+document.visibilityState); }catch(e){} },15000);
+        setInterval(()=>{ try{ clog('beat', (currentSong?currentSong.video_id:'-')+'|q'+queue.length+'|'+document.visibilityState); }catch(e){} },30000);
         function getPlayerToken(){return (document.querySelector('meta[name="player-token"]')&&document.querySelector('meta[name="player-token"]').getAttribute('content'))||'dev-player-token';}
         window.IS_OWNER = true;
         function escapeHtml(str){if(!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
@@ -986,8 +986,17 @@
                     }
 
                     if (onDone) onDone();
+                    fetchQueue._retried = false;
                 })
-                .catch(err => { console.error(err); showToast("เกิดข้อผิดพลาด", "error"); });
+                .catch(function(err) {
+                    if (!fetchQueue._retried) {
+                        fetchQueue._retried = true;
+                        setTimeout(function() { try { fetchQueue(onDone); } catch(e) {} }, 1200);
+                    } else {
+                        fetchQueue._retried = false;
+                        console.error(err); showToast("เกิดข้อผิดพลาด", "error");
+                    }
+                });
         }
 
         function playNextNoApi() {

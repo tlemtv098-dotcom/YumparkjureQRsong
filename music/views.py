@@ -4,6 +4,7 @@ import re
 import json
 import random
 import socket
+import concurrent.futures
 import qrcode
 import urllib.parse
 import urllib.request
@@ -88,7 +89,7 @@ def _is_embed_ok(video_id):
     url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=3) as resp:
+        with urllib.request.urlopen(req, timeout=2) as resp:
             ok = resp.status == 200
     except urllib.error.HTTPError as exc:
         ok = False if exc.code in (401, 404) else None
@@ -98,6 +99,39 @@ def _is_embed_ok(video_id):
     try: cache.set(f"embed_ok:{video_id}", ok, 86400)
     except Exception: pass
     return ok
+def _resolve_embed_ok(video_ids, max_workers=8):
+    """Concurrently resolve _is_embed_ok for uncached ids; returns dict id->result.
+
+    Cached ids are read synchronously first so the thread pool only handles
+    uncached ids. Each future is guarded (exception -> None/allow) and the
+    result dict preserves caller order via insertion order.
+    """
+    unique = []
+    seen = set()
+    for vid in video_ids or []:
+        if vid and vid not in seen:
+            seen.add(vid)
+            unique.append(vid)
+    results = {}
+    to_check = []
+    for vid in unique:
+        try:
+            cached = cache.get(f"embed_ok:{vid}")
+        except Exception:
+            cached = None
+        if cached is not None:
+            results[vid] = cached
+        else:
+            to_check.append(vid)
+    if to_check:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_map = {executor.submit(_is_embed_ok, vid): vid for vid in to_check}
+            for future, vid in future_map.items():
+                try:
+                    results[vid] = future.result()
+                except Exception:
+                    results[vid] = None
+    return results
 def _get_blocked_ids():
     db_ids = set(BlockedVideo.objects.values_list('video_id', flat=True))
     return BLOCKED_VIDEO_IDS | db_ids
@@ -208,7 +242,7 @@ def youtube_api_search(query, max_results=8):
             print(f'YouTube API key {index} network error: {exc}, trying next')
             continue
 
-        results = []
+        candidates = []
         for item in payload.get('items', []):
             video_id = item.get('id', {}).get('videoId')
             snippet = item.get('snippet', {})
@@ -220,15 +254,21 @@ def youtube_api_search(query, max_results=8):
                 continue
             if _is_non_music(title, channel):
                 continue
-            if _is_embed_ok(video_id) is False: continue
             thumbnails = snippet.get('thumbnails', {})
             thumbnail = (thumbnails.get('medium') or thumbnails.get('default') or {}).get('url')
-            results.append({
+            candidates.append({
                 'id': video_id,
                 'title': title,
                 'channel': channel,
                 'thumbnail': thumbnail or f'https://i.ytimg.com/vi/{video_id}/hqdefault.jpg',
             })
+        # Bound embeddability checks: only verify the first 20 candidates,
+        # concurrently, preserving order.
+        candidates = candidates[:20]
+        if not candidates:
+            return []
+        embed_map = _resolve_embed_ok([c['id'] for c in candidates])
+        results = [c for c in candidates if embed_map.get(c['id']) is not False]
         return results
     return []
 
@@ -374,8 +414,10 @@ def hits(request):
         cached = None
     if cached:
         # ensure cached results also filtered (defense in depth) + non-music
+        # pre-resolve uncached embeddability concurrently, then filter synchronously
         try:
-            filtered_cached = [r for r in cached if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and _is_embed_ok(r['id']) is not False]
+            embed_map_c = _resolve_embed_ok([r.get('id') for r in cached if r.get('id')])
+            filtered_cached = [r for r in cached if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and embed_map_c.get(r['id']) is not False]
         except Exception as e:
             print(f'hits cached filter failed: {e}')
             filtered_cached = list(cached)
@@ -409,22 +451,26 @@ def hits(request):
         {"id": "Bk4O_3WF8II", "title": "ซ่อน(ไม่)หา - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/Bk4O_3WF8II/hqdefault.jpg"},
     ]
     try:
+        # Pre-resolve embeddability for all ids involved (merged + fallback
+        # pad pool) in one concurrent block, then filter synchronously.
+        _all_ids = [r.get('id') for r in (merged + _fallback_static) if r.get('id')]
+        embed_map = _resolve_embed_ok(_all_ids)
         if not merged:
             # Fallback static hits for PythonAnywhere free (YouTube blocked) - shuffle and dedup
-            results = [r for r in _fallback_static if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and _is_embed_ok(r['id']) is not False]
+            results = [r for r in _fallback_static if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and embed_map.get(r['id']) is not False]
         else:
             # also ensure live search results are filtered (defense in depth) + non-music
-            results = [r for r in merged if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and _is_embed_ok(r['id']) is not False]
+            results = [r for r in merged if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and embed_map.get(r['id']) is not False]
         # dedup via seen set + shuffle
         seen = set()
         dedup = []
         for r in results:
-            if r['id'] not in seen and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and _is_embed_ok(r['id']) is not False:
+            if r['id'] not in seen and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and embed_map.get(r['id']) is not False:
                 dedup.append(r); seen.add(r['id'])
         # if live results deduped to less than 15, pad with fallback to ensure 15 non-duplicate
         if len(dedup) < 15:
             for fb in _fallback_static:
-                if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_ai_title(fb.get('title',''), fb.get('channel','')) and not _is_non_music(fb.get('title',''), fb.get('channel','')) and (is_player or not _is_album_title(fb.get('title',''))) and _is_embed_ok(fb['id']) is not False:
+                if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_ai_title(fb.get('title',''), fb.get('channel','')) and not _is_non_music(fb.get('title',''), fb.get('channel','')) and (is_player or not _is_album_title(fb.get('title',''))) and embed_map.get(fb['id']) is not False:
                     dedup.append(fb); seen.add(fb['id'])
                 if len(dedup) >= 15:
                     break

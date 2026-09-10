@@ -1550,3 +1550,94 @@ class WebViewExtTests(TestCase):
         self.assertIn('คัดลอกลิงก์แล้ว', html)
         self.assertIn('เปิดใน Safari', html)
 
+
+class EmbedConcurrencyTests(TestCase):
+    def _api_response(self, video_ids):
+        import json as json_lib
+        from unittest.mock import MagicMock
+        payload = {
+            'items': [
+                {
+                    'id': {'videoId': vid},
+                    'snippet': {
+                        'title': 'Test Song %s' % vid,
+                        'channelTitle': 'Test Channel',
+                        'thumbnails': {'medium': {'url': 'https://i.ytimg.com/vi/%s/mqdefault.jpg' % vid}},
+                    },
+                }
+                for vid in video_ids
+            ]
+        }
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.__exit__.return_value = False
+        response.read.return_value = json_lib.dumps(payload).encode('utf-8')
+        return response
+
+    def test_youtube_api_search_checks_embeds_concurrently(self):
+        import os
+        import threading
+        import time
+        from unittest.mock import patch
+        from django.core.cache import cache
+        from music.views import youtube_api_search
+        cache.clear()
+        video_ids = ['AAA111BBB22', 'BBB222CCC33', 'CCC333DDD44', 'DDD444EEE55', 'EEE555FFF66']
+        api_resp = self._api_response(video_ids)
+        seen_threads = set()
+        seen_lock = threading.Lock()
+
+        def fake_embed_ok(video_id):
+            with seen_lock:
+                seen_threads.add(threading.get_ident())
+            time.sleep(0.5)
+            return True
+
+        def fake_urlopen(url_or_req, timeout=None):
+            url = url_or_req.full_url if hasattr(url_or_req, 'full_url') else str(url_or_req)
+            if 'www.googleapis.com' in url:
+                return api_resp
+            raise AssertionError('unexpected url: %s' % url)
+
+        env = {'YOUTUBE_API_KEYS': 'TESTKEY1', 'YOUTUBE_API_KEY': '', 'key': '', 'YOUTUBE_API_KEY_2': ''}
+        with patch.dict(os.environ, env):
+            with patch('music.views.urllib.request.urlopen', side_effect=fake_urlopen), \
+                 patch('music.views._is_embed_ok', side_effect=fake_embed_ok):
+                start = time.time()
+                results = youtube_api_search('test song', 5)
+                elapsed = time.time() - start
+        self.assertEqual([r['id'] for r in results], video_ids)
+        # 5 x 0.5s sequential would take ~2.5s; concurrent must take well under that.
+        self.assertLess(elapsed, 2.0, 'embed checks look sequential: %.2fs' % elapsed)
+        self.assertGreaterEqual(len(seen_threads), 2)
+        cache.clear()
+
+    def test_embed_executor_exception_is_tolerated(self):
+        import os
+        from unittest.mock import patch
+        from django.core.cache import cache
+        from music.views import youtube_api_search
+        cache.clear()
+        video_ids = ['AAA111BBB22', 'BBB222CCC33']
+        api_resp = self._api_response(video_ids)
+
+        def fake_urlopen(url_or_req, timeout=None):
+            url = url_or_req.full_url if hasattr(url_or_req, 'full_url') else str(url_or_req)
+            if 'www.googleapis.com' in url:
+                return api_resp
+            raise AssertionError('unexpected url: %s' % url)
+
+        def flaky_embed_ok(video_id):
+            if video_id == video_ids[0]:
+                raise RuntimeError('boom')
+            return True
+
+        env = {'YOUTUBE_API_KEYS': 'TESTKEY1', 'YOUTUBE_API_KEY': '', 'key': '', 'YOUTUBE_API_KEY_2': ''}
+        with patch.dict(os.environ, env):
+            with patch('music.views.urllib.request.urlopen', side_effect=fake_urlopen), \
+                 patch('music.views._is_embed_ok', side_effect=flaky_embed_ok):
+                results = youtube_api_search('test song', 5)
+        # exception -> None/allow, so both ids are kept in order
+        self.assertEqual([r['id'] for r in results], video_ids)
+        cache.clear()
+
