@@ -14,48 +14,24 @@ from collections import defaultdict
 from datetime import timedelta
 from yt_dlp import YoutubeDL
 from django.conf import settings
-from django.shortcuts import render, redirect
+from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.cache import never_cache
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db.models import Count, F
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm
 from django import forms
-
-class ThaiSignupForm(UserCreationForm):
-    error_messages = {"password_mismatch": "รหัสผ่านทั้งสองช่องไม่ตรงกัน"}
-    username = forms.CharField(label="ชื่อผู้ใช้", max_length=150, help_text="ตัวอักษร ตัวเลข และ @/./+/-/_ เท่านั้น", error_messages={"required": "กรุณากรอกชื่อผู้ใช้", "unique": "ชื่อผู้ใช้นี้มีคนใช้แล้ว", "invalid": "ชื่อผู้ใช้ไม่ถูกต้อง"})
-    password1 = forms.CharField(label="รหัสผ่าน", widget=forms.PasswordInput, help_text="อย่างน้อย 8 ตัวอักษร ห้ามใช้รหัสผ่านง่ายเกินไป", error_messages={"required": "กรุณากรอกรหัสผ่าน"})
-    password2 = forms.CharField(label="ยืนยันรหัสผ่าน", widget=forms.PasswordInput, help_text="พิมพ์รหัสผ่านอีกครั้งเพื่อยืนยัน", error_messages={"required": "กรุณายืนยันรหัสผ่าน"})
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["password1"].help_text = "อย่างน้อย 8 ตัวอักษร"
-        self.fields["password2"].help_text = "พิมพ์รหัสผ่านอีกครั้ง"
 
 class ThaiLoginForm(AuthenticationForm):
     username = forms.CharField(label="ชื่อผู้ใช้", widget=forms.TextInput(attrs={"autofocus": True}), error_messages={"required": "กรุณากรอกชื่อผู้ใช้"})
     password = forms.CharField(label="รหัสผ่าน", widget=forms.PasswordInput, error_messages={"required": "กรุณากรอกรหัสผ่าน"})
     error_messages = {"invalid_login": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง ลองใหม่อีกครั้ง", "inactive": "บัญชีนี้ถูกปิดใช้งาน"}
-from django.contrib.auth import login
-from django.views.generic import CreateView
 from .models import SongQueue, BlockedVideo, GoodVideo, Playlist, ClientLog
 
 def _is_owner(request):
     return request.headers.get('X-Player-Token') == settings.PLAYER_TOKEN or (request.user.is_authenticated and request.user.is_staff)
-
-
-class SignupView(CreateView):
-    template_name = 'registration/signup.html'
-    form_class = ThaiSignupForm
-    success_url = '/accounts/login/'
-
-    def form_valid(self, form):
-        user = form.save(commit=False)
-        user.is_staff = True
-        user.save()
-        return redirect(self.success_url)
 
 
 # Video IDs with embedding disabled (Error 153) - filtered server-side

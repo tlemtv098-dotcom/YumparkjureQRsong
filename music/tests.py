@@ -918,19 +918,12 @@ class AuthRegressionTests(TestCase):
         response = self.client.get('/request/')
         self.assertEqual(response.status_code, 200)
 
-    def test_signup_creates_staff_and_redirects_to_login(self):
+    def test_signup_disabled_returns_404(self):
+        # Public signup removed (private use only) — both GET and POST must 404.
+        self.assertEqual(self.client.get('/accounts/signup/').status_code, 404)
         response = self.client.post('/accounts/signup/', {'username': 'owner1', 'password1': 'Testpass123!', 'password2': 'Testpass123!'})
-        # signup should redirect to login (not auto-login)
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, '/accounts/login/')
-        user = User.objects.get(username='owner1')
-        self.assertTrue(user.is_staff)
-        # client should NOT be authenticated after signup (must login)
-        self.assertNotIn('_auth_user_id', self.client.session)
-        # after login, staff can access player
-        self.client.post('/accounts/login/', {'username': 'owner1', 'password': 'Testpass123!'})
-        resp2 = self.client.get('/')
-        self.assertEqual(resp2.status_code, 200)
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(User.objects.filter(username='owner1').exists())
 
     def test_login_success(self):
         User.objects.create_user(username='owner2', password='Testpass123!', is_staff=True)
