@@ -1153,6 +1153,65 @@ class AudioApiTests(TestCase):
         self.assertIn('ดึงเสียงไม่ได้', res.json()['error'])
 
 
+class AudioWorkerTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def tearDown(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def _worker_response(self, payload):
+        import json as json_lib
+        from unittest.mock import MagicMock
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.__exit__.return_value = False
+        response.read.return_value = json_lib.dumps(payload).encode('utf-8')
+        return response
+
+    def test_worker_success_after_ytdlp_fail(self):
+        import os
+        from unittest.mock import patch
+        from django.core.cache import cache
+        payload = {'audio_url': 'https://worker.example/audio.m4a', 'duration_sec': 210}
+        with patch.dict(os.environ, {'AUDIO_WORKER_URL': 'https://worker.example/'}), \
+                patch('music.views.YoutubeDL', side_effect=Exception('bot blocked')), \
+                patch('music.views.urllib.request.urlopen', return_value=self._worker_response(payload)) as mock_urlopen:
+            res = self.client.get('/api/audio/?id=ks7p6DA0dKk')
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data['audio_url'], 'https://worker.example/audio.m4a')
+        self.assertEqual(data['duration_sec'], 210)
+        self.assertEqual(mock_urlopen.call_count, 1)
+        cached = cache.get('aud:ks7p6DA0dKk')
+        self.assertIsNotNone(cached)
+        self.assertEqual(cached['audio_url'], 'https://worker.example/audio.m4a')
+
+    def test_worker_failure_falls_through_to_503(self):
+        import os
+        import urllib.error
+        from unittest.mock import patch
+        with patch.dict(os.environ, {'AUDIO_WORKER_URL': 'https://worker.example'}), \
+                patch('music.views.YoutubeDL', side_effect=Exception('bot blocked')), \
+                patch('music.views.urllib.request.urlopen', side_effect=urllib.error.URLError('down')):
+            res = self.client.get('/api/audio/?id=ks7p6DA0dKk')
+        self.assertEqual(res.status_code, 503)
+        self.assertIn('ดึงเสียงไม่ได้', res.json()['error'])
+
+    def test_worker_invalid_url_falls_through_to_503(self):
+        import os
+        from unittest.mock import patch
+        payload = {'audio_url': 'ftp://bad.example/x', 'duration_sec': 100}
+        with patch.dict(os.environ, {'AUDIO_WORKER_URL': 'https://worker.example'}), \
+                patch('music.views.YoutubeDL', side_effect=Exception('bot blocked')), \
+                patch('music.views.urllib.request.urlopen', return_value=self._worker_response(payload)):
+            res = self.client.get('/api/audio/?id=ks7p6DA0dKk')
+        self.assertEqual(res.status_code, 503)
+        self.assertIn('ดึงเสียงไม่ได้', res.json()['error'])
+
+
 class YouTubeAppFallbackTests(TestCase):
     def setUp(self):
         self.staff_user = User.objects.create_user(username='ytapp_staff', password='Testpass123!', is_staff=True)
@@ -1640,4 +1699,113 @@ class EmbedConcurrencyTests(TestCase):
         # exception -> None/allow, so both ids are kept in order
         self.assertEqual([r['id'] for r in results], video_ids)
         cache.clear()
+
+
+class AudioFallbackMarkerTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='audio_fb_staff', password='Testpass123!', is_staff=True)
+        self.client.force_login(self.staff_user)
+
+    def test_audio_fallback_marker_present(self):
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'AUDIO_FALLBACK')
+        self.assertContains(res, '_audioTriedFor')
+        self.assertContains(res, '/api/audio/?id=')
+        self.assertContains(res, 'getAudioEl')
+        self.assertContains(res, 'เล่นเวอร์ชันเสียง')
+
+    def test_audio_fallback_handoff_wiring(self):
+        res = self.client.get('/')
+        html = res.content.decode()
+        self.assertIn('AUDIO_FALLBACK', html)
+        self.assertIn('stopVideo', html)
+        self.assertIn('onended', html)
+        self.assertIn('removePlayedSong', html)
+        self.assertIn('mediaSession', html)
+
+    def test_audio_fallback_before_skip_path(self):
+        res = self.client.get('/')
+        html = res.content.decode()
+        fb_idx = html.find('AUDIO_FALLBACK')
+        skip_idx = html.find('cannot be embedded')
+        self.assertNotEqual(fb_idx, -1, 'AUDIO_FALLBACK marker missing')
+        self.assertNotEqual(skip_idx, -1, 'skip path marker missing')
+        self.assertLess(fb_idx, skip_idx, 'fallback must precede existing skip/block logic')
+
+    def test_audio_fallback_reset_on_play_next(self):
+        res = self.client.get('/')
+        html = res.content.decode()
+        self.assertIn('window._audioTriedFor = null', html)
+        play_next_idx = html.find('function playNext(')
+        reset_idx = html.find('window._audioTriedFor = null')
+        self.assertNotEqual(play_next_idx, -1, 'playNext missing')
+        self.assertNotEqual(reset_idx, -1, 'reset marker missing')
+        self.assertGreater(reset_idx, play_next_idx, 'reset must live inside playNext')
+
+
+class GoodVideoBiasTests(TestCase):
+    def test_mark_played_records_good_video(self):
+        from .models import SongQueue, GoodVideo
+        song = SongQueue.objects.create(title='Good Song', video_id='ks7p6DA0dKk', thumbnail='', channel='GeneLab')
+        res = self.client.get(f'/api/played/{song.id}/', headers={'X-Player-Token': settings.PLAYER_TOKEN})
+        self.assertEqual(res.status_code, 200)
+        song.refresh_from_db()
+        self.assertTrue(song.is_played)
+        gv = GoodVideo.objects.get(video_id='ks7p6DA0dKk')
+        self.assertEqual(gv.plays, 1)
+        self.assertEqual(gv.title, 'Good Song')
+        # second mark increments without breaking
+        res2 = self.client.get(f'/api/played/{song.id}/', headers={'X-Player-Token': settings.PLAYER_TOKEN})
+        self.assertEqual(res2.status_code, 200)
+        gv.refresh_from_db()
+        self.assertEqual(gv.plays, 2)
+
+    def test_mark_played_failure_never_breaks_marking(self):
+        from unittest.mock import patch
+        from .models import SongQueue
+        song = SongQueue.objects.create(title='Fragile', video_id='zwvv71slEYc', thumbnail='', channel='GeneLab')
+        with patch('music.views.GoodVideo.objects.update_or_create', side_effect=Exception('db down')):
+            res = self.client.get(f'/api/played/{song.id}/', headers={'X-Player-Token': settings.PLAYER_TOKEN})
+        self.assertEqual(res.status_code, 200)
+        song.refresh_from_db()
+        self.assertTrue(song.is_played)
+
+    def test_hits_orders_good_first(self):
+        from unittest.mock import patch
+        from django.core.cache import cache
+        from .models import GoodVideo
+        cache.clear()
+        # Bk4O_3WF8II is last in the static fallback pool; bias must pull it first.
+        GoodVideo.objects.create(video_id='Bk4O_3WF8II', title='hidden good', plays=3)
+        with patch('music.views.search_youtube', return_value=[]), \
+             patch('music.views.random.shuffle', side_effect=lambda x: None):
+            cache.clear()
+            res = self.client.get('/api/hits/')
+            self.assertEqual(res.status_code, 200)
+            results = res.json().get('results', [])
+            self.assertGreater(len(results), 0)
+            self.assertEqual(results[0]['id'], 'Bk4O_3WF8II')
+            # cached branch must keep the bias too
+            res2 = self.client.get('/api/hits/')
+            self.assertEqual(res2.status_code, 200)
+            results2 = res2.json().get('results', [])
+            self.assertGreater(len(results2), 0)
+            self.assertEqual(results2[0]['id'], 'Bk4O_3WF8II')
+        cache.clear()
+
+    def test_goodvideo_migration_exists(self):
+        import os
+        from django.conf import settings
+        mig_dir = os.path.join(settings.BASE_DIR, 'music', 'migrations')
+        found = False
+        for name in os.listdir(mig_dir):
+            if name.endswith('.py'):
+                with open(os.path.join(mig_dir, name), encoding='utf-8') as f:
+                    if 'GoodVideo' in f.read():
+                        found = True
+                        break
+        self.assertTrue(found, 'GoodVideo migration missing')
+        from .models import GoodVideo
+        self.assertTrue(hasattr(GoodVideo, 'objects'))
 

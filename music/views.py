@@ -20,7 +20,7 @@ from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.cache import never_cache
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
-from django.db.models import Count
+from django.db.models import Count, F
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django import forms
 
@@ -40,7 +40,7 @@ class ThaiLoginForm(AuthenticationForm):
     error_messages = {"invalid_login": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง ลองใหม่อีกครั้ง", "inactive": "บัญชีนี้ถูกปิดใช้งาน"}
 from django.contrib.auth import login
 from django.views.generic import CreateView
-from .models import SongQueue, BlockedVideo, Playlist, ClientLog
+from .models import SongQueue, BlockedVideo, GoodVideo, Playlist, ClientLog
 
 def _is_owner(request):
     return request.headers.get('X-Player-Token') == settings.PLAYER_TOKEN or (request.user.is_authenticated and request.user.is_staff)
@@ -135,6 +135,17 @@ def _resolve_embed_ok(video_ids, max_workers=8):
 def _get_blocked_ids():
     db_ids = set(BlockedVideo.objects.values_list('video_id', flat=True))
     return BLOCKED_VIDEO_IDS | db_ids
+
+def _bias_good_first(results):
+    """Stable-sort known-good videos first; rest keep their order."""
+    try:
+        good = set(GoodVideo.objects.values_list('video_id', flat=True))
+    except Exception:
+        return results
+    if not good:
+        return results
+    results.sort(key=lambda r: (0 if r.get('id') in good else 1,))
+    return results
 
 ALBUM_RE = re.compile(r'longplay|รวม.*เพลง|ชั่วโมง|อัลบั้ม|60 minutes|playlist|ยาวๆ|ต่อเนื่อง|อันดับ|ชาร์ต|chart|billboard|Top 20|Compilation|Collection', re.I)
 CHART_RE = re.compile(r'chart|อันดับ|ชาร์ต|Top 20|Billboard', re.I)
@@ -430,6 +441,7 @@ def hits(request):
         # shuffle a copy to avoid same order on refresh within 30s
         out_cached = list(dedup_c)
         random.shuffle(out_cached)
+        _bias_good_first(out_cached)
         return JsonResponse({'results': out_cached[:15]})
     # merge results from 2 queries (10 total, 5 per query)
     merged = []
@@ -476,6 +488,7 @@ def hits(request):
                     break
         random.shuffle(dedup)
         out = dedup[:15]
+        _bias_good_first(out)
         try:
             cache.set(cache_key, out, 30)
         except Exception as e:
@@ -615,7 +628,17 @@ def get_queue(request):
 def mark_played(request, song_id):
     if not _is_owner(request):
         return JsonResponse({'error':'forbidden'}, status=403)
+    song = SongQueue.objects.filter(id=song_id).first()
     SongQueue.objects.filter(id=song_id).update(is_played=True)
+    if song:
+        try:
+            GoodVideo.objects.update_or_create(
+                video_id=song.video_id,
+                defaults={'title': (song.title or '')[:255]},
+            )
+            GoodVideo.objects.filter(video_id=song.video_id).update(plays=F('plays') + 1)
+        except Exception:
+            pass
     return JsonResponse({'status': 'updated'})
 
 @csrf_exempt
@@ -1105,6 +1128,28 @@ def audio_stream(request):
         except Exception as e:
             print(f'audio_stream {client} failed for {video_id}: {e}')
             continue
+    worker = (os.environ.get('AUDIO_WORKER_URL') or '').rstrip('/')
+    if worker:
+        try:
+            worker_url = f"{worker}/audio?id={urllib.parse.quote(video_id)}"
+            req = urllib.request.Request(worker_url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                payload = json.loads(resp.read().decode('utf-8'))
+            audio_url = (payload.get('audio_url') or '').strip() if isinstance(payload, dict) else ''
+            if not audio_url.startswith('http'):
+                raise ValueError('invalid audio_url from worker')
+            try:
+                duration = int(payload.get('duration_sec') or 180)
+            except Exception:
+                duration = 180
+            data = {'audio_url': audio_url, 'duration_sec': duration}
+            try:
+                cache.set(cache_key, data, 21600)
+            except Exception as e:
+                print(f'audio_stream cache.set failed: {e}')
+            return JsonResponse(data)
+        except Exception as e:
+            print(f'audio_stream worker failed for {video_id}: {e}')
     return JsonResponse({'error': 'ดึงเสียงไม่ได้ ลองใหม่'}, status=503)
 
 def stats(request):

@@ -20,6 +20,13 @@ class BlockedVideo(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self): return self.video_id
 
+class GoodVideo(models.Model):
+    video_id = models.CharField(max_length=50, unique=True)
+    plays = models.IntegerField(default=0)
+    title = models.CharField(max_length=255, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    def __str__(self): return self.video_id
+
 class SongQueue(models.Model):
     title = models.CharField(max_length=255)
     video_id = models.CharField(max_length=50)

@@ -823,6 +823,55 @@
                                     return;
                                 }
                             }
+                            // AUDIO_FALLBACK: one-shot per-song audio handoff for embed-blocked videos (153/150/101).
+                            // Tries /api/audio/ once per song; on success plays audio instead of skipping,
+                            // on failure falls through to the existing skip/block path below.
+                            if ([153, 150, 101].indexOf(event.data) !== -1 && currentSong) {
+                                try {
+                                    if (!window._audioTriedFor || window._audioTriedFor !== currentSong.id) {
+                                        window._audioTriedFor = currentSong.id;
+                                        (function(fbSong) {
+                                            try {
+                                                try { if (player && player.stopVideo) player.stopVideo(); } catch(e) {}
+                                                try { var fbPlayerEl = document.getElementById('player'); if (fbPlayerEl) fbPlayerEl.style.display = 'none'; } catch(e) {}
+                                                fetch('/api/audio/?id=' + encodeURIComponent(fbSong.video_id)).then(function(fbRes) {
+                                                    var fbOk = fbRes && fbRes.ok;
+                                                    return fbRes.json().catch(function() { return {}; }).then(function(fbData) { return { ok: fbOk, data: fbData }; });
+                                                }).then(function(fbOut) {
+                                                    try {
+                                                        var fbData = (fbOut && fbOut.data) || {};
+                                                        var fbUrl = fbData.audio_url || fbData.url || '';
+                                                        if (!fbOut.ok || !fbUrl) { throw new Error('audio fallback unavailable'); }
+                                                        var fbAudio = getAudioEl();
+                                                        var fbSongId = fbSong.id;
+                                                        try { fbAudio.onended = function() { try { removePlayedSong(fbSongId); } catch(e) {} setTimeout(function() { try { if (!currentSong) playNext(true); } catch(e) {} }, 500); }; } catch(e) {}
+                                                        try { fbAudio.onerror = function() { try { showToast('เสียงเล่นไม่ได้ ข้ามเพลง', 'error'); } catch(e) {} try { skipSong(); } catch(e) {} try { fetchQueue(); } catch(e) {} }; } catch(e) {}
+                                                        fbAudio.src = fbUrl;
+                                                        try { document.getElementById('now-playing-title').innerText = fbSong.title; } catch(e) {}
+                                                        if ('mediaSession' in navigator) {
+                                                            try {
+                                                                navigator.mediaSession.metadata = new MediaMetadata({title: fbSong.title || '', artist: 'ร้านยำปากเจ่อKPP', artwork: fbSong.thumbnail ? [{src: fbSong.thumbnail, sizes: '512x512', type: 'image/jpeg'}] : []});
+                                                                navigator.mediaSession.setActionHandler('play', function() { try { getAudioEl().play(); } catch(e) {} });
+                                                                navigator.mediaSession.setActionHandler('pause', function() { try { getAudioEl().pause(); } catch(e) {} });
+                                                                navigator.mediaSession.setActionHandler('nexttrack', function() { try { skipSong(); } catch(e) {} });
+                                                            } catch(e) {}
+                                                        }
+                                                        try { var fbPlay = fbAudio.play(); if (fbPlay && fbPlay.catch) { fbPlay.catch(function() {}); } } catch(e) {}
+                                                        try { showToast('เล่นเวอร์ชันเสียง', 'info'); } catch(e) {}
+                                                    } catch(fbErr) {
+                                                        try { skipSong(); } catch(e) {}
+                                                        try { fetchQueue(); } catch(e) {}
+                                                    }
+                                                }).catch(function() {
+                                                    try { skipSong(); } catch(e) {}
+                                                    try { fetchQueue(); } catch(e) {}
+                                                });
+                                            } catch(e) {}
+                                        })(currentSong);
+                                        return;
+                                    }
+                                } catch(e) {}
+                            }
                             console.warn('YouTube video cannot be embedded (Error ' + event.data + '), skipping:', (currentSong&&currentSong.title));
                             if (currentSong) { blockedVideoIds.add(currentSong.video_id); autoPlayedIds.add(currentSong.video_id); }
                             // persist so /api/hits/search won't return it again
@@ -1069,6 +1118,7 @@
                 playerStarting = true;
                 setTimeout(()=>{ playerStarting = false; }, 300);
                 currentSong = next;
+                try { window._audioTriedFor = null; } catch(e) {}
                 try { var nl0 = document.getElementById('now-loading'); if (nl0) nl0.classList.remove('hidden'); } catch(e) {}
                 lastPlayedVideoId = next.video_id;
                 document.getElementById('now-playing-title').innerText = currentSong.title;
