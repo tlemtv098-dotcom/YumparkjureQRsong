@@ -421,16 +421,7 @@
                         <div id="manual-results" class="space-y-2 mt-2"></div>
                     </div>
 
-                    <!-- เพลงแนะนำ -->
-                    <div class="bg-white dark:bg-slate-800 shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 relative">
-                        <div class="flex items-center justify-between mb-2">
-                            <h3 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white">เพลงแนะนำ</h3>
-                            <button onclick="fetchHits()" class="text-[10px] sm:text-xs bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-800 text-amber-700 dark:text-amber-200 px-2 py-1 rounded-lg font-bold border border-amber-200 dark:border-amber-700 transition">รีเฟรช</button>
-                        </div>
-                        <div id="hit-list" class="space-y-2 max-h-60 overflow-y-auto pr-1"><p class="text-xs text-slate-400 dark:text-slate-500 text-center py-2">กำลังโหลดเพลงแนะนำ...</p></div>
-                        <div id="add-playlist-dropdown" class="hidden absolute z-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-2 min-w-[180px] max-h-60 overflow-y-auto"></div>
                     </div>
-                </div>
             </div>
         </div>
     <p class="text-center text-[10px] text-slate-300 dark:text-slate-600 select-none mt-6">{{ APP_VERSION }}</p>
@@ -715,6 +706,17 @@
         let autoRandomEnabled = localStorage.getItem('auto_random') === 'on'; // defaults OFF as user requested "เมื่อเข้าเว็บมาให้ปิดเล่นออโต้ไว้"
         let autoRandomTimer = null;
         let autoPlayedIds = new Set();
+        try {
+            const saved = localStorage.getItem('autoPlayedIds');
+            if (saved) {
+                const arr = JSON.parse(saved);
+                if (Array.isArray(arr)) {
+                    autoPlayedIds = new Set(arr);
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to load autoPlayedIds from localStorage:', e);
+        }
         function toggleAutoRandom(){
           autoRandomEnabled = !autoRandomEnabled;
           localStorage.setItem('auto_random', autoRandomEnabled ? 'on' : 'off');
@@ -735,6 +737,7 @@
           let candidates = hitSongs.filter(s=>!isAI(s.title,s.channel) && !blockedVideoIds.has(s.id) && !autoPlayedIds.has(s.id) && !queue.some(q=>q.video_id===s.id));
           if (candidates.length===0) {
             autoPlayedIds.clear();
+            try { localStorage.removeItem('autoPlayedIds'); } catch (e) { console.warn('Failed to clear autoPlayedIds:', e); }
             fetchHits();
             setTimeout(()=>playRandomHit(), 1000);
             return;
@@ -742,6 +745,11 @@
           const song = candidates[Math.floor(Math.random()*candidates.length)];
           if(!song) return;
           autoPlayedIds.add(song.id);
+            try {
+                localStorage.setItem('autoPlayedIds', JSON.stringify(Array.from(autoPlayedIds)));
+            } catch (e) {
+                console.warn('Failed to save autoPlayedIds to localStorage:', e);
+            }
           fetch("/api/add/", {method:"POST", headers:{"Content-Type":"application/json","X-CSRFToken": getCSRFToken()}, credentials: 'same-origin', body: JSON.stringify({title:song.title, video_id:song.id, thumbnail:song.thumbnail, channel:song.channel, requested_by:"ระบบ (ออโต้สุ่ม)", client_id:"auto_random_"+Date.now()})}).then(()=>fetchQueue()).catch(()=>{});
         }
         document.addEventListener('DOMContentLoaded', () => { updateAutoRandomBtn(); });
@@ -1365,7 +1373,7 @@
                     const container = document.getElementById("manual-results");
                     container.innerHTML = "";
                     if (manualSearchResults.length === 0) {
-                        container.innerHTML = '<p class="text-xs text-slate-500 dark:text-slate-400 text-center py-2">ไม่พบเพลงที่ค้นหา</p>';
+                        container.innerHTML = '';
                         return;
                     }
                     manualSearchResults.forEach((song, idx) => {

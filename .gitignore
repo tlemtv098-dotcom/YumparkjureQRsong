@@ -42,3 +42,6 @@ staticfiles/
 # Temp from editor
 line88.txt
 test_write.txt
+
+# OpenChamber session metadata
+.openchamber/
