@@ -1382,7 +1382,7 @@
                     const container = document.getElementById("manual-results");
                     container.innerHTML = "";
                     if (manualSearchResults.length === 0) {
-                        container.innerHTML = '';
+                        container.innerHTML = '<p class="text-xs text-slate-500 dark:text-slate-400 text-center py-2">ไม่พบเพลงที่ตรงกับคำค้น ลองคำอื่นดูนะ</p>';
                         return;
                     }
                     manualSearchResults.forEach((song, idx) => {

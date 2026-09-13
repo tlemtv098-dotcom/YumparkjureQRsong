@@ -649,12 +649,12 @@ class FallbackPoolRegressionTests(TestCase):
     def test_search_fallback_pool_has_at_least_10_entries(self):
         from unittest.mock import patch
         with patch('music.views.youtube_api_search', return_value=[]):
-            # Nonsense query hits the fallback[:3] path — proves fallback active.
+            # Nonsense query should return empty (no random fallback) — proves fallback not returning unrelated songs.
             res = self.client.get('/api/search/?q=xyz-no-match-123-qwerty-999')
             self.assertEqual(res.status_code, 200)
             results = res.json().get('results', [])
             self.assertIsInstance(results, list)
-            self.assertGreaterEqual(len(results), 3)
+            self.assertEqual(len(results), 0)
             # Broad query matching most pool entries proves pool expanded to >= 10.
             res_all = self.client.get('/api/search/?q=-')
             self.assertEqual(res_all.status_code, 200)

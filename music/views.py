@@ -181,7 +181,7 @@ def _youtube_api_keys():
         candidate = part.strip()
         if candidate and candidate not in keys:
             keys.append(candidate)
-    for env_name in ('YOUTUBE_API_KEY', 'key', 'YOUTUBE_API_KEY_2'):
+    for env_name in ('YOUTUBE_API_KEY', 'key', 'YOUTUBE_API_KEY_2', 'GOOGLE_API_KEY', 'GEMINI_API_KEY', 'GOOGLE_GENERATIVE_AI_API_KEY'):
         candidate = (os.environ.get(env_name) or '').strip()
         if candidate and candidate not in keys:
             keys.append(candidate)
@@ -222,6 +222,9 @@ def youtube_api_search(query, max_results=8):
             lowered = body.lower()
             if exc.code == 403 and ('quotaexceeded' in lowered or 'ratelimitexceeded' in lowered or 'quota' in lowered):
                 print(f'YouTube API key {index} quota exceeded, trying next')
+                continue
+            if exc.code == 429:
+                print(f'YouTube API key {index} rate limited (429), trying next')
                 continue
             print('YouTube API Error:', exc)
             return []
@@ -327,12 +330,12 @@ def search_song(request):
         # simple filter by query substring
         q_lower = query.lower()
         results = [s for s in fallback if q_lower in s['title'].lower() or q_lower in s['channel'].lower()]
-        if not results:
-            results = fallback[:3]
+        had_substring_match = len(results) > 0
+        # Do NOT return random fallback[:3] when no substring match — return empty so frontend shows "not found"
         # filter blocked and album titles + non-music
         results = [r for r in results if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
-        if not results:
-            # Guarantee non-empty: album/ai/non-music filters must not silently empty fallback.
+        if not results and had_substring_match:
+            # Guarantee non-empty only when substring had matches but filters emptied them
             results = [r for r in fallback[:3] if not _is_blocked(r['id'])]
     else:
         # also filter live results (defense in depth) for album titles + non-music
