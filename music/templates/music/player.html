@@ -751,7 +751,18 @@
             setTimeout(()=>playRandomHit(), 1000);
             return;
           }
-          const song = candidates[Math.floor(Math.random()*candidates.length)];
+          // Bias: 65% pick from top 1/3 (more recent/good), 35% from rest — hits already sorted good-first by backend
+          let song;
+          if (candidates.length <= 3) {
+            song = candidates[Math.floor(Math.random()*candidates.length)];
+          } else {
+            const biasCut = Math.max(1, Math.floor(candidates.length / 3));
+            if (Math.random() < 0.65) {
+              song = candidates[Math.floor(Math.random() * biasCut)];
+            } else {
+              song = candidates[biasCut + Math.floor(Math.random() * (candidates.length - biasCut))];
+            }
+          }
           if(!song) return;
           autoPlayedIds.add(song.id);
             try {
