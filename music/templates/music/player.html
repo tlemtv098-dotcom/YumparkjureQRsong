@@ -426,7 +426,7 @@
                 <div class="bg-white dark:bg-slate-800 shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 relative">
                     <div class="flex items-center justify-between mb-2">
                         <h3 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white">เพลงแนะนำ</h3>
-                        <button onclick="fetchHits()" class="text-[10px] sm:text-xs bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-800 text-amber-700 dark:text-amber-200 px-2 py-1 rounded-lg font-bold border border-amber-200 dark:border-amber-700 transition">รีเฟรช</button>
+                        <button onclick="fetchHits(true)" class="text-[10px] sm:text-xs bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-800 text-amber-700 dark:text-amber-200 px-2 py-1 rounded-lg font-bold border border-amber-200 dark:border-amber-700 transition">รีเฟรช</button>
                     </div>
                     <div id="hit-list" class="space-y-2 max-h-60 overflow-y-auto pr-1"><p class="text-xs text-slate-400 dark:text-slate-500 text-center py-2">กำลังโหลดเพลงแนะนำ...</p></div>
                     <div id="add-playlist-dropdown" class="hidden absolute z-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-2 min-w-[180px] max-h-60 overflow-y-auto"></div>
@@ -505,6 +505,19 @@
 
         // Recommended hits data
         let hitSongs = [];
+        let randomPool = [];
+        let shownHitIds = new Set();
+        try {
+            const savedShown = localStorage.getItem('shownHitIds');
+            if (savedShown) {
+                const arrShown = JSON.parse(savedShown);
+                if (Array.isArray(arrShown)) {
+                    shownHitIds = new Set(arrShown.slice(-200));
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to load shownHitIds from localStorage:', e);
+        }
 
         // --- Viewport height fix for mobile Safari ---
         function setVh() {
@@ -743,12 +756,12 @@
         function playRandomHit(){
           if (!autoRandomEnabled) return;
           if (currentSong || queue.length>0) return;
-          if(hitSongs.length===0) { fetchHits(); return; }
-          let candidates = hitSongs.filter(s=>!isAI(s.title,s.channel) && !blockedVideoIds.has(s.id) && !autoPlayedIds.has(s.id) && !queue.some(q=>q.video_id===s.id));
+          if(randomPool.length===0) { fetchRandomPool(); return; }
+          let candidates = randomPool.filter(s=>!isAI(s.title,s.channel) && !blockedVideoIds.has(s.id) && !autoPlayedIds.has(s.id) && !queue.some(q=>q.video_id===s.id));
           if (candidates.length===0) {
             autoPlayedIds.clear();
             try { localStorage.removeItem('autoPlayedIds'); } catch (e) { console.warn('Failed to clear autoPlayedIds:', e); }
-            fetchHits();
+            fetchRandomPool();
             setTimeout(()=>playRandomHit(), 1000);
             return;
           }
@@ -1536,17 +1549,31 @@
         }
 
         // --- Hits / Recommended ---
-        function fetchHits() {
+        function fetchHits(fresh) {
             // Wide queries for player: include album queries (backend allows via ?player=1, request filters them)
             const queries = ['เพลงไทยฮิต', 'เพลงฮิต 2025', 'เพลงดัง', 'เพลงใหม่ 2025', 'เพลงไทยเพราะๆ', 'เพลงฮิตติดชาร์ต', 'เพลงลูกทุ่ง 1 ชั่วโมง', 'รวมเพลง 1 ชั่วโมง', 'เพลงยาวต่อเนื่อง'];
             // pick 2 random queries to broaden pool (frontend log, backend handles actual picking via ?player=1)
             const _picked = queries.slice().sort(()=>0.5-Math.random()).slice(0,2);
-            fetch("/api/hits/?player=1")
+            let url = "/api/hits/?player=1";
+            if (fresh === true && shownHitIds.size > 0) {
+                url += "&exclude=" + encodeURIComponent(Array.from(shownHitIds).join(','));
+            }
+            fetch(url)
                 .then(res => { if (!res.ok) throw new Error('Hits '+res.status); return res.json(); })
                 .then(data => {
                     if (data.results && data.results.length > 0) {
                         const filtered = data.results.filter(s => !blockedVideoIds.has(s.id) && !isAI(s.title, s.channel));
                         hitSongs = filtered.slice(0, 30); renderHitList();
+                        try {
+                            filtered.forEach(s => { if (s && s.id) shownHitIds.add(s.id); });
+                            while (shownHitIds.size > 200) {
+                                const oldest = shownHitIds.values().next().value;
+                                shownHitIds.delete(oldest);
+                            }
+                            localStorage.setItem('shownHitIds', JSON.stringify(Array.from(shownHitIds).slice(-200)));
+                        } catch (e) {
+                            console.warn('Failed to save shownHitIds to localStorage:', e);
+                        }
                         if (autoRandomEnabled && !currentSong && queue.length===0 && isPlayerReady) {
                           clearTimeout(autoRandomTimer);
                           autoRandomTimer = setTimeout(()=>playRandomHit(), 300);
@@ -1556,9 +1583,25 @@
                 .catch(err => { console.error(err); if (hitSongs.length > 0) { renderHitList(); } else { showToast("โหลดเพลงแนะนำไม่สำเร็จ", "error"); } });
         }
 
+        function fetchRandomPool() {
+            let url = "/api/hits/?player=1";
+            if (autoPlayedIds.size > 0) {
+                url += "&exclude=" + encodeURIComponent(Array.from(autoPlayedIds).join(','));
+            }
+            fetch(url)
+                .then(res => { if (!res.ok) throw new Error('Hits '+res.status); return res.json(); })
+                .then(data => {
+                    if (data.results && data.results.length > 0) {
+                        randomPool = data.results.filter(s => !blockedVideoIds.has(s.id) && !isAI(s.title, s.channel));
+                    }
+                })
+                .catch(err => { console.error(err); });
+        }
+
         document.addEventListener("DOMContentLoaded", function () {
             // Load recommendations independently of the YouTube iframe state.
-            fetchHits();
+            fetchHits(true);
+            fetchRandomPool();
         });
         setInterval(fetchHits, 60000);
         document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') fetchHits(); });

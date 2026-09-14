@@ -373,6 +373,10 @@ def suggest_song(request):
 
 def hits(request):
     genre = request.GET.get('genre', '').strip().lower()
+    _ = request.GET.get('for')  # accepted and ignored (no behavior change)
+    exclude_raw = request.GET.get('exclude', '').strip()
+    exclude_ids = {e.strip() for e in exclude_raw.split(',') if e.strip()}
+    has_exclude = bool(exclude_ids)
     ua = request.META.get('HTTP_USER_AGENT','')
     is_ios = bool(re.search(r'iPhone|iPad|iPod', ua, re.I) or ('MacIntel' in ua and 'Mobile' in ua))
     is_player = request.GET.get('player') == '1'
@@ -386,7 +390,7 @@ def hits(request):
     if genre in genre_queries:
         queries = genre_queries[genre]
     else:
-        queries = ['เพลงไทยฮิต', 'เพลงฮิต 2025', 'เพลงดัง', 'เพลงใหม่ 2025', 'เพลงไทยเพราะๆ', 'เพลงฮิตติดชาร์ต', 'ชาร์ตเพลงไทย 2026', 'เพลงมาแรง 2026', 'เพลงฮิต TikTok 2026', 'เพลงใหม่ 2026']
+        queries = ['เพลงไทยฮิต', 'เพลงฮิต 2025', 'เพลงดัง', 'เพลงใหม่ 2025', 'เพลงไทยเพราะๆ', 'เพลงฮิตติดชาร์ต', 'ชาร์ตเพลงไทย 2026', 'เพลงมาแรง 2026', 'เพลงฮิต TikTok 2026', 'เพลงใหม่ 2026', 'เพลงมาแรง', 'เพลงใหม่ล่าสุด', 'เพลงฮิตสัปดาห์นี้', 'เพลงดัง TikTok', 'เพลงลูกทุ่งมาแรง', 'เพลงสตริงฮิต']
     # pick 3 random queries to broaden pool and return 15 unique (+fallback pad to 30) for speed
     k = min(3, len(queries))
     picked = random.sample(queries, k) if k else []
@@ -396,12 +400,15 @@ def hits(request):
         if recent_pool:
             picked[0] = random.choice(recent_pool)
     # cache key versioned to avoid stale single-query cache; keep 30s but shuffle on hit
+    # when exclude present -> bypass cache entirely (fresh round, protects variety; cached path stays for auto-timer quota)
     cache_key = f"hits:{genre}:v4:{'player' if is_player else 'request'}:{'ios' if is_ios else 'other'}"
-    try:
-        cached = cache.get(cache_key)
-    except Exception as e:
-        print(f'hits cache.get failed: {e}')
-        cached = None
+    cached = None
+    if not has_exclude:
+        try:
+            cached = cache.get(cache_key)
+        except Exception as e:
+            print(f'hits cache.get failed: {e}')
+            cached = None
     if cached:
         # ensure cached results also filtered (defense in depth) + non-music
         # pre-resolve uncached embeddability concurrently, then filter synchronously
@@ -493,18 +500,29 @@ def hits(request):
                 if len(dedup) >= 30:
                     break
         random.shuffle(dedup)
-        out = dedup[:30]
+        full = dedup
+        filtered = [c for c in full if c.get('id') not in exclude_ids]
+        if exclude_ids and not filtered:
+            # pool exhausted -> reshuffle FULL pool as new round
+            filtered = list(full)
+            random.shuffle(filtered)
+        out = filtered[:30]
         _bias_good_first(out)
-        try:
-            cache.set(cache_key, out, 30)
-        except Exception as e:
-            print(f'hits cache.set failed: {e}')
+        if not has_exclude:
+            try:
+                cache.set(cache_key, out, 30)
+            except Exception as e:
+                print(f'hits cache.set failed: {e}')
         return JsonResponse({'results': out})
     except Exception as e:
         print(f'hits failed, returning static fallback: {e}')
         safe = [r for r in _pad_pool if r['id'] not in BLOCKED_VIDEO_IDS and not _is_ai_title(r.get('title', ''), r.get('channel', '')) and not _is_non_music(r.get('title', ''), r.get('channel', '')) and (is_player or not _is_album_title(r.get('title','')))]
         random.shuffle(safe)
-        return JsonResponse({'results': safe[:30]})
+        filtered_safe = [c for c in safe if c.get('id') not in exclude_ids]
+        if exclude_ids and not filtered_safe:
+            filtered_safe = list(safe)
+            random.shuffle(filtered_safe)
+        return JsonResponse({'results': filtered_safe[:30]})
 
 def add_to_queue(request):
     if request.method == 'POST':
