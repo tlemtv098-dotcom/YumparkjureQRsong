@@ -440,6 +440,13 @@ def hits(request):
         {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://i.ytimg.com/vi/rc7KnQAh_1I/hqdefault.jpg"},
         {"id": "I9ZIq7ynvdU", "title": "แค่คนโทรผิด - Klear", "channel": "GMM", "thumbnail": "https://i.ytimg.com/vi/I9ZIq7ynvdU/hqdefault.jpg"},
         {"id": "Bk4O_3WF8II", "title": "ซ่อน(ไม่)หา - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/Bk4O_3WF8II/hqdefault.jpg"},
+        {"id": "OYPiXBIgvJ8", "title": "เพลงรัก - Three Man Down |Official MV|", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/OYPiXBIgvJ8/hqdefault.jpg"},
+        {"id": "hBK29bbOLS4", "title": "แก้บน - ก้านตอง ทุ่งเงิน【OFFICIAL MV】", "channel": "GRAMMY GOLD OFFICIAL", "thumbnail": "https://i.ytimg.com/vi/hBK29bbOLS4/hqdefault.jpg"},
+        {"id": "BQqAUhxSMOo", "title": "คำยินดี - Klear | ตำนานเพลงอกหัก 100 ล้านวิว | Songtopia Livehouse", "channel": "Songtopia", "thumbnail": "https://i.ytimg.com/vi/BQqAUhxSMOo/hqdefault.jpg"},
+        {"id": "ReUGJf6FxhM", "title": "อกหัก - bodyslam【OFFICIAL MV】", "channel": "GMM GRAMMY OFFICIAL", "thumbnail": "https://i.ytimg.com/vi/ReUGJf6FxhM/hqdefault.jpg"},
+        {"id": "Jdzs-qcURQE", "title": "guncharlie - จากกันโดยสมบูรณ์ | OFFICIAL MV", "channel": "Kicks Records", "thumbnail": "https://i.ytimg.com/vi/Jdzs-qcURQE/hqdefault.jpg"},
+        {"id": "Hc4OrO4LRWw", "title": "PURPEECH - กลัวว่าฉันจะไม่เสียใจ (Fear) [Official MV]", "channel": "PURPEECH Official", "thumbnail": "https://i.ytimg.com/vi/Hc4OrO4LRWw/hqdefault.jpg"},
+        {"id": "FFhL0UcYVTc", "title": "เพลงรักที่ยังไม่ลืม (Glitch)", "channel": "Emi Thasorn - Topic", "thumbnail": "https://i.ytimg.com/vi/FFhL0UcYVTc/hqdefault.jpg"},
     ]
     try:
         # Pre-resolve embeddability for all ids involved (merged + fallback
