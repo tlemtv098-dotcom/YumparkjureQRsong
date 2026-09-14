@@ -360,7 +360,7 @@
                     document.getElementById("results").innerHTML = "";
                     fetchMySongs();
                     fetchHits();
-                    showToast("ส่งคำขอเพลงแล้ว!", "success");
+                    showToast("ส่งคำขอเพลงแล้ว", "success");
                 } else {
                     showToast(data.error || "เพิ่มเพลงไม่สำเร็จ", "error");
                     // If blocked, remove that song from UI
@@ -399,12 +399,12 @@
                     const idx = data.queue.findIndex(s => s.id === mySongId);
                     const text = document.getElementById("result-text");
                     if (idx === -1) {
-                        text.innerHTML = "เพลงของคุณเล่นแล้ว ขอบคุณที่ใช้บริการ!";
+                        text.innerHTML = "เพลงของคุณเล่นแล้ว ขอบคุณที่ใช้บริการ";
                         mySongId = null;
                     } else if (idx === 0) {
-                        text.innerHTML = "กำลังเล่นเพลงของคุณ!";
+                        text.innerHTML = "กำลังเล่นเพลงของคุณ";
                     } else {
-                        text.innerHTML = "เพิ่มเพลงเข้าคิวแล้ว!<br>คิวของคุณ: ลำดับที่ " + (idx + 1);
+                        text.innerHTML = "เพิ่มเพลงเข้าคิวแล้ว<br>คิวของคุณ: ลำดับที่ " + (idx + 1);
                     }
                 })
                 .catch(err => console.error(err));

@@ -366,7 +366,7 @@
 
                 <div class="bg-white dark:bg-slate-800 shadow-md p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                     <div class="mb-2">
-                        <span class="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 font-bold tracking-wider"><span id="now-loading" class="hidden text-xs text-slate-400 font-bold">????????????????...</span>กำลังเล่น</span>
+                        <span class="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 font-bold tracking-wider"><span id="now-loading" class="hidden text-xs text-slate-400 font-bold">กำลังโหลด...</span>กำลังเล่น</span>
                         <h2 id="now-playing-title" class="text-sm sm:text-base md:text-lg font-bold whitespace-normal break-words line-clamp-2 text-slate-900 dark:text-white">รอเพลงจากลูกค้า...</h2>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
@@ -667,11 +667,12 @@
                 so.style.display = 'none';
             }
         }
-        // Global tap listeners for iOS: any tap should try to ensure playing
-        // But use uniform tap gate: only via overlay, not auto-play without tap
-        document.addEventListener('touchstart', () => { userInteracted = true; soundEnabled = true; ensurePlaying(); }, { passive: true });
-        document.addEventListener('click', () => { userInteracted = true; soundEnabled = true; ensurePlaying(); });
-        // Also handle touchend for iOS Safari gesture requirement
+        // NOTE: no global touchstart/click -> ensurePlaying resume; scrolling or
+        // tapping anywhere must NOT resume a paused song. First-tap audio
+        // unlock stays on explicit paths only: sound-overlay tap
+        // (handleOverlayTap), explicit play buttons, queue-driven playNext.
+        // Keep ensurePlaying for those explicit paths; do NOT re-add global listeners.
+        // Flag-only touchend listener for iOS Safari gesture requirement
         document.addEventListener('touchend', () => { userInteracted = true; soundEnabled = true; }, { passive: true });
 
         // --- Toast ---
@@ -1776,7 +1777,7 @@
                 throw { status: res.status, data };
             })
             .then(data => {
-                    showToast("เพิ่มเพลงหน้าคิวแล้ว!", "success");
+                    showToast("เพิ่มเพลงหน้าคิวแล้ว", "success");
                     if (currentSong) {
                         try { skipSong(); } catch(e) {}
                     }
