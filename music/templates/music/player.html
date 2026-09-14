@@ -782,7 +782,7 @@
             player = new YT.Player('player', {
                 height: '100%',
                 width: '100%',
-                host: 'https://www.youtube-nocookie.com',
+                host: (typeof isIOS !== 'undefined' && isIOS) ? 'https://www.youtube.com' : 'https://www.youtube-nocookie.com',
                 playerVars: {
                     'autoplay': 1,
                     'mute': 1,

@@ -1051,7 +1051,7 @@ class WidgetReferrerRegressionTests(TestCase):
         self.client.force_login(User.objects.create_user(username='wr1', password='Testpass123!', is_staff=True))
         html = self.client.get('/').content.decode()
         self.assertNotIn('widget_referrer', html)
-        self.assertIn("host: 'https://www.youtube-nocookie.com'", html)
+        self.assertIn('https://www.youtube-nocookie.com', html)
 
 class HostSwitchTests(TestCase):
     def setUp(self):
@@ -1063,10 +1063,10 @@ class HostSwitchTests(TestCase):
         res = self.client.get('/', HTTP_USER_AGENT=iphone_ua)
         self.assertEqual(res.status_code, 200)
         html = res.content.decode()
-        # uniform nocookie host on all devices (proven to play on desktop)
+        # conditional host: youtube.com on iOS, nocookie elsewhere
         self.assertIn('https://www.youtube-nocookie.com', html)
-        self.assertIn("host: 'https://www.youtube-nocookie.com'", html)
-        self.assertNotIn('ytHost', html)
+        self.assertIn('https://www.youtube.com', html)
+        self.assertIn('isIOS', html)
         self.assertNotIn('widget_referrer', html)
 
 
