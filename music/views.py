@@ -387,8 +387,8 @@ def hits(request):
         queries = genre_queries[genre]
     else:
         queries = ['เพลงไทยฮิต', 'เพลงฮิต 2025', 'เพลงดัง', 'เพลงใหม่ 2025', 'เพลงไทยเพราะๆ', 'เพลงฮิตติดชาร์ต', 'ชาร์ตเพลงไทย 2026', 'เพลงมาแรง 2026', 'เพลงฮิต TikTok 2026', 'เพลงใหม่ 2026']
-    # pick 2 random queries to broaden pool and return 10 unique (+fallback pad to 15) for speed
-    k = min(2, len(queries))
+    # pick 3 random queries to broaden pool and return 15 unique (+fallback pad to 30) for speed
+    k = min(3, len(queries))
     picked = random.sample(queries, k) if k else []
     # ensure at least one recent 2026/ชาร์ต query when using default pool
     if genre not in genre_queries and picked and not any('2026' in q or 'ชาร์ต' in q for q in picked):
@@ -396,7 +396,7 @@ def hits(request):
         if recent_pool:
             picked[0] = random.choice(recent_pool)
     # cache key versioned to avoid stale single-query cache; keep 30s but shuffle on hit
-    cache_key = f"hits:{genre}:v3:{'player' if is_player else 'request'}:{'ios' if is_ios else 'other'}"
+    cache_key = f"hits:{genre}:v4:{'player' if is_player else 'request'}:{'ios' if is_ios else 'other'}"
     try:
         cached = cache.get(cache_key)
     except Exception as e:
@@ -421,8 +421,8 @@ def hits(request):
         out_cached = list(dedup_c)
         random.shuffle(out_cached)
         _bias_good_first(out_cached)
-        return JsonResponse({'results': out_cached[:15]})
-    # merge results from 2 queries (10 total, 5 per query)
+        return JsonResponse({'results': out_cached[:30]})
+    # merge results from 3 queries (15 total, 5 per query)
     merged = []
     for q in picked:
         try:
@@ -448,14 +448,34 @@ def hits(request):
         {"id": "Hc4OrO4LRWw", "title": "PURPEECH - กลัวว่าฉันจะไม่เสียใจ (Fear) [Official MV]", "channel": "PURPEECH Official", "thumbnail": "https://i.ytimg.com/vi/Hc4OrO4LRWw/hqdefault.jpg"},
         {"id": "FFhL0UcYVTc", "title": "เพลงรักที่ยังไม่ลืม (Glitch)", "channel": "Emi Thasorn - Topic", "thumbnail": "https://i.ytimg.com/vi/FFhL0UcYVTc/hqdefault.jpg"},
     ]
+    _search_fallback = [
+        {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/ks7p6DA0dKk/hqdefault.jpg"},
+        {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/zwvv71slEYc/hqdefault.jpg"},
+        {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://i.ytimg.com/vi/L1k0wkQ6uww/hqdefault.jpg"},
+        {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/s-MZid-59Hc/hqdefault.jpg"},
+        {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://i.ytimg.com/vi/rc7KnQAh_1I/hqdefault.jpg"},
+        {"id": "OYPiXBIgvJ8", "title": "เพลงรัก - Three Man Down |Official MV|", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/OYPiXBIgvJ8/hqdefault.jpg"},
+        {"id": "P5sHZRicEXg", "title": "Three Man Down - เพลงรัก Feat. whateve | Live at PAPAYA Studio", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/P5sHZRicEXg/hqdefault.jpg"},
+        {"id": "vMUeFBHwzSI", "title": "Three Man Down - เพลงรัก | Live at GFEST MARATHON CONCERT 2025", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/vMUeFBHwzSI/hqdefault.jpg"},
+        {"id": "FFhL0UcYVTc", "title": "เพลงรักที่ยังไม่ลืม (Glitch)", "channel": "Emi Thasorn - Topic", "thumbnail": "https://i.ytimg.com/vi/FFhL0UcYVTc/hqdefault.jpg"},
+        {"id": "g1UQm2IGhLA", "title": "เพลงรัก - Three Man Down [เนื้อเพลง]", "channel": "90's Lyrics", "thumbnail": "https://i.ytimg.com/vi/g1UQm2IGhLA/hqdefault.jpg"},
+        {"id": "Hc4OrO4LRWw", "title": "PURPEECH - กลัวว่าฉันจะไม่เสียใจ (Fear) [Official MV]", "channel": "PURPEECH Official", "thumbnail": "https://i.ytimg.com/vi/Hc4OrO4LRWw/hqdefault.jpg"},
+        {"id": "Jdzs-qcURQE", "title": "guncharlie - จากกันโดยสมบูรณ์ | OFFICIAL MV", "channel": "Kicks Records", "thumbnail": "https://i.ytimg.com/vi/Jdzs-qcURQE/hqdefault.jpg"},
+        {"id": "ReUGJf6FxhM", "title": "อกหัก - bodyslam【OFFICIAL MV】", "channel": "GMM GRAMMY OFFICIAL", "thumbnail": "https://i.ytimg.com/vi/ReUGJf6FxhM/hqdefault.jpg"},
+        {"id": "BQqAUhxSMOo", "title": "คำยินดี - Klear | ตำนานเพลงอกหัก 100 ล้านวิว | Songtopia Livehouse", "channel": "Songtopia", "thumbnail": "https://i.ytimg.com/vi/BQqAUhxSMOo/hqdefault.jpg"},
+        {"id": "hBK29bbOLS4", "title": "แก้บน - ก้านตอง ทุ่งเงิน【OFFICIAL MV】", "channel": "GRAMMY GOLD OFFICIAL", "thumbnail": "https://i.ytimg.com/vi/hBK29bbOLS4/hqdefault.jpg"},
+    ]
+    # deduped pad pool: static 15 + search-fallback entries not already present by id
+    _static_ids = {r['id'] for r in _fallback_static}
+    _pad_pool = list(_fallback_static) + [r for r in _search_fallback if r['id'] not in _static_ids]
     try:
         # Pre-resolve embeddability for all ids involved (merged + fallback
         # pad pool) in one concurrent block, then filter synchronously.
-        _all_ids = [r.get('id') for r in (merged + _fallback_static) if r.get('id')]
+        _all_ids = [r.get('id') for r in (merged + _pad_pool) if r.get('id')]
         embed_map = _resolve_embed_ok(_all_ids)
         if not merged:
             # Fallback static hits for PythonAnywhere free (YouTube blocked) - shuffle and dedup
-            results = [r for r in _fallback_static if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and embed_map.get(r['id']) is not False]
+            results = [r for r in _pad_pool if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and embed_map.get(r['id']) is not False]
         else:
             # also ensure live search results are filtered (defense in depth) + non-music
             results = [r for r in merged if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and embed_map.get(r['id']) is not False]
@@ -465,15 +485,15 @@ def hits(request):
         for r in results:
             if r['id'] not in seen and not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel','')) and (is_player or not _is_album_title(r.get('title',''))) and embed_map.get(r['id']) is not False:
                 dedup.append(r); seen.add(r['id'])
-        # if live results deduped to less than 15, pad with fallback to ensure 15 non-duplicate
-        if len(dedup) < 15:
-            for fb in _fallback_static:
+        # if live results deduped to less than 30, pad with fallback to ensure 30 non-duplicate
+        if len(dedup) < 30:
+            for fb in _pad_pool:
                 if fb['id'] not in seen and not _is_blocked(fb['id']) and not _is_ai_title(fb.get('title',''), fb.get('channel','')) and not _is_non_music(fb.get('title',''), fb.get('channel','')) and (is_player or not _is_album_title(fb.get('title',''))) and embed_map.get(fb['id']) is not False:
                     dedup.append(fb); seen.add(fb['id'])
-                if len(dedup) >= 15:
+                if len(dedup) >= 30:
                     break
         random.shuffle(dedup)
-        out = dedup[:15]
+        out = dedup[:30]
         _bias_good_first(out)
         try:
             cache.set(cache_key, out, 30)
@@ -482,9 +502,9 @@ def hits(request):
         return JsonResponse({'results': out})
     except Exception as e:
         print(f'hits failed, returning static fallback: {e}')
-        safe = [r for r in _fallback_static if r['id'] not in BLOCKED_VIDEO_IDS and not _is_ai_title(r.get('title', ''), r.get('channel', '')) and not _is_non_music(r.get('title', ''), r.get('channel', '')) and (is_player or not _is_album_title(r.get('title','')))]
+        safe = [r for r in _pad_pool if r['id'] not in BLOCKED_VIDEO_IDS and not _is_ai_title(r.get('title', ''), r.get('channel', '')) and not _is_non_music(r.get('title', ''), r.get('channel', '')) and (is_player or not _is_album_title(r.get('title','')))]
         random.shuffle(safe)
-        return JsonResponse({'results': safe[:15]})
+        return JsonResponse({'results': safe[:30]})
 
 def add_to_queue(request):
     if request.method == 'POST':
