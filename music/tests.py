@@ -698,12 +698,12 @@ class FallbackPoolRegressionTests(TestCase):
     def test_search_fallback_pool_has_at_least_10_entries(self):
         from unittest.mock import patch
         with patch('music.views.youtube_api_search', return_value=[]):
-            # Nonsense query should return empty (no random fallback) — proves fallback not returning unrelated songs.
+            # Nonsense query should return 3 recommendations (fallback[:3] filtered) — Task1 token fallback.
             res = self.client.get('/api/search/?q=xyz-no-match-123-qwerty-999')
             self.assertEqual(res.status_code, 200)
             results = res.json().get('results', [])
             self.assertIsInstance(results, list)
-            self.assertEqual(len(results), 0)
+            self.assertEqual(len(results), 3)
             # Broad query matching most pool entries proves pool expanded to >= 10.
             res_all = self.client.get('/api/search/?q=-')
             self.assertEqual(res_all.status_code, 200)
@@ -1850,4 +1850,18 @@ class GoodVideoBiasTests(TestCase):
         self.assertTrue(found, 'GoodVideo migration missing')
         from .models import GoodVideo
         self.assertTrue(hasattr(GoodVideo, 'objects'))
+
+
+class SearchFallbackTests(TestCase):
+    def test_token_and_recommend(self):
+        # token: query with 2 words should match if any token in title/channel
+        res = self.client.get('/api/search/?q=เพลงรัก bodyslam')
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        # should find at least one (bodyslam present)
+        self.assertGreater(len(data['results']), 0)
+        # no token match should return 3 recommendations not empty
+        res2 = self.client.get('/api/search/?q=zzzznotfound123')
+        self.assertEqual(res2.status_code, 200)
+        self.assertEqual(len(res2.json()['results']), 3)
 

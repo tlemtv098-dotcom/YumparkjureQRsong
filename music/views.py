@@ -375,16 +375,22 @@ def search_song(request):
             {"id": "GVoMsREAK9w", "title": "คนเบล้อ - จ้องน้อย หรอยเว่อร์ [ Official MV ]", "channel": "หรอยเว่อร์", "thumbnail": "https://i.ytimg.com/vi/GVoMsREAK9w/hqdefault.jpg"},
             {"id": "ykYeCZ2tcvA", "title": "เทสบ่ดี - ม่อน วรวิทย์ [ Official MV ] จอนนี่มิวสิค", "channel": "จอนนี่มือปราบอินดี้ official", "thumbnail": "https://i.ytimg.com/vi/ykYeCZ2tcvA/hqdefault.jpg"},
         ]
-        # simple filter by query substring
         q_lower = query.lower()
-        results = [s for s in fallback if q_lower in s['title'].lower() or q_lower in s['channel'].lower()]
-        had_substring_match = len(results) > 0
-        # Do NOT return random fallback[:3] when no substring match — return empty so frontend shows "not found"
-        # filter blocked and album titles + non-music
+        tokens = [t for t in q_lower.split() if t]
+        def matches(s):
+            hay = (s['title'] + ' ' + s['channel']).lower()
+            return any(tok in hay for tok in tokens) if tokens else False
+        results = [s for s in fallback if matches(s)]
+        had_match = len(results) > 0
+        # filter blocked and ai/non_music
         results = [r for r in results if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
-        if not results and had_substring_match:
+        if not results and had_match:
             # Guarantee non-empty only when substring had matches but filters emptied them
             results = [r for r in fallback[:3] if not _is_blocked(r['id'])]
+        if not results and not had_match:
+            results = [r for r in fallback[:3] if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
+            if not results:
+                results = [r for r in fallback[:3] if not _is_blocked(r['id'])]
     else:
         # also filter live results (defense in depth) for album titles + non-music
         results = [r for r in results if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
