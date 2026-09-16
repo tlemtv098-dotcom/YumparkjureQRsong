@@ -596,6 +596,22 @@
                 }, 200);
             }
         });
+        // Task 4: keep playing when hidden — if YT pauses, fallback to audio
+        document.addEventListener('visibilitychange', () => {
+            if(document.hidden && currentSong && player && !AUDIO_MODE){
+                try{
+                    const st = player.getPlayerState ? player.getPlayerState() : -1;
+                    if(st !== YT.PlayerState.PLAYING){
+                        // YT paused in background (lock screen); try audio fallback once per song
+                        if(!window._audioTriedFor || window._audioTriedFor !== currentSong.id){
+                            switchToAudio();
+                        }
+                    }
+                }catch(e){}
+                try{ clog('visibility_hidden', (currentSong?currentSong.video_id:'-')+'|'+document.visibilityState); }catch(e){}
+            }
+        });
+        function switchToAudio(){ try{ if(typeof playNextAudio==='function') playNextAudio(); }catch(e){} }
 
         // --- Handle LINE WebView ---
         document.addEventListener('DOMContentLoaded', () => {

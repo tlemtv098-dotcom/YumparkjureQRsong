@@ -121,6 +121,13 @@ class PlayerPageTests(TestCase):
         self.assertIn('101', html)
         self.assertIn('audio', html.lower())
 
+    def test_audio_fallback_and_visibility(self):
+        html = self.client.get('/').content.decode()
+        self.assertIn('AUDIO_MODE', html)
+        self.assertIn('playNextAudio', html)
+        self.assertIn('visibilitychange', html.lower())
+        self.assertIn('/api/audio/', html)
+
 
 class RequestPageTests(TestCase):
     def test_request_page_renders(self):
