@@ -105,6 +105,14 @@ class PlayerPageTests(TestCase):
         lower = html.lower()
         self.assertTrue('capability' in lower or 'mediasession' in lower or 'canplay' in lower)
 
+    def test_muted_autoplay_overlay(self):
+        html = self.client.get('/').content.decode()
+        self.assertIn('sound-overlay', html)
+        self.assertIn('handleOverlayTap', html)
+        # new: muted autoplay attempt before overlay
+        self.assertIn('mute', html.lower())
+        self.assertIn('autoplay', html.lower())
+
 
 class RequestPageTests(TestCase):
     def test_request_page_renders(self):

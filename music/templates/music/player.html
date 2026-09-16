@@ -1013,11 +1013,17 @@
                     if (isPlayerReady && !currentSong && queue.length > 0) {
                         if (!userInteracted) {
                             idleSplash.classList.add('hidden');
-                            showSoundOverlay();
                             videoContainer.classList.remove('bg-white');
                             videoContainer.classList.add('bg-black');
-                            // iPad reload fix: no gesture yet -> do NOT call playNext (would cause 153 without gesture)
-                            // wait for overlay tap -> handleOverlayTap -> playNext(true)
+                            // Task 2: muted autoplay attempt; fallback to overlay after ~800ms if not playing
+                            try { playNext(); } catch(e) {}
+                            clearTimeout(window._mutedAutoplayTimer);
+                            window._mutedAutoplayTimer = setTimeout(() => {
+                                try {
+                                    const st = player && player.getPlayerState ? player.getPlayerState() : -1;
+                                    if (st !== YT.PlayerState.PLAYING && !userInteracted && !soundEnabled) showSoundOverlay();
+                                } catch(e) {}
+                            }, 800);
                         } else {
                             hideSoundOverlay();
                             playNext();
@@ -1054,10 +1060,17 @@
                     if (hasNewSongs && isPlayerReady && !currentSong) {
                         if (!userInteracted) {
                             idleSplash.classList.add('hidden');
-                            showSoundOverlay();
                             videoContainer.classList.remove('bg-white');
                             videoContainer.classList.add('bg-black');
-                            // iPad reload fix: no gesture -> show overlay only, no playNext (153)
+                            // Task 2: muted autoplay attempt; fallback to overlay after ~800ms
+                            try { playNext(); } catch(e) {}
+                            clearTimeout(window._mutedAutoplayTimer2);
+                            window._mutedAutoplayTimer2 = setTimeout(() => {
+                                try {
+                                    const st = player && player.getPlayerState ? player.getPlayerState() : -1;
+                                    if (st !== YT.PlayerState.PLAYING && !userInteracted && !soundEnabled) showSoundOverlay();
+                                } catch(e) {}
+                            }, 800);
                         } else {
                             playNext();
                             setFastPoll();
@@ -1202,20 +1215,39 @@
                     showToast("กำลังโหลดเพลง...", "info");
                 }
                 setTimeout(()=>{const f=document.querySelector('#player iframe'); if(f){f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture'); f.setAttribute('allowFullscreen','');}},100);
-                // Browser autoplay policy: start muted, unmute after user interaction — keep loudness constant
+                // Task 2: muted autoplay attempt — try mute+autoplay immediately, fallback to overlay after ~800ms if blocked
                 try { if(player && player.setVolume) player.setVolume(getSavedVolume()); } catch(e) {}
                 try { player.mute(); } catch(e) {}
-                try { player.playVideo(); } catch(e) {}
+                let _playPromise = null;
+                try { _playPromise = player.playVideo(); } catch(e) {}
+                if (_playPromise && typeof _playPromise.catch === 'function') {
+                    _playPromise.catch(() => {
+                        if (!userInteracted && !soundEnabled && soundOverlay) {
+                            soundOverlay.classList.remove('hidden');
+                            soundOverlay.style.display = 'flex';
+                        }
+                    });
+                }
+                clearTimeout(window._mutedAutoplayFallback);
+                window._mutedAutoplayFallback = setTimeout(() => {
+                    try {
+                        const st = player && player.getPlayerState ? player.getPlayerState() : -1;
+                        if (st !== YT.PlayerState.PLAYING && !userInteracted && !soundEnabled && soundOverlay) {
+                            soundOverlay.classList.remove('hidden');
+                            soundOverlay.style.display = 'flex';
+                        }
+                    } catch(e) {}
+                }, 800);
                 if (wantSound || userInteracted) {
                     // Need slight delay for iOS gesture to be recognized
                     setTimeout(() => {
                         try { if(player && player.setVolume) player.setVolume(getSavedVolume()); } catch(e) {}
                         try { player.unMute(); } catch(e) {}
                         try { player.playVideo(); } catch(e) {}
+                        if (soundOverlay) { soundOverlay.classList.add('hidden'); soundOverlay.style.display = 'none'; }
                     }, isIOS ? 100 : 0);
                 } else {
-                    // Show overlay as hint that tap will unmute
-                    if (soundOverlay) { soundOverlay.classList.remove('hidden'); soundOverlay.style.display = 'flex'; }
+                    // overlay visibility handled by 800ms fallback above; do not show immediately
                 }
             } else {
                 currentSong = null;
