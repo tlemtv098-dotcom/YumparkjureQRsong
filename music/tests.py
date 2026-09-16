@@ -94,6 +94,17 @@ class PlayerPageTests(TestCase):
         self.assertContains(response, 'toggleAutoRandom')
         self.assertContains(response, 'showToast')
 
+    def test_hybrid_platform_detection(self):
+        response = self.client.get('/')
+        html = response.content.decode()
+        self.assertIn('isIOS', html)
+        self.assertIn('isAndroid', html)
+        self.assertIn('maxTouchPoints', html)
+        self.assertIn('mediaSession', html)
+        self.assertIn('pictureInPictureEnabled', html)
+        lower = html.lower()
+        self.assertTrue('capability' in lower or 'mediasession' in lower or 'canplay' in lower)
+
 
 class RequestPageTests(TestCase):
     def test_request_page_renders(self):
