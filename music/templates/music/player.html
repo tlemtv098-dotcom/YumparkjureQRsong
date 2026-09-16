@@ -850,12 +850,13 @@
                         // Embedding disabled / video unavailable errors
                         if ([2, 5, 100, 101, 150, 153].includes(event.data)) {
                             if (event.data === 153) { window._embedFail=(window._embedFail||0)+1; if(window._embedFail>=2 && !AUDIO_MODE){ showToast('เพลงนี้เล่นในหน้านี้ไม่ได้ กดเปิดในแอป','warning'); } }
+                            if (event.data === 153 && !window._triedHostSwitch) { window._triedHostSwitch = true; try{ clog('host_switch', currentSong?currentSong.video_id:''); }catch(e){} try { if (typeof playNextNoApi === 'function') { var _pElH=document.getElementById('player'); if(_pElH) _pElH.style.display=''; playNextNoApi(); return; } } catch(e) {} }
                             if (event.data === 153 && !window._triedNoApi) { window._triedNoApi = true; console.warn('153 fallback to noapi', currentSong); try { if (typeof playNextNoApi === 'function') { // hide player error, try noapi
    const pEl = document.getElementById('player'); if (pEl) pEl.style.display = '';
-   // try noapi for same song
-   playNextNoApi();
-   return;
- } } catch(e) {} }
+    // try noapi for same song
+    playNextNoApi();
+    return;
+  } } catch(e) {} }
                             if (event.data === 153) {
                                 consecutive153++;
                                 if (consecutive153 >= 3) {
@@ -934,6 +935,7 @@
                                 // 153 quick skip: ensure autoRandom does not re-pick this id and tries next quickly
                                 setTimeout(()=>{ if(autoRandomEnabled && !currentSong && queue.length===0) playRandomHit(); }, 250);
                             } else {
+                                try{ showToast('วิดีโอเล่นไม่ได้ ข้ามเพลง','error'); }catch(e){}
                             }
                             skipSong();
                             setTimeout(()=>{ if (queue.length>0) playNext(soundEnabled); else fetchQueue(); }, 500);
@@ -969,6 +971,7 @@
                 breakerTripped = false;
                 window._retryCount = 0;
                 window._triedNoApi = false;
+                window._triedHostSwitch = false;
                 if (userInteracted) {
                     const so = document.getElementById('sound-overlay');
                     if (so) { so.classList.add('hidden'); so.style.display = 'none'; }
@@ -1176,7 +1179,7 @@
                 playerStarting = true;
                 setTimeout(()=>{ playerStarting = false; }, 300);
                 currentSong = next;
-                try { window._audioTriedFor = null; } catch(e) {}
+                try { window._audioTriedFor = null; window._triedHostSwitch = false; } catch(e) {}
                 try { var nl0 = document.getElementById('now-loading'); if (nl0) nl0.classList.remove('hidden'); } catch(e) {}
                 lastPlayedVideoId = next.video_id;
                 document.getElementById('now-playing-title').innerText = currentSong.title;

@@ -113,6 +113,14 @@ class PlayerPageTests(TestCase):
         self.assertIn('mute', html.lower())
         self.assertIn('autoplay', html.lower())
 
+    def test_yt_error_mapping(self):
+        html = self.client.get('/').content.decode()
+        self.assertIn('onError', html)
+        self.assertIn('153', html)
+        self.assertIn('150', html)
+        self.assertIn('101', html)
+        self.assertIn('audio', html.lower())
+
 
 class RequestPageTests(TestCase):
     def test_request_page_renders(self):
