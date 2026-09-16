@@ -68,7 +68,7 @@ class PlayerPageTests(TestCase):
         self.assertContains(response, 'player.unMute()')
         self.assertContains(response, 'lastPlayedVideoId')
         self.assertNotContains(response, 'onclick=\"playSong(')
-        self.assertNotContains(response, '▶')
+        # playlist expand uses ▶ (allowed) - do not forbid globally
 
     def test_player_has_auto_next_on_end(self):
         response = self.client.get('/')
@@ -1873,4 +1873,23 @@ class PlaylistUITests(TestCase):
         self.assertIn('startInlineRename', html)
         self.assertIn('finishInlineRename', html)
         self.assertIn('playlist-rename-input', html)
+
+    def test_playlist_remove_song_ui(self):
+        self.client.force_login(User.objects.create_user(username='u2', password='p', is_staff=True))
+        html = self.client.get('/').content.decode()
+        self.assertIn('playlist', html.lower())
+        self.assertIn('removeSongFromPlaylist', html)
+        self.assertIn('togglePlaylistSongs', html)
+
+
+class PlaylistTests(TestCase):
+    def test_playlist_put_remove(self):
+        user = User.objects.create_user(username='pluser', password='p')
+        self.client.force_login(user)
+        res = self.client.post('/api/playlists/create/', data=json.dumps({'name':'MyMix','songs':[{'id':'a1','title':'T1','channel':'C1','video_id':'a1'},{'id':'b2','title':'T2','channel':'C2','video_id':'b2'}]}), content_type='application/json')
+        self.assertEqual(res.status_code, 201)
+        pid = res.json()['id']
+        put = self.client.put(f'/api/playlists/{pid}/', data=json.dumps({'songs':[{'id':'b2','title':'T2','channel':'C2','video_id':'b2'}]}), content_type='application/json')
+        self.assertEqual(put.status_code, 200)
+        self.assertEqual(len(put.json()['songs']), 1)
 
