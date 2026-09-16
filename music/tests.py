@@ -136,6 +136,13 @@ class PlayerPageTests(TestCase):
         # should appear at least twice (audio + YT path)
         self.assertGreaterEqual(html.count('mediaSession'), 2)
 
+    def test_old_browser_polyfill(self):
+        html = self.client.get('/').content.decode()
+        # old guard removed or softened, polyfill present
+        self.assertIn('polyfill', html.lower())
+        self.assertIn('fetch', html.lower())
+        self.assertNotIn('COMPAT_GUARD: กรุณาอัปเดต', html)
+
 
 class RequestPageTests(TestCase):
     def test_request_page_renders(self):

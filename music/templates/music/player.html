@@ -22,7 +22,8 @@
     <link rel="preconnect" href="https://www.youtube.com">
     <link rel="preconnect" href="https://i.ytimg.com">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>if(!window.fetch||!window.URLSearchParams||!window.Promise){document.addEventListener('DOMContentLoaded',function(){document.body.innerHTML='<div style="padding:40px;text-align:center;font-family:sans-serif">COMPAT_GUARD: กรุณาอัปเดตเบราว์เซอร์เป็นเวอร์ชันใหม่เพื่อใช้งาน</div>';});}</script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=fetch,Promise,URLSearchParams"></script>
+    <script>/* COMPAT_GUARD soft degrade */ if(!window.fetch||!window.URLSearchParams||!window.Promise){ console.warn('old browser - กรุณาอัปเดตเบราว์เซอร์เป็นเวอร์ชันใหม่เพื่อใช้งาน'); }</script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
