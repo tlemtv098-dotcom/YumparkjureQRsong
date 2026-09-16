@@ -612,6 +612,15 @@
             }
         });
         function switchToAudio(){ try{ if(typeof playNextAudio==='function') playNextAudio(); }catch(e){} }
+        function updateMediaSession(song){
+          if(!('mediaSession' in navigator)) return;
+          try{
+            navigator.mediaSession.metadata = new MediaMetadata({title: song.title||'', artist:'ร้านยำปากเจ่อKPP', artwork: song.thumbnail ? [{src:song.thumbnail, sizes:'512x512', type:'image/jpeg'}] : []});
+            navigator.mediaSession.setActionHandler('nexttrack', ()=>{ try{skipSong();}catch(e){} });
+            navigator.mediaSession.setActionHandler('play', ()=>{ try{ if(typeof AUDIO_MODE!=='undefined' && AUDIO_MODE) getAudioEl().play().catch(()=>{}); else if(player && player.playVideo) player.playVideo(); else getAudioEl().play().catch(()=>{}); }catch(e){} });
+            navigator.mediaSession.setActionHandler('pause', ()=>{ try{ if(typeof AUDIO_MODE!=='undefined' && AUDIO_MODE) getAudioEl().pause(); else if(player && player.pauseVideo) player.pauseVideo(); else getAudioEl().pause(); }catch(e){} });
+          }catch(e){}
+        }
 
         // --- Handle LINE WebView ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -1169,7 +1178,7 @@
             }
         }
 
-        async function playNextAudio(){ const next = queue.find(s=>!finishingSongIds.has(s.id)); const playerElA = document.getElementById('player'); const idleA = document.getElementById('idle-splash'); const soA = document.getElementById('sound-overlay'); if(!next){ currentSong=null; document.getElementById('now-playing-title').innerText='รอเพลงจากลูกค้า...'; if(idleA) idleA.classList.remove('hidden'); if(soA){ soA.classList.add('hidden'); soA.style.display='none'; } return; } currentSong=next; document.getElementById('now-playing-title').innerText=next.title; if(playerElA) playerElA.style.display='none'; if(idleA) idleA.classList.add('hidden'); if(soA){ soA.classList.add('hidden'); soA.style.display='none'; } try{ const r=await fetch('/api/audio/?id='+encodeURIComponent(next.video_id)); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||'audio fail'); const a=getAudioEl(); a.src=d.audio_url; a.onended=()=>{ removePlayedSong(next.id); setTimeout(()=>playNextAudio(),500); }; a.onerror=()=>{ audioFailedCount++; showToast('เสียงเล่นไม่ได้ ข้ามเพลง','error'); removePlayedSong(next.id); setTimeout(()=>playNextAudio(),500); }; await a.play(); if('mediaSession' in navigator){ try{ navigator.mediaSession.metadata=new MediaMetadata({title:currentSong.title||'',artist:'ร้านยำปากเจ่อKPP',artwork:currentSong.thumbnail?[{src:currentSong.thumbnail,sizes:'512x512',type:'image/jpeg'}]:[]}); navigator.mediaSession.setActionHandler('play',()=>{ try{getAudioEl().play();}catch(e){} }); navigator.mediaSession.setActionHandler('pause',()=>{ try{getAudioEl().pause();}catch(e){} }); navigator.mediaSession.setActionHandler('nexttrack',()=>skipSong()); }catch(e){} } }catch(e){ showToast('ดึงเสียงไม่ได้','error'); removePlayedSong(next.id); setTimeout(()=>playNextAudio(),800); } }
+        async function playNextAudio(){ const next = queue.find(s=>!finishingSongIds.has(s.id)); const playerElA = document.getElementById('player'); const idleA = document.getElementById('idle-splash'); const soA = document.getElementById('sound-overlay'); if(!next){ currentSong=null; document.getElementById('now-playing-title').innerText='รอเพลงจากลูกค้า...'; if(idleA) idleA.classList.remove('hidden'); if(soA){ soA.classList.add('hidden'); soA.style.display='none'; } return; } currentSong=next; document.getElementById('now-playing-title').innerText=next.title; if(playerElA) playerElA.style.display='none'; if(idleA) idleA.classList.add('hidden'); if(soA){ soA.classList.add('hidden'); soA.style.display='none'; } try{ const r=await fetch('/api/audio/?id='+encodeURIComponent(next.video_id)); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||'audio fail'); const a=getAudioEl(); a.src=d.audio_url; a.onended=()=>{ removePlayedSong(next.id); setTimeout(()=>playNextAudio(),500); }; a.onerror=()=>{ audioFailedCount++; showToast('เสียงเล่นไม่ได้ ข้ามเพลง','error'); removePlayedSong(next.id); setTimeout(()=>playNextAudio(),500); }; await a.play(); try{ updateMediaSession(currentSong); }catch(e){} }catch(e){ showToast('ดึงเสียงไม่ได้','error'); removePlayedSong(next.id); setTimeout(()=>playNextAudio(),800); } }
 
         function playNext(withSound) {
             if(AUDIO_MODE) return playNextAudio();
@@ -1203,18 +1212,7 @@
                 const playerEl = document.getElementById('player');
                 if (playerEl) playerEl.style.display = '';
                 idleSplash.classList.add('hidden');
-                if ('mediaSession' in navigator) {
-                  try {
-                    navigator.mediaSession.metadata = new MediaMetadata({
-                      title: currentSong.title || '',
-                      artist: 'ร้านยำปากเจ่อKPP',
-                      artwork: currentSong.thumbnail ? [{src: currentSong.thumbnail, sizes: '512x512', type: 'image/jpeg'}] : []
-                    });
-                    navigator.mediaSession.setActionHandler('play', ()=>{ try{player.playVideo();}catch(e){} });
-                    navigator.mediaSession.setActionHandler('pause', ()=>{ try{player.pauseVideo();}catch(e){} });
-                    navigator.mediaSession.setActionHandler('nexttrack', ()=>skipSong());
-                  } catch(e) {}
-                }
+                try{ updateMediaSession(currentSong); }catch(e){}
                 // Keep sound-overlay visible until user taps, unless already interacted
                 if ((wantSound || userInteracted) && soundOverlay) {
                     soundOverlay.classList.add('hidden');
@@ -1247,6 +1245,7 @@
                         }
                     });
                 }
+                if('mediaSession' in navigator){ try{ navigator.mediaSession.metadata = new MediaMetadata({title: currentSong.title, artist: 'ร้านยำปากเจ่อKPP', artwork: [{src: currentSong.thumbnail, sizes:'512x512', type:'image/jpeg'}]}); navigator.mediaSession.setActionHandler('nexttrack', ()=>skipSong()); navigator.mediaSession.setActionHandler('play', ()=>player.playVideo()); navigator.mediaSession.setActionHandler('pause', ()=>player.pauseVideo()); }catch(e){} }
                 clearTimeout(window._mutedAutoplayFallback);
                 window._mutedAutoplayFallback = setTimeout(() => {
                     try {

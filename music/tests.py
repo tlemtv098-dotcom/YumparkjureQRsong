@@ -128,6 +128,14 @@ class PlayerPageTests(TestCase):
         self.assertIn('visibilitychange', html.lower())
         self.assertIn('/api/audio/', html)
 
+    def test_mediasession_everywhere(self):
+        html = self.client.get('/').content.decode()
+        self.assertIn('mediaSession', html)
+        self.assertIn('MediaMetadata', html)
+        self.assertIn('setActionHandler', html)
+        # should appear at least twice (audio + YT path)
+        self.assertGreaterEqual(html.count('mediaSession'), 2)
+
 
 class RequestPageTests(TestCase):
     def test_request_page_renders(self):
