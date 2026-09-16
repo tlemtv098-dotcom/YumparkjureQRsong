@@ -1865,3 +1865,12 @@ class SearchFallbackTests(TestCase):
         self.assertEqual(res2.status_code, 200)
         self.assertEqual(len(res2.json()['results']), 3)
 
+
+class PlaylistUITests(TestCase):
+    def test_inline_rename_exists(self):
+        self.client.force_login(User.objects.create_user(username='u', password='p', is_staff=True))
+        html = self.client.get('/').content.decode()
+        self.assertIn('startInlineRename', html)
+        self.assertIn('finishInlineRename', html)
+        self.assertIn('playlist-rename-input', html)
+
