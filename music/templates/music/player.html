@@ -376,9 +376,6 @@
                         <button onclick="skipSong()" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow transition flex-shrink-0">
                             ข้ามเพลง
                         </button>
-                        <button onclick="openInYouTubeApp()" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow transition flex-shrink-0">
-                            เปิดในแอป
-                        </button>
                     </div>
                 </div>
             </div>
@@ -442,7 +439,7 @@
     <div id="playlist-panel" class="playlist-panel">
         <div class="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
             <h3 class="font-bold text-base text-slate-900 dark:text-white">เพลย์ลิสต์ของฉัน</h3>
-            <button onclick="togglePlaylistPanel()" class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 text-lg" aria-label="ปิดเพลย์ลิสต์">✕</button>
+            <button onclick="togglePlaylistPanel()" class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2 py-1 text-lg" aria-label="ปิดเพลย์ลิสต์">ปิด</button>
         </div>
         <div id="playlist-list" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
         <div class="p-3 border-t border-slate-200 dark:border-slate-700 space-y-2">
@@ -821,7 +818,7 @@
         function onYouTubeIframeAPIReady() {
             if (typeof NOAPI_MODE !== 'undefined' && NOAPI_MODE) { isPlayerReady = true; try { fetchQueue(); } catch(e) {} try { fetchHits(); } catch(e) {} return; }
             // iOS Safari requires playsinline and mute:1 for autoplay
-            // Use youtube-nocookie.com to bypass ITP / Private Relay cookie blocking (error 153 on iPad)
+            // iOS uses youtube.com (not nocookie) because ITP/Private Relay blocks nocookie embeds (error 153)
             player = new YT.Player('player', {
                 height: '100%',
                 width: '100%',
@@ -870,20 +867,26 @@
                         setTimeout(()=>{ if (autoRandomEnabled) playRandomHit(); }, 800);
                         setTimeout(()=>{const f=document.querySelector('#player iframe'); if(f){f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture'); f.setAttribute('allowFullscreen','');}},200);
                     },
-                    'onStateChange': onPlayerStateChange,
+'onStateChange': onPlayerStateChange,
                     'onError': (event) => {
                         try { clog('yt_error', event.data + '|' + (currentSong ? currentSong.video_id : '-')); } catch(e) {}
                         // Embedding disabled / video unavailable errors
                         if ([2, 5, 100, 101, 150, 153].includes(event.data)) {
-                            if (event.data === 153) { window._embedFail=(window._embedFail||0)+1; if(window._embedFail>=2 && !AUDIO_MODE){ showToast('เพลงนี้เล่นในหน้านี้ไม่ได้ กดเปิดในแอป','warning'); } }
-                            if (event.data === 153 && !window._triedHostSwitch) { window._triedHostSwitch = true; try{ clog('host_switch', currentSong?currentSong.video_id:''); }catch(e){} try { if (typeof playNextNoApi === 'function') { var _pElH=document.getElementById('player'); if(_pElH) _pElH.style.display=''; playNextNoApi(); return; } } catch(e) {} }
-                            if (event.data === 153 && !window._triedNoApi) { window._triedNoApi = true; console.warn('153 fallback to noapi', currentSong); try { if (typeof playNextNoApi === 'function') { // hide player error, try noapi
-   const pEl = document.getElementById('player'); if (pEl) pEl.style.display = '';
-    // try noapi for same song
-    playNextNoApi();
-    return;
-  } } catch(e) {} }
+                            // Error 153 (iPad ITP/Private Relay): try iframe embed (playNextNoApi) once, then audio fallback
                             if (event.data === 153) {
+                                if (!window._triedNoApi) {
+                                    window._triedNoApi = true;
+                                    console.warn('153 fallback to noapi iframe embed', currentSong);
+                                    try {
+                                        if (typeof playNextNoApi === 'function') {
+                                            const pEl = document.getElementById('player');
+                                            if (pEl) pEl.style.display = '';
+                                            playNextNoApi();
+                                            return;
+                                        }
+                                    } catch(e) {}
+                                }
+                                // If noapi already tried (or failed), fall through to audio fallback below
                                 consecutive153++;
                                 if (consecutive153 >= 3) {
                                     breakerTripped = true;
@@ -997,7 +1000,6 @@
                 breakerTripped = false;
                 window._retryCount = 0;
                 window._triedNoApi = false;
-                window._triedHostSwitch = false;
                 if (userInteracted) {
                     const so = document.getElementById('sound-overlay');
                     if (so) { so.classList.add('hidden'); so.style.display = 'none'; }
@@ -1205,7 +1207,7 @@
                 playerStarting = true;
                 setTimeout(()=>{ playerStarting = false; }, 300);
                 currentSong = next;
-                try { window._audioTriedFor = null; window._triedHostSwitch = false; } catch(e) {}
+                try { window._audioTriedFor = null; } catch(e) {}
                 try { var nl0 = document.getElementById('now-loading'); if (nl0) nl0.classList.remove('hidden'); } catch(e) {}
                 lastPlayedVideoId = next.video_id;
                 document.getElementById('now-playing-title').innerText = currentSong.title;
@@ -1292,8 +1294,6 @@
             const songToSkip = currentSong || queue.find(song => !finishingSongIds.has(song.id));
             if (songToSkip) removePlayedSong(songToSkip.id);
         }
-
-        function openInYouTubeApp(){ if(!currentSong) {showToast('ยังไม่มีเพลง','warning'); return;} const id=currentSong.video_id; try{ location.href='youtube://watch?v='+id; }catch(e){} setTimeout(()=>{ window.open('https://youtube.com/watch?v='+id,'_blank'); },800); }
 
         function printQR() {
             const qrImg = document.querySelector('#idle-splash img[alt="QR Code"]') ||
@@ -2045,7 +2045,7 @@
                 listEl.innerHTML += `
                     <div class="flex flex-col gap-1 p-2 rounded-lg bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
                         <div class="flex items-center gap-2">
-                            <button onclick="togglePlaylistSongs('${safeName.replace(/'/g, "\'")}')" class="text-xs px-2 py-1 rounded hover:bg-slate-200 dark:hover:bg-slate-600" title="ดูเพลง">▶</button>
+                            <button onclick="togglePlaylistSongs('${safeName.replace(/'/g, "\'")}')" class="text-xs px-2 py-1 rounded hover:bg-slate-200 dark:hover:bg-slate-600" title="ดูเพลง">ดู</button>
                             <div class="flex-1 min-w-0">
                                 <p class="font-bold text-sm truncate text-slate-900 dark:text-white cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/20 px-1 rounded" onclick="startInlineRename(this, '${safeName.replace(/\'/g, "\\\'")}')" title="คลิกเพื่อแก้ชื่อ">${safeName}</p><input class="playlist-rename-input hidden w-full mt-1 border border-amber-300 rounded px-2 py-1 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value="${safeName}" onblur="finishInlineRename(this, '${safeName.replace(/\'/g, "\\\'")}')" onkeydown="if(event.key==='Enter')this.blur(); if(event.key==='Escape'){this.value='${safeName.replace(/\'/g, "\\\'")}'; this.blur();}">
                                 <p class="text-xs text-slate-500 dark:text-slate-300">${songs.length} เพลง</p>
