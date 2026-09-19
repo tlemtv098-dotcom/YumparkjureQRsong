@@ -68,7 +68,7 @@ class PlayerPageTests(TestCase):
         self.assertContains(response, 'player.unMute()')
         self.assertContains(response, 'lastPlayedVideoId')
         self.assertNotContains(response, 'onclick=\"playSong(')
-        # playlist expand uses ▶ (allowed) - do not forbid globally
+        # playlist expand uses "ดู" (previously ▶) - do not forbid globally
 
     def test_player_has_auto_next_on_end(self):
         response = self.client.get('/')
@@ -1259,11 +1259,12 @@ class YouTubeAppFallbackTests(TestCase):
         self.staff_user = User.objects.create_user(username='ytapp_staff', password='Testpass123!', is_staff=True)
         self.client.force_login(self.staff_user)
 
-    def test_player_has_youtube_app_fallback(self):
+    def test_player_no_youtube_app_fallback(self):
+        """YouTube app fallback removed; use audio fallback instead."""
         res = self.client.get('/')
         self.assertEqual(res.status_code, 200)
-        self.assertContains(res, 'youtube://watch?v=')
-        self.assertContains(res, 'openInYouTubeApp')
+        self.assertNotContains(res, 'youtube://watch?v=')
+        self.assertNotContains(res, 'openInYouTubeApp')
 
 class EmbedOkTests(TestCase):
     def _api_response(self, video_ids):
