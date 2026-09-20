@@ -866,19 +866,37 @@
                         } catch(e) {}
                         setTimeout(()=>{ if (autoRandomEnabled) playRandomHit(); }, 800);
                         setTimeout(()=>{const f=document.querySelector('#player iframe'); if(f){f.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture'); f.setAttribute('allowFullscreen','');}},200);
+                        // iPad black screen detection: after 3s, if iframe exists but not playing, show overlay
+                        setTimeout(() => {
+                            try {
+                                const f = document.querySelector('#player iframe');
+                                const st = player && player.getPlayerState ? player.getPlayerState() : -1;
+                                if (f && st !== YT.PlayerState.PLAYING && st !== YT.PlayerState.BUFFERING) {
+                                    const so = document.getElementById('sound-overlay');
+                                    if (so) { so.classList.remove('hidden'); so.style.display = 'flex'; }
+                                    const idle = document.getElementById('idle-splash');
+                                    if (idle && queue.length === 0) idle.classList.remove('hidden');
+                                }
+                            } catch(e) {}
+                        }, 3000);
                     },
 'onStateChange': onPlayerStateChange,
                     'onError': (event) => {
                         try { clog('yt_error', event.data + '|' + (currentSong ? currentSong.video_id : '-')); } catch(e) {}
                         // Embedding disabled / video unavailable errors
                         if ([2, 5, 100, 101, 150, 153].includes(event.data)) {
-                            // Error 153 (iPad ITP/Private Relay): skip iframe embed on iOS, go straight to audio fallback
+                            // Error 153 (iPad ITP/Private Relay): IMMEDIATELY show overlay + hide iframe BEFORE audio fallback
                             if (event.data === 153) {
                                 consecutive153++;
+                                // IMMEDIATE: show overlay + hide iframe so user sees actionable UI, not black screen
+                                const pEl153 = document.getElementById('player');
+                                if (pEl153) pEl153.style.display = 'none';
+                                const so153 = document.getElementById('sound-overlay');
+                                if (so153) { so153.classList.remove('hidden'); so153.style.display = 'flex'; }
+                                const idle153 = document.getElementById('idle-splash');
+                                if (idle153 && queue.length === 0) idle153.classList.remove('hidden');
                                 if (consecutive153 >= 3) {
                                     breakerTripped = true;
-                                    const soBreak = document.getElementById('sound-overlay');
-                                    if (soBreak) { soBreak.classList.remove('hidden'); soBreak.style.display = 'flex'; }
                                     if (consecutive153 === 3) showToast("ตรวจพบปัญหาเล่นไม่ได้หลายเพลงติด แตะเพื่อลองใหม่", "error");
                                     if (currentSong) { blockedVideoIds.add(currentSong.video_id); autoPlayedIds.add(currentSong.video_id); }
                                     try { skipSong(); } catch(e) {}
@@ -888,7 +906,15 @@
                             // AUDIO_FALLBACK: one-shot per-song audio handoff for embed-blocked videos (153/150/101).
                             // Tries /api/audio/ once per song; on success plays audio instead of skipping,
                             // on failure skips song immediately and shows overlay for next song.
+                            // Overlay already shown above for 153; for 150/101 show overlay here if not already.
                             if ([153, 150, 101].indexOf(event.data) !== -1 && currentSong) {
+                                // For 150/101 (non-153), ensure overlay is shown + iframe hidden
+                                if (event.data !== 153) {
+                                    const pEl = document.getElementById('player');
+                                    if (pEl) pEl.style.display = 'none';
+                                    const so = document.getElementById('sound-overlay');
+                                    if (so) { so.classList.remove('hidden'); so.style.display = 'flex'; }
+                                }
                                 try {
                                     if (!window._audioTriedFor || window._audioTriedFor !== currentSong.id) {
                                         window._audioTriedFor = currentSong.id;
