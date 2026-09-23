@@ -1,0 +1,80 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ร้านยำปากเจ่อ">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="color-scheme" content="light dark">
+    <meta name="format-detection" content="telephone=no">
+    <title>{% block title %}ร้านยำปากเจ่อ{% endblock %}</title>
+    <link rel="manifest" href="{% static "music/manifest.json" %}?v=4">
+    <meta name="theme-color" content="#f59e0b">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <link rel="apple-touch-icon" href="{% static "music/img/logo.jpg" %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=fetch,Promise,URLSearchParams"></script>
+    <script>/* COMPAT_GUARD soft degrade */ if(!window.fetch||!window.URLSearchParams||!window.Promise){ console.warn("old browser - กรุณาอัปเดตเบราว์เซอร์เป็นเวอร์ชันใหม่เพื่อใช้งาน"); }</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ["\"Kanit\"", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --sat: env(safe-area-inset-top);
+            --sar: env(safe-area-inset-right);
+            --sab: env(safe-area-inset-bottom);
+            --sal: env(safe-area-inset-left);
+        }
+        html {
+            overscroll-behavior: none;
+            -webkit-text-size-adjust: 100%;
+            height: 100%;
+            height: -webkit-fill-available;
+        }
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+            min-height: -webkit-fill-available;
+            padding-top: var(--sat);
+            padding-right: var(--sar);
+            padding-bottom: var(--sab);
+            padding-left: var(--sal);
+            -webkit-tap-highlight-color: transparent;
+            -webkit-overflow-scrolling: touch;
+        }
+        /* Prevent iOS auto-zoom on input focus (needs >=16px) */
+        input[type="text"], input[type="email"], input[type="password"], input[type="tel"], textarea, select {
+            font-size: 16px;
+        }
+        button { touch-action: manipulation; }
+        #toast { bottom: max(1rem, var(--sab)); }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen font-sans">
+    {% block content %}{% endblock %}
+
+    <script>
+    function getCSRFToken() {
+        return document.querySelector("[name=csrfmiddlewaretoken]")?.value || 
+               document.querySelector("meta[name=csrf-token]")?.getAttribute("content") || "";
+    }
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
