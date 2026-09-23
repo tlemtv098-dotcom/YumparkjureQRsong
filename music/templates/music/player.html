@@ -648,6 +648,7 @@
                 const idleN = document.getElementById('idle-splash');
                 if (idleN) idleN.classList.add('hidden');
                 if (!currentSong && queue.length > 0) { try { playNextNoApi(); } catch(e) {} }
+                else if (currentSong) { try { noapiUnmute(); } catch(e) {} }
                 showToast("เปิดเสียงแล้ว", "success");
                 return;
             }
@@ -819,7 +820,14 @@
 
         // --- YouTube Player (IFrame API only) with iOS Safari fixes ---
         function onYouTubeIframeAPIReady() {
-            if (typeof NOAPI_MODE !== 'undefined' && NOAPI_MODE) { isPlayerReady = true; try { fetchQueue(); } catch(e) {} try { fetchHits(); } catch(e) {} return; }
+            if (typeof NOAPI_MODE !== 'undefined' && NOAPI_MODE) { 
+                isPlayerReady = true; 
+                try { fetchQueue(); } catch(e) {} 
+                try { fetchHits(); } catch(e) {} 
+                // Initialize plain iframe for first song (no YT.Player)
+                try { playNextNoApi(); } catch(e) {}
+                return; 
+            }
             // iOS Safari requires playsinline and mute:1 for autoplay
             // iOS uses youtube.com (not nocookie) because ITP/Private Relay blocks nocookie embeds (error 153)
             player = new YT.Player('player', {
@@ -1204,6 +1212,21 @@
             }
         }
 
+        // noapi has no YT.Player API: unmute by rebuilding the iframe without mute=1.
+        // Called from the overlay tap (user gesture) so unmuted autoplay is allowed.
+        function noapiUnmute() {
+            if (!currentSong) return;
+            const playerEl = document.getElementById('player');
+            if (!playerEl) return;
+            const fr = playerEl.querySelector('iframe');
+            if (!fr) return;
+            try {
+                const src = fr.getAttribute('src') || '';
+                if (src.indexOf('mute=1') === -1) return;
+                fr.setAttribute('src', src.replace('mute=1&', ''));
+                try { clog('noapi_unmute', currentSong.video_id); } catch(e) {}
+            } catch(e) {}
+        }
         async function playNextAudio(){ const next = queue.find(s=>!finishingSongIds.has(s.id)); const playerElA = document.getElementById('player'); const idleA = document.getElementById('idle-splash'); const soA = document.getElementById('sound-overlay'); if(!next){ currentSong=null; document.getElementById('now-playing-title').innerText='รอเพลงจากลูกค้า...'; if(idleA) idleA.classList.remove('hidden'); if(soA){ soA.classList.add('hidden'); soA.style.display='none'; } return; } currentSong=next; document.getElementById('now-playing-title').innerText=next.title; if(playerElA) playerElA.style.display='none'; if(idleA) idleA.classList.add('hidden'); if(soA){ soA.classList.add('hidden'); soA.style.display='none'; } try{ const r=await fetch('/api/audio/?id='+encodeURIComponent(next.video_id)); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||'audio fail'); const a=getAudioEl(); a.src=d.audio_url; a.onended=()=>{ removePlayedSong(next.id); setTimeout(()=>playNextAudio(),500); }; a.onerror=()=>{ audioFailedCount++; showToast('เสียงเล่นไม่ได้ ข้ามเพลง','error'); removePlayedSong(next.id); setTimeout(()=>playNextAudio(),500); }; await a.play(); try{ updateMediaSession(currentSong); }catch(e){} }catch(e){ showToast('ดึงเสียงไม่ได้','error'); removePlayedSong(next.id); setTimeout(()=>playNextAudio(),800); } }
 
         function playNext(withSound) {
