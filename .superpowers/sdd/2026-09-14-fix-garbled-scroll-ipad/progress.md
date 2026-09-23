@@ -1,0 +1,12 @@
+# SDD ledger — plan: D:\mysong\docs\superpowers\plans\2026-09-14-fix-garbled-scroll-ipad.md
+- BASE: 9200380
+- Preflight scan:
+  - T1 (player.html text) vs T3 (player.html behavior): share file → T3 waits T1. Ruling: sequence, no parallel.
+  - T2 (request.html + tests.py) vs T1/T3: disjoint files → parallel OK, except final full-suite gate.
+  - T4 verify waits T1–T3.
+  - Self-check per task: text tasks assert via grep + targeted tests; behavior task asserts via grep + targeted tests.
+- Task 1: complete (no commit, review clean: ???? gone, 1 Thai ! removed, PlayerPageTests 14 OK)
+- Task 2: complete (no commit, review clean: 4 Thai ! removed in request.html, tests.py untouched, RequestPageTests 15 OK)
+- Task 3: complete (no commit, review clean: global tap-resume cut, explicit paths kept, ensurePlaying kept for tests, iPad boot verified as-is, 17 targeted OK)
+- Ruling: keep now-zero-caller ensurePlaying() � tests assert its presence; deleting breaks PlayerPageTests � cost if wrong: dead code confusion, guarded by comment
+- Task 4: complete (151 OK, ???? 0, ensurePlaying def-only, pushed 926f708)

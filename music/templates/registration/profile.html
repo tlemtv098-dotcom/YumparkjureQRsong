@@ -1,0 +1,92 @@
+﻿{% extends "base.html" %}
+{% load static %}
+{% block title %}โปรไฟล์ - ร้านยำปากเจ่อ{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-2xl mx-auto space-y-8">
+        <div class="bg-white dark:bg-slate-800 shadow-md rounded-2xl p-6 sm:p-8">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="flex-shrink-0 inline-flex items-center justify-center w-20 h-20 rounded-2xl border-2 border-amber-400 shadow-md bg-white p-2 overflow-hidden">
+                    {% if profile.avatar %}
+                        <img src="{{ profile.avatar.url }}" alt="{{ user.username }}" class="w-full h-full object-cover">
+                    {% else %}
+                        <img src="{% static "music/img/logo.jpg" %}" alt="Profile" class="w-full h-full object-contain">
+                    {% endif %}
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white">{{ user.get_full_name|default:user.username }}</h1>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">@{{ user.username }}</p>
+                    <span class="inline-block mt-1 px-2 py-1 text-xs font-bold rounded-full
+                        {% if profile.role == "admin" %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300
+                        {% elif profile.role == "staff" %}bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300
+                        {% else %}bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300{% endif %}">
+                        {{ profile.get_role_display }}
+                    </span>
+                </div>
+            </div>
+
+            <form method="post" enctype="multipart/form-data" class="space-y-6">
+                {% csrf_token %}
+                
+                <div class="border-t border-slate-200 dark:border-slate-700 pt-6">
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">ข้อมูลส่วนตัว</div>
+                    
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="{{ form.first_name.id_for_label }}" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">ชื่อ</label>
+                                <input type="text" name="first_name" value="{{ user.first_name }}" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+                            </div>
+                            <div>
+                                <label for="{{ form.last_name.id_for_label }}" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">นามสกุล</label>
+                                <input type="text" name="last_name" value="{{ user.last_name }}" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="{{ form.email.id_for_label }}" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">อีเมล</label>
+                            <input type="email" name="email" value="{{ user.email }}" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+                        </div>
+
+                        <div>
+                            <label for="{{ form.phone.id_for_label }}" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">เบอร์โทร</label>
+                            {{ form.phone }}
+                            {% if form.phone.errors %}
+                            <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ form.phone.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">รูปโปรไฟล์</label>
+                            {{ form.avatar }}
+                            {% if form.avatar.errors %}
+                            <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ form.avatar.errors.0 }}</p>
+                            {% endif %}
+                            {% if profile.avatar %}
+                            <div class="mt-2">
+                                <img src="{{ profile.avatar.url }}" alt="Current avatar" class="w-20 h-20 rounded-xl object-cover">
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-200 dark:border-slate-700 pt-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-bold text-slate-900 dark:text-white">การดำเนินการ</h2>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-4 mt-4">
+                        <button type="submit" class="flex-1 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-6 py-3 rounded-xl font-bold text-sm shadow transition">
+                            บันทึกการเปลี่ยนแปลง
+                        </button>
+                        <a href="{% url "change_password" %}" class="flex-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 px-6 py-3 rounded-xl font-bold text-sm text-center transition">
+                            เปลี่ยนรหัสผ่าน
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

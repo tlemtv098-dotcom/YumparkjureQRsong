@@ -1,0 +1,100 @@
+﻿{% extends "base.html" %}
+{% load static %}
+{% block title %}จัดการแนวเพลง - ร้านยำปากเจ่อ{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-3xl mx-auto space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white">จัดการแนวเพลง</h1>
+            <a href="{% url "genre_create" %}" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-4 py-2 rounded-xl font-bold text-sm shadow transition">
+                + เพิ่มแนวเพลง
+            </a>
+        </div>
+
+        <!-- Search -->
+        <form method="get" class="bg-white dark:bg-slate-800 shadow-md rounded-2xl p-4">
+            <div class="flex gap-2">
+                <input type="text" name="q" value="{{ query }}" placeholder="ค้นหาแนวเพลง..." class="flex-1 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+                <button type="submit" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-4 py-3 rounded-xl font-bold text-sm shadow transition">ค้นหา</button>
+                <a href="{% url "genre_list" %}" class="px-4 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-xl font-bold text-sm text-center transition">ล้าง</a>
+            </div>
+        </form>
+
+        <!-- Genre Table -->
+        <div class="bg-white dark:bg-slate-800 shadow-md rounded-2xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-slate-50 dark:bg-slate-700">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">แนวเพลง</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">คำอธิบาย</th>
+                            <th class="px-4 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">เพลย์ลิสต์</th>
+                            <th class="px-4 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                        {% for genre in page_obj %}
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td class="px-4 py-3">
+                                <p class="font-semibold text-slate-900 dark:text-white">{{ genre.name }}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">slug: {{ genre.slug }}</p>
+                            </td>
+                            <td class="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm">{{ genre.description|truncatechars:50|default:"-" }}</td>
+                            <td class="px-4 py-3 text-center text-sm text-slate-500 dark:text-slate-400">{{ genre.playlist_count }}</td>
+                            <td class="px-4 py-3 text-right">
+                                <a href="{% url "genre_edit" genre.pk %}" class="text-amber-600 dark:text-amber-400 hover:text-amber-500 dark:hover:text-amber-300 text-sm font-semibold mr-3">แก้ไข</a>
+                                <button onclick="deleteGenre({{ genre.pk }})" class="text-red-600 dark:text-red-400 text-sm font-semibold hover:underline">ลบ</button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="px-4 py-8 text-center text-slate-500 dark:text-slate-400">ไม่พบแนวเพลง</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <div class="px-4 py-4 border-t border-slate-200 dark:border-slate-700">
+                <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
+                    {% if page_obj.has_previous %}
+                        <a href="?page=1{% if query %}&q={{ query }}{% endif %}" class="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600">หน้าแรก</a>
+                        <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}" class="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600">ก่อนหน้า</a>
+                    {% endif %}
+
+                    <span class="px-4 py-2 text-sm text-slate-700 dark:text-slate-300">
+                        หน้า {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                    </span>
+
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}" class="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600">ถัดไป</a>
+                        <a href="?page={{ page_obj.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}" class="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600">หน้าสุดท้าย</a>
+                    {% endif %}
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteGenre(genreId) {
+    if (!confirm("ยืนยันการลบแนวเพลงนี้?")) return;
+    fetch(`/admin/genres/${genreId}/delete/`, {
+        method: "POST",
+        headers: { "X-CSRFToken": getCSRFToken(), "Content-Type": "application/json" },
+        credentials: "same-origin"
+    }).then(r => r.json()).then(data => {
+        if (data.success) location.reload();
+        else alert("เกิดข้อผิดพลาด");
+    });
+}
+
+function getCSRFToken() {
+    return document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
+}
+</script>
+{% endblock %}

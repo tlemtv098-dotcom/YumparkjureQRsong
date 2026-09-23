@@ -1,0 +1,173 @@
+﻿{% extends "base.html" %}
+{% load static %}
+{% block title %}จัดการผู้ใช้ - ร้านยำปากเจ่อ{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white">จัดการผู้ใช้</h1>
+            <a href="{% url "user_create" %}" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-4 py-2 rounded-xl font-bold text-sm shadow transition">
+                + เพิ่มผู้ใช้
+            </a>
+        </div>
+
+        <!-- Search & Filter -->
+        <form method="get" class="bg-white dark:bg-slate-800 shadow-md rounded-2xl p-4 sm:p-6 space-y-4 sm:space-y-0 sm:grid sm:grid-cols-4 gap-4">
+            <div class="sm:col-span-2">
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">ค้นหา</label>
+                <input type="text" name="q" value="{{ query }}" placeholder="ค้นหาชื่อ, อีเมล, ชื่อจริง..." class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">บทบาท</label>
+                <select name="role" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+                    <option value="">ทั้งหมด</option>
+                    <option value="admin" {% if role_filter == "admin" %}selected{% endif %}>Admin</option>
+                    <option value="staff" {% if role_filter == "staff" %}selected{% endif %}>Staff</option>
+                    <option value="customer" {% if role_filter == "customer" %}selected{% endif %}>Customer</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">สถานะ</label>
+                <select name="status" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+                    <option value="">ทั้งหมด</option>
+                    <option value="active" {% if status_filter == "active" %}selected{% endif %}>ใช้งาน中</option>
+                    <option value="inactive" {% if status_filter == "inactive" %}selected{% endif %}>ปิดการใช้งาน</option>
+                </select>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="flex-1 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-4 py-3 rounded-xl font-bold text-sm shadow transition">
+                    ค้นหา
+                </button>
+                <a href="{% url "user_list" %}" class="px-4 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-xl font-bold text-sm text-center transition">
+                    ล้าง
+                </a>
+            </div>
+        </form>
+
+        <!-- User Table -->
+        <div class="bg-white dark:bg-slate-800 shadow-md rounded-2xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-slate-50 dark:bg-slate-700">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ผู้ใช้</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">บทบาท</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">สถานะ</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">สมัครเมื่อ</th>
+                            <th class="px-4 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                        {% for user in page_obj %}
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-3">
+                                    {% if user.profile.avatar %}
+                                        <img src="{{ user.profile.avatar.url }}" alt="" class="w-10 h-10 rounded-full object-cover">
+                                    {% else %}
+                                        <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                                            <span class="text-slate-400 dark:text-slate-500 font-bold">{{ user.username|first|upper }}</span>
+                                        </div>
+                                    {% endif %}
+                                    <div>
+                                        <p class="font-semibold text-slate-900 dark:text-white">{{ user.get_full_name|default:user.username }}</p>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400">@{{ user.username }} • {{ user.email }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex px-2 py-1 text-xs font-bold rounded-full
+                                    {% if user.profile.role == "admin" %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300
+                                    {% elif user.profile.role == "staff" %}bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300
+                                    {% else %}bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300{% endif %}">
+                                    {{ user.profile.get_role_display }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                {% if user.is_active %}
+                                    <span class="inline-flex items-center px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5"></span>
+                                        ใช้งาน中
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5"></span>
+                                        ปิดการใช้งาน
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{{ user.date_joined|date:"d/m/Y H:i" }}</td>
+                            <td class="px-4 py-3 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <a href="{% url "user_edit" user.pk %}" class="text-amber-600 dark:text-amber-400 hover:text-amber-500 dark:hover:text-amber-300 text-sm font-semibold">แก้ไข</a>
+                                    <button onclick="toggleUser({{ user.pk }})" class="text-sm font-semibold {% if user.is_active %}text-red-600 dark:text-red-400{% else %}text-green-600 dark:text-green-400{% endif %} hover:underline">
+                                        {% if user.is_active %}ปิด{% else %}เปิด{% endif %}
+                                    </button>
+                                    <button onclick="deleteUser({{ user.pk }})" class="text-red-600 dark:text-red-400 text-sm font-semibold hover:underline">ลบ</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-4 py-8 text-center text-slate-500 dark:text-slate-400">ไม่พบผู้ใช้</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <div class="px-4 py-4 border-t border-slate-200 dark:border-slate-700">
+                <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
+                    {% if page_obj.has_previous %}
+                        <a href="?page=1{% if query %}&q={{ query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600">หน้าแรก</a>
+                        <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600">ก่อนหน้า</a>
+                    {% endif %}
+
+                    <span class="px-4 py-2 text-sm text-slate-700 dark:text-slate-300">
+                        หน้า {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                    </span>
+
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600">ถัดไป</a>
+                        <a href="?page={{ page_obj.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600">หน้าสุดท้าย</a>
+                    {% endif %}
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleUser(userId) {
+    if (!confirm("ยืนยันการเปลี่ยนสถานะผู้ใช้นี้?")) return;
+    fetch(`/admin/users/${userId}/toggle/`, {
+        method: "POST",
+        headers: { "X-CSRFToken": getCSRFToken(), "Content-Type": "application/json" },
+        credentials: "same-origin"
+    }).then(r => r.json()).then(data => {
+        if (data.success) location.reload();
+        else alert(data.error || "เกิดข้อผิดพลาด");
+    });
+}
+
+function deleteUser(userId) {
+    if (!confirm("ยืนยันการลบผู้ใช้นี้? จะไม่สามารถกู้คืนได้")) return;
+    fetch(`/admin/users/${userId}/delete/`, {
+        method: "POST",
+        headers: { "X-CSRFToken": getCSRFToken(), "Content-Type": "application/json" },
+        credentials: "same-origin"
+    }).then(r => r.json()).then(data => {
+        if (data.success) location.reload();
+        else alert(data.error || "เกิดข้อผิดพลาด");
+    });
+}
+
+function getCSRFToken() {
+    return document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
+}
+</script>
+{% endblock %}

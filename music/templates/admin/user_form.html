@@ -1,0 +1,100 @@
+﻿{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ title }} - ร้านยำปากเจ่อ{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-2xl mx-auto space-y-6">
+        <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white">{{ title }}</h1>
+            <a href="{% url "user_list" %}" class="text-amber-600 dark:text-amber-400 hover:text-amber-500 dark:hover:text-amber-300 text-sm font-semibold">← กลับ</a>
+        </div>
+
+        <form method="post" class="bg-white dark:bg-slate-800 shadow-md rounded-2xl p-6 sm:p-8 space-y-6" novalidate>
+            {% csrf_token %}
+
+            {% if user_form.non_field_errors or profile_form.non_field_errors %}
+            <div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl text-sm">
+                {% for error in user_form.non_field_errors %}{{ error }}{% endfor %}
+                {% for error in profile_form.non_field_errors %}{{ error }}{% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="border-b border-slate-200 dark:border-slate-700 pb-6">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">ข้อมูลผู้ใช้</h2>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="{{ user_form.username.id_for_label }}" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">ชื่อผู้ใช้ *</label>
+                            {{ user_form.username }}
+                            {% if user_form.username.errors %}
+                            <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ user_form.username.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ user_form.email.id_for_label }}" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">อีเมล *</label>
+                            {{ user_form.email }}
+                            {% if user_form.email.errors %}
+                            <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ user_form.email.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="{{ user_form.first_name.id_for_label }}" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">ชื่อ</label>
+                            {{ user_form.first_name }}
+                            {% if user_form.first_name.errors %}
+                            <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ user_form.first_name.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ user_form.last_name.id_for_label }}" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">นามสกุล</label>
+                            {{ user_form.last_name }}
+                            {% if user_form.last_name.errors %}
+                            <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ user_form.last_name.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="{{ user_form.is_active.id_for_label }}" class="flex items-center gap-2 cursor-pointer">
+                            {{ user_form.is_active }}
+                            <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">เปิดใช้งาน</span>
+                        </label>
+                        {% if user_form.is_active.errors %}
+                        <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ user_form.is_active.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    {% if user_obj %}
+                    <div class="border-t border-slate-200 dark:border-slate-700 pt-4">
+                        <p class="text-xs text-slate-500 dark:text-slate-400">รหัสผ่าน: ไม่เปลี่ยน (เว้นว่าง = ไม่เปลี่ยน) | ต้องการรีเซ็ตรหัสผ่าน ใช้ Django Admin</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="border-b border-slate-200 dark:border-slate-700 pb-6">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">บทบาท</h2>
+                <div>
+                    <label for="{{ profile_form.role.id_for_label }}" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">บทบาท *</label>
+                    {{ profile_form.role }}
+                    {% if profile_form.role.errors %}
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ profile_form.role.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-4 pt-4">
+                <button type="submit" class="flex-1 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-6 py-3 rounded-xl font-bold text-sm shadow transition">
+                    {% if user_obj %}บันทึกการแก้ไข{% else %}สร้างผู้ใช้{% endif %}
+                </button>
+                <a href="{% url "user_list" %}" class="px-6 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-xl font-bold text-sm text-center transition">
+                    ยกเลิก
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
