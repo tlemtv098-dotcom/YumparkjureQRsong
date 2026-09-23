@@ -332,69 +332,9 @@ def search_song(request):
     if not query:
         return JsonResponse({'results': []})
     results = search_youtube(query, 5)
-    if not results:
-        # Fallback for PythonAnywhere free where yt-dlp blocked — return hits-style fallback filtered by query
-        fallback = [
-            {"id": "ks7p6DA0dKk", "title": "ข้างกัน - Three Man Down", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/ks7p6DA0dKk/hqdefault.jpg"},
-            {"id": "zwvv71slEYc", "title": "ถ้าเธอ - Tilly Birds", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/zwvv71slEYc/hqdefault.jpg"},
-            {"id": "L1k0wkQ6uww", "title": "แฟนเก่าคนโปรด - SLAPKISS", "channel": "SLAPKISS", "thumbnail": "https://i.ytimg.com/vi/L1k0wkQ6uww/hqdefault.jpg"},
-            {"id": "s-MZid-59Hc", "title": "แค่เธอ - Jeff Satur", "channel": "Jeff Satur", "thumbnail": "https://i.ytimg.com/vi/s-MZid-59Hc/hqdefault.jpg"},
-            {"id": "rc7KnQAh_1I", "title": "รักแรกพบ - Tattoo Colour", "channel": "Tattoo Colour", "thumbnail": "https://i.ytimg.com/vi/rc7KnQAh_1I/hqdefault.jpg"},
-            {"id": "OYPiXBIgvJ8", "title": "เพลงรัก - Three Man Down |Official MV|", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/OYPiXBIgvJ8/hqdefault.jpg"},
-            {"id": "P5sHZRicEXg", "title": "Three Man Down - เพลงรัก Feat. whateve | Live at PAPAYA Studio", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/P5sHZRicEXg/hqdefault.jpg"},
-            {"id": "vMUeFBHwzSI", "title": "Three Man Down - เพลงรัก | Live at GFEST MARATHON CONCERT 2025", "channel": "GeneLab", "thumbnail": "https://i.ytimg.com/vi/vMUeFBHwzSI/hqdefault.jpg"},
-            {"id": "FFhL0UcYVTc", "title": "เพลงรักที่ยังไม่ลืม (Glitch)", "channel": "Emi Thasorn - Topic", "thumbnail": "https://i.ytimg.com/vi/FFhL0UcYVTc/hqdefault.jpg"},
-            {"id": "g1UQm2IGhLA", "title": "เพลงรัก - Three Man Down [เนื้อเพลง]", "channel": "90's Lyrics", "thumbnail": "https://i.ytimg.com/vi/g1UQm2IGhLA/hqdefault.jpg"},
-            {"id": "Hc4OrO4LRWw", "title": "PURPEECH - กลัวว่าฉันจะไม่เสียใจ (Fear) [Official MV]", "channel": "PURPEECH Official", "thumbnail": "https://i.ytimg.com/vi/Hc4OrO4LRWw/hqdefault.jpg"},
-            {"id": "Jdzs-qcURQE", "title": "guncharlie - จากกันโดยสมบูรณ์ | OFFICIAL MV", "channel": "Kicks Records", "thumbnail": "https://i.ytimg.com/vi/Jdzs-qcURQE/hqdefault.jpg"},
-            {"id": "ReUGJf6FxhM", "title": "อกหัก - bodyslam【OFFICIAL MV】", "channel": "GMM GRAMMY OFFICIAL", "thumbnail": "https://i.ytimg.com/vi/ReUGJf6FxhM/hqdefault.jpg"},
-            {"id": "BQqAUhxSMOo", "title": "คำยินดี - Klear | ตำนานเพลงอกหัก 100 ล้านวิว | Songtopia Livehouse", "channel": "Songtopia", "thumbnail": "https://i.ytimg.com/vi/BQqAUhxSMOo/hqdefault.jpg"},
-            {"id": "hBK29bbOLS4", "title": "แก้บน - ก้านตอง ทุ่งเงิน【OFFICIAL MV】", "channel": "GRAMMY GOLD OFFICIAL", "thumbnail": "https://i.ytimg.com/vi/hBK29bbOLS4/hqdefault.jpg"},
-            {"id": "L051YSpEEYU", "title": "BOWKYLION Ft. NONT TANONT - ที่คั่นหนังสือ (Sometimes) [Official MV]", "channel": "Whattheduck", "thumbnail": "https://i.ytimg.com/vi/L051YSpEEYU/hqdefault.jpg"},
-            {"id": "dNeKEZn3RgI", "title": "ฝากให้เขารัก - Yes'Sir Days「Official MV」", "channel": "Genierock", "thumbnail": "https://i.ytimg.com/vi/dNeKEZn3RgI/hqdefault.jpg"},
-            {"id": "_6lZ6b3_7Vo", "title": "เป็นไปได้ไหม - WanMai [Official MV]", "channel": "FLYP ENTERTAINMENT", "thumbnail": "https://i.ytimg.com/vi/_6lZ6b3_7Vo/hqdefault.jpg"},
-            {"id": "-YOiOhpTb3A", "title": "P6ICK - STORY FT.SURIYA MQT & YUNGTARR (Official Music Video)", "channel": "P6ICK and 2 more", "thumbnail": "https://i.ytimg.com/vi/-YOiOhpTb3A/hqdefault.jpg"},
-            {"id": "TntfD-GpPd4", "title": "Bedroom Audio - เพลงที่เธอไม่ฟัง [Official Music Video]", "channel": "TERO MUSIC", "thumbnail": "https://i.ytimg.com/vi/TntfD-GpPd4/hqdefault.jpg"},
-            {"id": "ZHHl28Lxqww", "title": "ดวงใจ - ปราง ปรางทิพย์  [Official MV]", "channel": "SONG RIDER", "thumbnail": "https://i.ytimg.com/vi/ZHHl28Lxqww/hqdefault.jpg"},
-            {"id": "rqJ4xqNObbM", "title": "ฉันมันก็ดีได้แค่นี้ - MrSad17 (Official Audio)", "channel": "MrSad 17", "thumbnail": "https://i.ytimg.com/vi/rqJ4xqNObbM/hqdefault.jpg"},
-            {"id": "FbrH6dDPERI", "title": "WANYAi แว่นใหญ่ Feat. Z9 - ดาวตก | Wish [Official MV]", "channel": "HolyFox Records and 2 more", "thumbnail": "https://i.ytimg.com/vi/FbrH6dDPERI/hqdefault.jpg"},
-            {"id": "Nc-ozevTY1c", "title": "Hers - ทีละน้อย (little by little) [Official MV]", "channel": "Whattheduck and hers_bandofficial", "thumbnail": "https://i.ytimg.com/vi/Nc-ozevTY1c/hqdefault.jpg"},
-            {"id": "umGbo9oRRoQ", "title": "เบิ้ล ปทุมราช x แมน ภิสิทธิ์พงษ์ - ปลายฟ้า [ Official MV ]", "channel": "BLE PATUMRACH", "thumbnail": "https://i.ytimg.com/vi/umGbo9oRRoQ/hqdefault.jpg"},
-            {"id": "o2qYlGVVtOw", "title": "TIMETHAI - ไม่อยากให้เป็นเขา (Why tho?) [OFFICIAL MV]", "channel": "TIMETHAI", "thumbnail": "https://i.ytimg.com/vi/o2qYlGVVtOw/hqdefault.jpg"},
-            {"id": "CeHkHRCe_aQ", "title": "ข้าวก้นบาตร (ເຂົ້າກົ້ນບาด) - ลำเพลิน วงศกร【OFFICIAL MV】", "channel": "GRAMMY GOLD OFFICIAL", "thumbnail": "https://i.ytimg.com/vi/CeHkHRCe_aQ/hqdefault.jpg"},
-            {"id": "rqb-ygmryko", "title": "JAONAAY – ติดเธอซะก่อน (Sweet Baby) I Official MV", "channel": "JAONAAY", "thumbnail": "https://i.ytimg.com/vi/rqb-ygmryko/hqdefault.jpg"},
-            {"id": "SYHR25vQicU", "title": "SEASON FIVE - อยากอินเพลงรัก ft. No One Else [Official MV]", "channel": "LOVEiS", "thumbnail": "https://i.ytimg.com/vi/SYHR25vQicU/hqdefault.jpg"},
-            {"id": "lqWP-nJF0kA", "title": "BILLKIN - นับหนึ่ง (From now on) - Official MV", "channel": "Billkin Entertainment", "thumbnail": "https://i.ytimg.com/vi/lqWP-nJF0kA/hqdefault.jpg"},
-            {"id": "y8mHE_uICGY", "title": "URBOYTJ - ถ้าวันนั้น (IF I) Ft. Lek Ratchamet - OFFICIAL VIDEO", "channel": "URBOYTJ", "thumbnail": "https://i.ytimg.com/vi/y8mHE_uICGY/hqdefault.jpg"},
-            {"id": "9m1MPxqTSac", "title": "กี่ครั้ง - FIN [OFFICIAL MV]", "channel": "FIN OFFICIAL", "thumbnail": "https://i.ytimg.com/vi/9m1MPxqTSac/hqdefault.jpg"},
-            {"id": "iNUmCIOBs04", "title": "MEYOU - อิจฉา [OFFICIAL MV]", "channel": "OfficialWhiteMusic", "thumbnail": "https://i.ytimg.com/vi/iNUmCIOBs04/hqdefault.jpg"},
-            {"id": "FTA0jyo_GoY", "title": "PUN - KRYPTONITE (Prod. By NINO & Thitiwat Rongthong) [Official MV]", "channel": "High Cloud Entertainment", "thumbnail": "https://i.ytimg.com/vi/FTA0jyo_GoY/hqdefault.jpg"},
-            {"id": "FxFPSs71FSI", "title": "จักรวาลไหน - Jigsaw Story Feat. MONICA [Official MV]", "channel": "19.Official", "thumbnail": "https://i.ytimg.com/vi/FxFPSs71FSI/hqdefault.jpg"},
-            {"id": "81BiTiG1EkY", "title": "KRK - Lean On Your Shoulder Ft.N/A , Sakarin [Official MV]", "channel": "KRK Music", "thumbnail": "https://i.ytimg.com/vi/81BiTiG1EkY/hqdefault.jpg"},
-            {"id": "zYMTHpoSqdY", "title": "น้ำหอม - วงL.กฮ. | TMG RECORD OFFICIAL MV", "channel": "TMG Record Channel", "thumbnail": "https://i.ytimg.com/vi/zYMTHpoSqdY/hqdefault.jpg"},
-            {"id": "GVoMsREAK9w", "title": "คนเบล้อ - จ้องน้อย หรอยเว่อร์ [ Official MV ]", "channel": "หรอยเว่อร์", "thumbnail": "https://i.ytimg.com/vi/GVoMsREAK9w/hqdefault.jpg"},
-            {"id": "ykYeCZ2tcvA", "title": "เทสบ่ดี - ม่อน วรวิทย์ [ Official MV ] จอนนี่มิวสิค", "channel": "จอนนี่มือปราบอินดี้ official", "thumbnail": "https://i.ytimg.com/vi/ykYeCZ2tcvA/hqdefault.jpg"},
-        ]
-        q_lower = query.lower()
-        tokens = [t for t in q_lower.split() if t]
-        def matches(s):
-            hay = (s['title'] + ' ' + s['channel']).lower()
-            return any(tok in hay for tok in tokens) if tokens else False
-        results = [s for s in fallback if matches(s)]
-        had_match = len(results) > 0
-        # filter blocked and ai/non_music
-        results = [r for r in results if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
-        if not results and had_match:
-            # Guarantee non-empty only when substring had matches but filters emptied them
-            results = [r for r in fallback[:3] if not _is_blocked(r['id'])]
-        if not results and not had_match:
-            results = [r for r in fallback[:3] if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
-            if not results:
-                results = [r for r in fallback[:3] if not _is_blocked(r['id'])]
-    else:
-        # also filter live results (defense in depth) for album titles + non-music
-        results = [r for r in results if not _is_blocked(r['id']) and not _is_ai_title(r.get('title',''), r.get('channel','')) and not _is_non_music(r.get('title',''), r.get('channel',''))]
-    return JsonResponse({'results': results})
+    # filter blocked and ai/non_music
+    results = [r for r in results if not _is_blocked(r["id"]) and not _is_ai_title(r.get("title",""), r.get("channel","")) and not _is_non_music(r.get("title",""), r.get("channel",""))]
+    return JsonResponse({"results": results})
 
 def suggest_song(request):
     query = request.GET.get('q', '').strip().lower()
