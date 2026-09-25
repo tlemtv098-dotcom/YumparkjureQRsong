@@ -578,6 +578,20 @@ def add_to_queue(request):
         requested_by = str(data.get('requested_by', 'ลูกค้าในร้าน')).strip()[:100]
         thumbnail = str(data.get('thumbnail', f'https://i.ytimg.com/vi/{video_id}/hqdefault.jpg')).strip()[:500]
         audio_url = str(data.get('audio_url', '')).strip()[:1000]
+        artwork_data = data.get('artwork', '')
+        artwork_file = None
+        if artwork_data and artwork_data.startswith('data:image/'):
+            import base64, uuid
+            try:
+                header, b64data = artwork_data.split(',', 1)
+                ext = header.split('/')[1].split(';')[0]
+                filename = f'{uuid.uuid4().hex}.{ext}'
+                from django.core.files.base import ContentFile
+                artwork_file = ContentFile(base64.b64decode(b64data), name=filename)
+            except Exception:
+                artwork_file = None
+        
+        artwork = artwork_file
         client_id = str(client_id).strip()[:64]
         
         song = SongQueue.objects.create(
@@ -586,6 +600,7 @@ def add_to_queue(request):
             thumbnail=thumbnail,
             channel=channel,
             audio_url=audio_url,
+            artwork=artwork,
             requested_by=requested_by,
             client_id=client_id
         )
@@ -630,6 +645,20 @@ def add_to_queue_front(request):
         requested_by = str(data.get('requested_by', 'เจ้าของร้าน (เล่นเอง - ข้ามคิว)')).strip()[:100]
         thumbnail = str(data.get('thumbnail', f'https://i.ytimg.com/vi/{video_id}/hqdefault.jpg')).strip()[:500]
         audio_url = str(data.get('audio_url', '')).strip()[:1000]
+        artwork_data = data.get('artwork', '')
+        artwork_file = None
+        if artwork_data and artwork_data.startswith('data:image/'):
+            import base64, uuid
+            try:
+                header, b64data = artwork_data.split(',', 1)
+                ext = header.split('/')[1].split(';')[0]
+                filename = f'{uuid.uuid4().hex}.{ext}'
+                from django.core.files.base import ContentFile
+                artwork_file = ContentFile(base64.b64decode(b64data), name=filename)
+            except Exception:
+                artwork_file = None
+        
+        artwork = artwork_file
         client_id = str(client_id).strip()[:64]
         
         # Get current first song position
@@ -643,6 +672,7 @@ def add_to_queue_front(request):
                 thumbnail=thumbnail,
                 channel=channel,
                 audio_url=audio_url,
+                artwork=artwork,
                 requested_by=requested_by,
                 client_id=client_id,
                 created_at=first_song.created_at - timedelta(seconds=1)
@@ -664,7 +694,7 @@ def add_to_queue_front(request):
 
 def get_queue(request):
     songs = SongQueue.objects.filter(is_played=False).values(
-        'id', 'title', 'video_id', 'thumbnail', 'channel', 'requested_by', 'audio_url'
+        'id', 'title', 'video_id', 'thumbnail', 'channel', 'requested_by', 'audio_url', 'artwork'
     )
     return JsonResponse({'queue': list(songs)})
 

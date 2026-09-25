@@ -112,6 +112,7 @@ class SongQueue(models.Model):
     thumbnail = models.URLField(max_length=500, blank=True, null=True)
     channel = models.CharField(max_length=255, blank=True, null=True)
     audio_url = models.URLField(max_length=1000, blank=True, null=True)
+    artwork = models.ImageField(upload_to="artwork/", blank=True, null=True)
     requested_by = models.CharField(max_length=100, default="ลูกค้าในร้าน")
     client_id = models.CharField(max_length=64, blank=True, default="")
     is_played = models.BooleanField(default=False)
