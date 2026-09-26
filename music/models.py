@@ -86,6 +86,68 @@ class Playlist(models.Model):
     def __str__(self):
         return f"{self.user.username}/{self.name}"
 
+    def get_songs_ordered(self):
+        return [ps.song for ps in self.playlist_songs.select_related("song").order_by("position")]
+
+    def add_song(self, song, position=None):
+        # Check if song already in playlist (via JSON field)
+        song_ids = [s.get("id") for s in self.songs if isinstance(s, dict)]
+        if song.id in song_ids:
+            return False
+        if position is None:
+            position = self.playlist_songs.count()
+        PlaylistSong.objects.create(playlist=self, song=song, position=position)
+        # Also add to JSON field for backward compatibility
+        self.songs.append({"id": song.id, "title": song.title, "video_id": song.video_id})
+        self.save(update_fields=["songs"])
+        return True
+
+    def remove_song(self, song):
+        deleted, _ = self.playlist_songs.filter(song=song).delete()
+        if deleted:
+            for i, ps in enumerate(self.playlist_songs.order_by("position")):
+                ps.position = i
+                ps.save(update_fields=["position"])
+            return True
+        return False
+
+    def reorder_song(self, song, new_position):
+        try:
+            ps = self.playlist_songs.get(song=song)
+        except PlaylistSong.DoesNotExist:
+            return False
+        old_position = ps.position
+        if old_position == new_position:
+            return True
+        # Shift other songs
+        if new_position < old_position:
+            # Moving up: shift down songs in between
+            PlaylistSong.objects.filter(
+                playlist=self, position__gte=new_position, position__lt=old_position
+            ).exclude(id=ps.id).update(position=models.F("position") + 1)
+        else:
+            # Moving down: shift up songs in between
+            PlaylistSong.objects.filter(
+                playlist=self, position__gt=old_position, position__lte=new_position
+            ).exclude(id=ps.id).update(position=models.F("position") - 1)
+        ps.position = new_position
+        ps.save(update_fields=["position"])
+        return True
+
+
+class PlaylistSong(models.Model):
+    playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name="playlist_songs")
+    song = models.ForeignKey("SongQueue", on_delete=models.CASCADE, related_name="playlist_entries")
+    position = models.PositiveIntegerField(default=0)
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["position"]
+        unique_together = ("playlist", "song")
+
+    def __str__(self):
+        return f"{self.playlist.name} - {self.song.title} (pos {self.position})"
+
 
 class BlockedVideo(models.Model):
     video_id = models.CharField(max_length=50, unique=True)
