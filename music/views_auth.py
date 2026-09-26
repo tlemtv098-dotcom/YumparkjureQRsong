@@ -2,6 +2,7 @@
 # ============================================================
 # AUTH & USER MANAGEMENT VIEWS (Day 1)
 # ============================================================
+import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -363,6 +364,15 @@ def dashboard_view(request):
         "daily_stats": daily_stats,
         "top_songs": list(top_songs),
         "status_stats": status_stats,
+        # Chart payloads are serialised here, not in the template, so what the
+        # page injects is real JSON (valid JavaScript) instead of a Python repr.
+        "genre_chart_json": json.dumps(
+            [{"name": g.name, "song_count": g.song_count} for g in top_genres],
+            ensure_ascii=False,
+        ),
+        "daily_stats_json": json.dumps(daily_stats, ensure_ascii=False),
+        "top_songs_json": json.dumps(list(top_songs), ensure_ascii=False),
+        "status_stats_json": json.dumps(status_stats, ensure_ascii=False),
     }
     return render(request, "dashboard.html", context)
 
@@ -374,7 +384,10 @@ def dashboard_stats_api(request):
     from django.utils import timezone
     from datetime import timedelta
     
-    period = int(request.GET.get("period", 7))
+    try:
+        period = int(request.GET.get("period", 7))
+    except ValueError:
+        period = 7
     if period not in [7, 30]:
         period = 7
     

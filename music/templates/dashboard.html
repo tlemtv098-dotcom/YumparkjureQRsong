@@ -160,7 +160,7 @@ function initCharts() {
     // Genre Chart (Horizontal Bar)
     if (document.getElementById("genreChart")) {
         const genreCtx = document.getElementById("genreChart").getContext("2d");
-        const genreData = {{ top_genres|safe }};
+        const genreData = {{ genre_chart_json|safe }};
         genreChart = new Chart(genreCtx, {
             type: "bar",
             data: {
@@ -201,7 +201,7 @@ function initCharts() {
 
     // Daily Queue Chart (Line)
     const dailyCtx = document.getElementById("dailyChart").getContext("2d");
-    const dailyStats = {{ daily_stats|safe }};
+    const dailyStats = {{ daily_stats_json|safe }};
     dailyChart = new Chart(dailyCtx, {
         type: "line",
         data: {
@@ -236,7 +236,7 @@ function initCharts() {
     // Top Songs Chart (Horizontal Bar)
     if (document.getElementById("topSongsChart")) {
         const topSongsCtx = document.getElementById("topSongsChart").getContext("2d");
-        const topSongsData = {{ top_songs|safe }};
+        const topSongsData = {{ top_songs_json|safe }};
         topSongsChart = new Chart(topSongsCtx, {
             type: "bar",
             data: {
@@ -265,7 +265,7 @@ function initCharts() {
 
     // Status Chart (Doughnut)
     const statusCtx = document.getElementById("statusChart").getContext("2d");
-    const statusData = {{ status_stats|safe }};
+    const statusData = {{ status_stats_json|safe }};
     statusChart = new Chart(statusCtx, {
         type: "doughnut",
         data: {
