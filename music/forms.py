@@ -101,6 +101,26 @@ class ProfileForm(forms.ModelForm):
             raise ValidationError("เบอร์โทรต้องเป็นตัวเลขเท่านั้น")
         return phone
 
+    def clean_avatar(self):
+        avatar = self.cleaned_data.get("avatar")
+        if avatar:
+            # Check file size (max 2MB)
+            if avatar.size > 2 * 1024 * 1024:
+                raise ValidationError("ไฟล์รูปภาพต้องไม่เกิน 2 MB")
+            # Check file type
+            allowed_types = ["image/jpeg", "image/png", "image/webp"]
+            if avatar.content_type not in allowed_types:
+                raise ValidationError("รองรับเฉพาะไฟล์ JPEG, PNG, WebP เท่านั้น")
+            # Check dimensions (optional - requires Pillow)
+            try:
+                from PIL import Image
+                img = Image.open(avatar)
+                if img.width > 1000 or img.height > 1000:
+                    raise ValidationError("ขนาดรูปภาพต้องไม่เกิน 1000x1000 พิกเซล")
+            except Exception:
+                pass
+        return avatar
+
 
 class UserForm(forms.ModelForm):
     """User basic info form for admin"""
@@ -124,6 +144,18 @@ class UserForm(forms.ModelForm):
                 "class": "h-4 w-4 text-amber-500 border-slate-300 rounded focus:ring-amber-400"
             }),
         }
+
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
+        if User.objects.filter(email__iexact=email).exclude(pk=self.instance.pk).exists():
+            raise ValidationError("อีเมลนี้มีผู้ใช้งานแล้ว")
+        return email
+
+    def clean_username(self):
+        username = self.cleaned_data.get("username")
+        if User.objects.filter(username__iexact=username).exclude(pk=self.instance.pk).exists():
+            raise ValidationError("ชื่อผู้ใช้นี้มีผู้ใช้งานแล้ว")
+        return username
 
 
 class ProfileRoleForm(forms.ModelForm):
@@ -175,9 +207,23 @@ class PlaylistForm(forms.ModelForm):
 
     def clean_name(self):
         name = self.cleaned_data.get("name")
-        if Playlist.objects.filter(name=name).exists():
-            raise ValidationError("ชื่อเพลย์ลิสต์นี้มีอยู่แล้ว")
+        if Playlist.objects.filter(user=self.instance.user, name=name).exclude(pk=self.instance.pk).exists():
+            raise ValidationError("คุณมีเพลย์ลิสต์ชื่อนี้อยู่แล้ว")
         return name
+
+    def clean_songs(self):
+        songs = self.cleaned_data.get("songs")
+        if songs:
+            if not isinstance(songs, list):
+                raise ValidationError("songs ต้องเป็น list")
+            for i, song in enumerate(songs):
+                if not isinstance(song, dict):
+                    raise ValidationError(f"เพลงที่ {i+1} ต้องเป็น object")
+                required = ["id", "title", "video_id"]
+                for field in required:
+                    if field not in song:
+                        raise ValidationError(f"เพลงที่ {i+1} ขาด field: {field}")
+        return songs
 
 
 class GenreForm(forms.ModelForm):
