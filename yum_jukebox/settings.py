@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import warnings
 from pathlib import Path
 import os
 
@@ -37,6 +38,18 @@ PLAYER_TOKEN = os.environ.get('PLAYER_TOKEN', 'dev-player-token')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+
+_SECRET_KEY_IS_FALLBACK = SECRET_KEY == 'django-insecure-dev-key-change-in-production'
+if not DEBUG and _SECRET_KEY_IS_FALLBACK:
+    # Loud but not fatal: the site is live without a SECRET_KEY and refusing to
+    # boot would take it down. Set SECRET_KEY in the environment to a private
+    # random string before handing the project in.
+    warnings.warn(
+        'SECRET_KEY is not set, so this deployment signs sessions and CSRF tokens '
+        'with the publicly known fallback value. Set the SECRET_KEY environment '
+        'variable to a private random string.',
+        RuntimeWarning,
+    )
 
 _allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', '')
 if _allowed_hosts_env:
@@ -96,11 +109,16 @@ WSGI_APPLICATION = 'yum_jukebox.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 _DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+# Render's internal Postgres does not use TLS, so forcing sslmode=require made
+# Render's own DATABASE_URL impossible to connect to. Managed providers (Neon,
+# Supabase) generally already carry ?sslmode=require in the URL, which
+# dj_database_url passes through untouched. Opt in explicitly instead.
+_DB_SSL_REQUIRE = os.environ.get('DATABASE_SSL_REQUIRE', 'False').lower() in ('1', 'true', 'yes')
 if _DATABASE_URL:
     try:
         import dj_database_url
         DATABASES = {
-            'default': dj_database_url.parse(_DATABASE_URL, conn_max_age=600, ssl_require=True),
+            'default': dj_database_url.parse(_DATABASE_URL, conn_max_age=600, ssl_require=_DB_SSL_REQUIRE),
         }
     except ImportError:
         DATABASES = {

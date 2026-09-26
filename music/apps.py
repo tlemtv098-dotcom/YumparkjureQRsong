@@ -4,33 +4,21 @@ from django.apps import AppConfig
 class MusicConfig(AppConfig):
     name = 'music'
 
-    def ready(self):
-        # Create persistent admin user (11111111) if not exists - survives Render SQLite wipe via re-create on startup
-        try:
-            from django.contrib.auth import get_user_model
-            from django.db.utils import OperationalError, ProgrammingError
-            User = get_user_model()
-            # Only run if table exists
-            if not User.objects.filter(username='admin').exists():
-                try:
-                    User.objects.create_user('admin', password='11111111', is_staff=True, is_superuser=True)
-                    print("Created persistent admin/admin")
-                except Exception as e:
-                    print(f"admin create failed: {e}")
-            else:
-                # Ensure password is 11111111 and is_staff
-                try:
-                    u = User.objects.get(username='admin')
-                    if not u.check_password('11111111'):
-                        u.set_password('11111111')
-                        u.is_staff = True
-                        u.is_superuser = True
-                        u.save()
-                        print("Reset admin password to 11111111")
-                except Exception as e:
-                    print(f"admin reset failed: {e}")
-        except (OperationalError, ProgrammingError) as e:
-            # DB not ready yet (migrations not run)
-            pass
-        except Exception as e:
-            print(f"MusicConfig ready error: {e}")
+    # The admin bootstrap deliberately does NOT live here any more. It used to
+    # be a ready() method that queried the database, which is wrong twice over:
+    #
+    #   1. AppConfig.ready() runs at import time, before `migrate`, so the
+    #      post_save signal that creates Profile fired while the music_profile
+    #      table did not exist, and the bare `except` swallowed the error.
+    #   2. Because the admin user had then been created anyway, no later boot
+    #      called create_user again, so the signal never fired again and the
+    #      missing Profile became permanent. The navbar keys off
+    #      user.profile.role, so the superuser saw no admin links at all.
+    #
+    # It also made every management command emit
+    # "RuntimeWarning: Accessing the database during app initialization".
+    #
+    # The bootstrap now lives in the `ensure_admin` management command, which is
+    # safe to run after `migrate`:
+    #
+    #     python manage.py ensure_admin
