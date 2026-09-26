@@ -16,6 +16,7 @@ urlpatterns = [
     path("embed-test/", views.embed_test, name="embed_test"),
     path("request/", views.request_view, name="request_view"),
     path("dashboard/", views_auth.dashboard_view, name="dashboard"),
+    path("api/dashboard/stats/", views_auth.dashboard_stats_api, name="dashboard_stats_api"),
 
     # API - Search & Hits
     path("api/search/", views.search_song, name="search_song"),
