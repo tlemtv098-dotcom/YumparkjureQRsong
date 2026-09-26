@@ -59,13 +59,20 @@
 </head>
 <body class="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen font-sans pb-24 overflow-x-hidden">
     <div class="max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto px-4 sm:px-6 pt-6 overflow-hidden min-w-0">
-        <div class="flex items-center gap-3 mb-6">
+        <div class="flex flex-wrap items-center gap-3 mb-6">
             <span class="flex-shrink-0 inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-xl border-2 border-amber-400 shadow-md bg-white p-1 overflow-hidden"><img src="{% static 'music/img/logo.jpg' %}" alt="ร้านยำปากเจ่อ" class="w-full h-full object-contain"></span>
             <div>
                 <h1 class="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white">ร้านยำปากเจ่อ</h1>
                 <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">สแกน QR เพื่อขอเพลง</p>
             </div>
             <button onclick="toggleTheme()" id="theme-toggle" class="ml-auto bg-slate-100 dark:bg-slate-700 p-2 rounded-lg text-sm font-bold" title="สลับโหมดมืด/สว่าง" aria-label="สลับโหมดมืด/สว่าง">เปลี่ยนทีม</button>
+            {% if user.is_authenticated %}
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-200">{{ user.username }}</span>
+            <form method="post" action="{% url 'logout' %}" class="inline">{% csrf_token %}<button type="submit" class="text-xs bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg">ออก</button></form>
+            {% else %}
+            <a href="{% url 'login' %}" class="text-xs bg-amber-500 text-white px-3 py-1 rounded-lg">เข้าสู่ระบบ</a>
+            <a href="{% url 'register' %}" class="text-xs bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1 rounded-lg">สมัครสมาชิก</a>
+            {% endif %}
         </div>
 
         <div id="webview-banner" class="hidden bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 px-4 py-3 rounded-xl mb-4 flex items-center justify-between gap-3">
