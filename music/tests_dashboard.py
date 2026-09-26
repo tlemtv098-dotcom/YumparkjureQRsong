@@ -1,11 +1,18 @@
 import json
+import os
 import re
+import shutil
+import subprocess
+import tempfile
+from unittest import skipUnless
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
 from music.models import Genre, Profile, SongQueue
+
+NODE = shutil.which("node")
 
 
 class DashboardChartTests(TestCase):
@@ -74,3 +81,52 @@ class DashboardChartTests(TestCase):
     def test_stats_api_response_keys_are_unchanged(self):
         payload = self.client.get(reverse("dashboard_stats_api")).json()
         self.assertEqual(set(payload), {"daily_stats", "top_songs", "status_stats"})
+
+
+@skipUnless(NODE, "node is not installed")
+class DashboardScriptSyntaxTests(TestCase):
+    # Every chart is driven from one inline <script>, so a single stray brace
+    # there kills all four charts -- and json.loads on the payloads above
+    # cannot see it, because each payload is valid JSON in isolation.
+    # Parse the whole block instead.
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="script_admin", password="testpass123")
+        Profile.objects.update_or_create(user=self.user, defaults={"role": "admin"})
+        self.client.login(username="script_admin", password="testpass123")
+
+    def _inline_scripts(self, html):
+        return re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S)
+
+    def _assert_inline_scripts_parse(self):
+        html = self.client.get(reverse("dashboard")).content.decode("utf-8")
+        scripts = self._inline_scripts(html)
+        self.assertTrue(scripts, "no inline scripts found on the dashboard")
+        with tempfile.TemporaryDirectory() as tmp:
+            for index, script in enumerate(scripts):
+                with self.subTest(script=index):
+                    path = os.path.join(tmp, f"block{index}.js")
+                    with open(path, "w", encoding="utf-8", newline="\n") as handle:
+                        handle.write(script)
+                    result = subprocess.run(
+                        [NODE, "--check", path], capture_output=True, text=True
+                    )
+                    self.assertEqual(
+                        result.returncode, 0,
+                        f"inline script {index} does not parse:\n{result.stderr}",
+                    )
+
+    def test_dashboard_inline_scripts_parse(self):
+        # Production state: no genres and no queued songs, so the {% if %}
+        # empty-state branches collapse and every payload is an empty list.
+        self._assert_inline_scripts_parse()
+
+    def test_dashboard_inline_scripts_parse_with_data(self):
+        # Populated state: the payloads expand to real Thai strings and the
+        # charts that were previously hidden by the {% if %} are rendered.
+        genre = Genre.objects.create(name="ผัดเพลง")
+        song = SongQueue.objects.create(
+            title="เพลงที่ 0", video_id="abcdefghij0", is_played=True,
+        )
+        song.genres.add(genre)
+        self._assert_inline_scripts_parse()

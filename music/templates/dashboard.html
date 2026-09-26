@@ -302,6 +302,7 @@ function initCharts() {
                     }
                 }
             }
+        }
         });
         
         // Generate legend
@@ -316,7 +317,6 @@ function initCharts() {
                 <span class="text-sm text-slate-700 dark:text-slate-300">${label}: ${counts[i]} (${((counts[i]/total)*100).toFixed(1)}%)</span>
             </div>
         `).join("");
-    }
 
     // Refresh button
     document.getElementById("refreshDashboard")?.addEventListener("click", () => {
