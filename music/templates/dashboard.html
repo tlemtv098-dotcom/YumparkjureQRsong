@@ -2,14 +2,26 @@
 {% load static %}
 {% block title %}แดชบอร์ด - ร้านยำปากเจ่อ{% endblock %}
 
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="min-h-screen bg-slate-50 dark:bg-slate-900 py-8 px-4 sm:px-6 lg:px-8">
     <div class="max-w-7xl mx-auto space-y-6">
-        <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white">แดชบอร์ด</h1>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white">แดชบอร์ด</h1>
+            <div class="flex gap-2">
+                <button id="refreshDashboard" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl font-bold text-sm shadow transition">
+                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    รีเฟรช
+                </button>
+            </div>
+        </div>
 
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-white dark:bg-slate-800 shadow-md rounded-2xl p-6">
+            <div class="bg-white dark:bg-slate-800 shadow-md rounded-2xl p-6 hover:shadow-lg transition-shadow">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                         <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0v6v6h6v-6h-6z"></path></svg>
@@ -58,36 +70,59 @@
             </div>
         </div>
 
-        <!-- Charts Row -->
+        <!-- Charts Row 1 -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Top Genres -->
+            <!-- Top Genres (Horizontal Bar) -->
             <div class="bg-white dark:bg-slate-800 shadow-md rounded-2xl p-6">
-                <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">แนวเพลงยอดนิยม</h2>
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white">แนวเพลงยอดนิยม</h2>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">อัปเดตล่าสุด</span>
+                </div>
                 {% if top_genres %}
-                <div class="space-y-3">
-                    {% for genre in top_genres %}
-                    <div class="flex items-center justify-between py-2">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                                <span class="text-xs font-bold text-amber-600 dark:text-amber-400">{{ forloop.counter }}</span>
-                            </div>
-                            <span class="font-medium text-slate-900 dark:text-white">{{ genre.name }}</span>
-                        </div>
-                        <span class="text-sm text-slate-500 dark:text-slate-400">{{ genre.song_count }} เพลง</span>
-                    </div>
-                    {% endfor %}
+                <div class="space-y-3" id="genreChartContainer">
+                    <canvas id="genreChart" height="200"></canvas>
                 </div>
                 {% else %}
                 <p class="text-slate-500 dark:text-slate-400 text-center py-4">ยังไม่มีข้อมูล</p>
                 {% endif %}
             </div>
 
-            <!-- Daily Queue Chart -->
+            <!-- Daily Queue Chart (Line) -->
             <div class="bg-white dark:bg-slate-800 shadow-md rounded-2xl p-6">
-                <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">คิวเพลง 7 วันที่ผ่านมา</h2>
-                <div class="h-48">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white">คิวเพลง 7 วันที่ผ่านมา</h2>
+                    <select id="chartPeriod" class="text-sm border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-amber-400">
+                        <option value="7">7 วัน</option>
+                        <option value="30">30 วัน</option>
+                    </select>
+                </div>
+                <div class="h-56">
                     <canvas id="dailyChart"></canvas>
                 </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Top Songs (Horizontal Bar) -->
+            <div class="bg-white dark:bg-slate-800 shadow-md rounded-2xl p-6">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">เพลงยอดนิยม (Top 10)</h2>
+                {% if top_songs %}
+                <div class="space-y-2" id="topSongsChartContainer">
+                    <canvas id="topSongsChart" height="250"></canvas>
+                </div>
+                {% else %}
+                <p class="text-slate-500 dark:text-slate-400 text-center py-4">ยังไม่มีข้อมูล</p>
+                {% endif %}
+            </div>
+
+            <!-- Queue Status Distribution (Doughnut) -->
+            <div class="bg-white dark:bg-slate-800 shadow-md rounded-2xl p-6">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">สถานะคิวเพลง</h2>
+                <div class="h-56 flex items-center justify-center">
+                    <canvas id="statusChart"></canvas>
+                </div>
+                <div class="mt-4 flex flex-wrap gap-4 justify-center" id="statusLegend"></div>
             </div>
         </div>
 
@@ -96,41 +131,213 @@
             <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4">ส่งออกข้อมูล (Bonus)</h2>
             <div class="flex flex-wrap gap-4">
                 <a href="{% url "export_playlists_csv" %}" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold text-sm shadow transition">
+                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                     ส่งออกเพลย์ลิสต์ (CSV)
                 </a>
                 <a href="{% url "export_queue_csv" %}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-sm shadow transition">
+                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                     ส่งออกคิวเพลง (CSV)
                 </a>
+                <button id="exportDashboardPdf" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-bold text-sm shadow transition">
+                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    ส่งออกแดชบอร์ด (PDF)
+                </button>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-const ctx = document.getElementById("dailyChart").getContext("2d");
-const dailyStats = {{ daily_stats|safe }};
-new Chart(ctx, {
-    type: "bar",
-    data: {
-        labels: dailyStats.map(d => d.date),
-        datasets: [{
-            label: "จำนวนเพลงในคิว",
-            data: dailyStats.map(d => d.count),
-            backgroundColor: "rgba(245, 158, 11, 0.8)",
-            borderColor: "rgb(245, 158, 11)",
-            borderWidth: 1,
-            borderRadius: 4
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-            y: { beginAtZero: true, ticks: { stepSize: 1 } }
-        }
+let genreChart = null;
+let dailyChart = null;
+let topSongsChart = null;
+let statusChart = null;
+
+function initCharts() {
+    // Genre Chart (Horizontal Bar)
+    if (document.getElementById("genreChart")) {
+        const genreCtx = document.getElementById("genreChart").getContext("2d");
+        const genreData = {{ top_genres|safe }};
+        genreChart = new Chart(genreCtx, {
+            type: "bar",
+            data: {
+                labels: genreData.map(g => g.name),
+                datasets: [{
+                    label: "จำนวนเพลง",
+                    data: genreData.map(g => g.song_count),
+                    backgroundColor: [
+                        "rgba(245, 158, 11, 0.8)",
+                        "rgba(59, 130, 246, 0.8)",
+                        "rgba(16, 185, 129, 0.8)",
+                        "rgba(239, 68, 68, 0.8)",
+                        "rgba(139, 92, 246, 0.8)",
+                    ],
+                    borderColor: [
+                        "rgb(245, 158, 11)",
+                        "rgb(59, 130, 246)",
+                        "rgb(16, 185, 129)",
+                        "rgb(239, 68, 68)",
+                        "rgb(139, 92, 246)",
+                    ],
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    indexAxis: "y"
+                }]
+            },
+            options: {
+                indexAxis: "y",
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, ticks: { stepSize: 1 } }
+                }
+            }
+        });
     }
-});
+
+    // Daily Queue Chart (Line)
+    const dailyCtx = document.getElementById("dailyChart").getContext("2d");
+    const dailyStats = {{ daily_stats|safe }};
+    dailyChart = new Chart(dailyCtx, {
+        type: "line",
+        data: {
+            labels: dailyStats.map(d => d.date),
+            datasets: [{
+                label: "จำนวนเพลงในคิว",
+                data: dailyStats.map(d => d.count),
+                fill: true,
+                backgroundColor: "rgba(245, 158, 11, 0.2)",
+                borderColor: "rgb(245, 158, 11)",
+                borderWidth: 2,
+                tension: 0.3,
+                pointBackgroundColor: "rgb(245, 158, 11)",
+                pointBorderColor: "#fff",
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            interaction: { intersect: false, mode: "index" },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    // Top Songs Chart (Horizontal Bar)
+    if (document.getElementById("topSongsChart")) {
+        const topSongsCtx = document.getElementById("topSongsChart").getContext("2d");
+        const topSongsData = {{ top_songs|safe }};
+        topSongsChart = new Chart(topSongsCtx, {
+            type: "bar",
+            data: {
+                labels: topSongsData.map(s => s.title.length > 20 ? s.title.substring(0,20)+"..." : s.title),
+                datasets: [{
+                    label: "จำนวนครั้งที่เล่น",
+                    data: topSongsData.map(s => s.play_count),
+                    backgroundColor: "rgba(139, 92, 246, 0.8)",
+                    borderColor: "rgb(139, 92, 246)",
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    indexAxis: "y"
+                }]
+            },
+            options: {
+                indexAxis: "y",
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, ticks: { stepSize: 1 } }
+                }
+            }
+        });
+    }
+
+    // Status Chart (Doughnut)
+    const statusCtx = document.getElementById("statusChart").getContext("2d");
+    const statusData = {{ status_stats|safe }};
+    statusChart = new Chart(statusCtx, {
+        type: "doughnut",
+        data: {
+            labels: statusData.map(s => s.status),
+            datasets: [{
+                data: statusData.map(s => s.count),
+                backgroundColor: [
+                    "rgba(34, 197, 94, 0.8)",
+                    "rgba(245, 158, 11, 0.8)",
+                    "rgba(239, 68, 68, 0.8)",
+                    "rgba(99, 102, 241, 0.8)"
+                ],
+                borderColor: [
+                    "rgb(34, 197, 94)",
+                    "rgb(245, 158, 11)",
+                    "rgb(239, 68, 68)",
+                    "rgb(99, 102, 241)"
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a,b) => a+b, 0);
+                            const pct = ((context.raw / total) * 100).toFixed(1);
+                            return `${context.label}: ${context.raw} (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Generate legend
+        const legendContainer = document.getElementById("statusLegend");
+        const colors = ["rgb(34, 197, 94)", "rgb(245, 158, 11)", "rgb(239, 68, 68)", "rgb(99, 102, 241)"];
+        const labels = statusData.map(s => s.status);
+        const counts = statusData.map(s => s.count);
+        const total = counts.reduce((a,b) => a+b, 0);
+        legendContainer.innerHTML = labels.map((label, i) => `
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full" style="background-color: ${colors[i]}"></span>
+                <span class="text-sm text-slate-700 dark:text-slate-300">${label}: ${counts[i]} (${((counts[i]/total)*100).toFixed(1)}%)</span>
+            </div>
+        `).join("");
+    }
+
+    // Refresh button
+    document.getElementById("refreshDashboard")?.addEventListener("click", () => {
+        location.reload();
+    });
+
+    // Chart period selector
+    document.getElementById("chartPeriod")?.addEventListener("change", (e) => {
+        const period = e.target.value;
+        fetch(`/api/dashboard/stats/?period=${period}`)
+            .then(r => r.json())
+            .then(data => {
+                if (dailyChart) {
+                    dailyChart.data.labels = data.daily_stats.map(d => d.date);
+                    dailyChart.data.datasets[0].data = data.daily_stats.map(d => d.count);
+                    dailyChart.update();
+                }
+            });
+    });
+}
+
+document.addEventListener("DOMContentLoaded", initCharts);
 </script>
 {% endblock %}

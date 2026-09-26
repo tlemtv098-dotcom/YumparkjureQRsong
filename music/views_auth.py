@@ -338,6 +338,19 @@ def dashboard_view(request):
         daily_stats.append({"date": day.strftime("%d/%m"), "count": count})
     daily_stats.reverse()
 
+    # Top songs (by play count)
+    top_songs = SongQueue.objects.filter(is_played=True).values("title", "video_id").annotate(
+        play_count=Count("id")
+    ).order_by("-play_count")[:10]
+
+    # Status stats for doughnut chart
+    status_stats = [
+        {"status": "รอเล่น", "count": SongQueue.objects.filter(is_played=False).count()},
+        {"status": "เล่นแล้ว", "count": SongQueue.objects.filter(is_played=True).count()},
+        {"status": "คิวหน้า", "count": SongQueue.objects.filter(is_played=False).order_by("created_at")[:5].count()},
+        {"status": "เล่นแล้ววันนี้", "count": SongQueue.objects.filter(is_played=True, created_at__date=timezone.now().date()).count()},
+    ]
+
     context = {
         "total_users": total_users,
         "active_users": active_users,
@@ -348,6 +361,8 @@ def dashboard_view(request):
         "recent_users": recent_users,
         "top_genres": top_genres,
         "daily_stats": daily_stats,
+        "top_songs": list(top_songs),
+        "status_stats": status_stats,
     }
     return render(request, "dashboard.html", context)
 
