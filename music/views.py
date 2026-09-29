@@ -545,6 +545,21 @@ def hits(request):
             random.shuffle(filtered_safe)
         return JsonResponse({'results': filtered_safe[:40]})
 
+# Characters that let stored text escape the HTML or JavaScript context it
+# is rendered into later. Song titles, channel names and log text have no
+# legitimate use for them, so they are removed rather than escaped: Django
+# already autoescapes in templates, and escaping here too would show users
+# a literal "&lt;" in their song title.
+_TEXT_UNSAFE_RE = re.compile(r'[<>]')
+_TEXT_WHITESPACE_RE = re.compile(r'\s+')
+
+
+def _clean_text(value, max_length):
+    """Strip characters that let user text break out of an HTML or JS context."""
+    text = _TEXT_UNSAFE_RE.sub('', str(value))
+    return _TEXT_WHITESPACE_RE.sub(' ', text).strip()[:max_length]
+
+
 def add_to_queue(request):
     if request.method == 'POST':
         try:
@@ -552,10 +567,11 @@ def add_to_queue(request):
         except json.JSONDecodeError:
             return JsonResponse({'status': 'failed', 'error': 'Invalid JSON'}, status=400)
         
-        # Validate required fields
+        # Validate required fields (title is sanitised, so the check below
+        # and the value stored later cannot disagree)
         video_id = data.get('video_id')
-        title_raw = str(data.get('title', '')).strip()
-        if not video_id or not title_raw:
+        title = _clean_text(data.get('title', ''), 255)
+        if not video_id or not title:
             return JsonResponse({'status': 'failed', 'error': 'กรุณาใส่ชื่อเพลง'}, status=400)
 
         # Check if video is blocked
@@ -572,11 +588,9 @@ def add_to_queue(request):
         if client_id:
             if SongQueue.objects.filter(client_id=client_id, is_played=False).count() >= 5:
                 return JsonResponse({'status': 'failed', 'error': 'คุณมีเพลงในคิวครบ 5 เพลงแล้ว รอให้เล่นก่อนนะ'}, status=400)
-        # Also sanitize title length
-        title = data.get('title', 'Unknown Title')[:255]
-        title = title.strip()[:255]
-        channel = str(data.get('channel', 'YouTube')).strip()[:255]
-        requested_by = str(data.get('requested_by', 'ลูกค้าในร้าน')).strip()[:100]
+        # Sanitise user text at the write boundary (length limits unchanged)
+        channel = _clean_text(data.get('channel', 'YouTube'), 255)
+        requested_by = _clean_text(data.get('requested_by', 'ลูกค้าในร้าน'), 100)
         thumbnail = str(data.get('thumbnail', f'https://i.ytimg.com/vi/{video_id}/hqdefault.jpg')).strip()[:500]
         audio_url = str(data.get('audio_url', '')).strip()[:1000]
         artwork_data = data.get('artwork', '')
@@ -618,8 +632,8 @@ def add_to_queue_front(request):
             return JsonResponse({'status': 'failed', 'error': 'Invalid JSON'}, status=400)
         
         video_id = data.get('video_id')
-        title_raw = str(data.get('title', '')).strip()
-        if not video_id or not title_raw:
+        title = _clean_text(data.get('title', ''), 255)
+        if not video_id or not title:
             return JsonResponse({'status': 'failed', 'error': 'กรุณาใส่ชื่อเพลง'}, status=400)
 
         if _is_blocked(video_id):
@@ -641,9 +655,9 @@ def add_to_queue_front(request):
             if SongQueue.objects.filter(client_id=client_id, is_played=False).count() >= 5:
                 return JsonResponse({'status': 'failed', 'error': 'คุณมีเพลงในคิวครบ 5 เพลงแล้ว รอให้เล่นก่อนนะ'}, status=400)
         
-        title = title_raw[:255]
-        channel = str(data.get('channel', 'YouTube')).strip()[:255]
-        requested_by = str(data.get('requested_by', 'เจ้าของร้าน (เล่นเอง - ข้ามคิว)')).strip()[:100]
+        # Sanitise user text at the write boundary (length limits unchanged)
+        channel = _clean_text(data.get('channel', 'YouTube'), 255)
+        requested_by = _clean_text(data.get('requested_by', 'เจ้าของร้าน (เล่นเอง - ข้ามคิว)'), 100)
         thumbnail = str(data.get('thumbnail', f'https://i.ytimg.com/vi/{video_id}/hqdefault.jpg')).strip()[:500]
         audio_url = str(data.get('audio_url', '')).strip()[:1000]
         artwork_data = data.get('artwork', '')
@@ -1108,10 +1122,10 @@ def client_log(request):
         data = json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
-    event = str(data.get('event') or '')[:64]
+    event = _clean_text(data.get('event') or '', 64)
     if not event:
         return JsonResponse({'error': 'event required'}, status=400)
-    detail = str(data.get('detail') or '')[:2000]
+    detail = _clean_text(data.get('detail') or '', 2000)
     try:
         session_key = request.session.session_key
         if not session_key:
@@ -1120,7 +1134,7 @@ def client_log(request):
     except Exception:
         session_key = ''
     try:
-        ua = (request.META.get('HTTP_USER_AGENT') or '')[:300]
+        ua = _clean_text(request.META.get('HTTP_USER_AGENT') or '', 300)
     except Exception:
         ua = ''
     ClientLog.objects.create(session=session_key or '', ua=ua, event=event, detail=detail)
