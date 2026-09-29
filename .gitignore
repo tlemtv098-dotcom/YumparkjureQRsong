@@ -45,3 +45,4 @@ test_write.txt
 
 # OpenChamber session metadata
 .openchamber/
+.superpowers/

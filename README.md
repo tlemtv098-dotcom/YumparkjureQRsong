@@ -73,7 +73,7 @@
 
 ### Device matrix
 
-เมทริกซ์ทดสอบอุปกรณ์อยู่ใน `docs/superpowers/checklists/device-test-matrix.md` ครอบคลุม iPhone SE / 14 / 14 Pro Max, Pixel 7, iPad mini / Pro / gen 9, Laptop, Desktop กับเบราว์เซอร์ iOS Safari/Chrome, Android Chrome, Desktop Chrome/Safari/Firefox/Edge ข้อควรรู้หลัก: iOS ต้องแตะหน้าจอ 1 ครั้งเพื่อเปิดเสียง (autoplay policy), LINE WebView ให้เปิดในเบราว์เซอร์ภายนอก, เปิดครั้งแรกบน Render อาจช้าให้ retry หนึ่งครั้ง
+เมทริกซ์ทดสอบอุปกรณ์อยู่ใน `docs/testing/device-test-matrix.md` ครอบคลุม iPhone SE / 14 / 14 Pro Max, Pixel 7, iPad mini / Pro / gen 9, Laptop, Desktop กับเบราว์เซอร์ iOS Safari/Chrome, Android Chrome, Desktop Chrome/Safari/Firefox/Edge ข้อควรรู้หลัก: iOS ต้องแตะหน้าจอ 1 ครั้งเพื่อเปิดเสียง (autoplay policy), LINE WebView ให้เปิดในเบราว์เซอร์ภายนอก, เปิดครั้งแรกบน Render อาจช้าให้ retry หนึ่งครั้ง
 
 ## Stack
 
@@ -99,7 +99,7 @@ mysong/
 │   ├── urls.py
 │   ├── wsgi.py
 │   └── asgi.py
-├── docs/superpowers/
+├── docs/testing/
 │   ├── plans/                 # แผน implementation
 │   └── checklists/
 │       ├── device-test-matrix.md

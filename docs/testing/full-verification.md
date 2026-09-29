@@ -1,7 +1,7 @@
 # Full Verification Checklist — Queue Edit / Search Duplicate / Auto Bug
 
 > **Goal:** ตรวจโครงสร้างทั้งหมดหลังแก้คิวเลื่อน/ค้นหาซ้ำ/ออโต้สุ่ม — ให้ `manage.py test` + `manage.py check` + หน้าเว็บหลักครบ
-> **Plan:** `docs/superpowers/plans/2026-08-31-queue-edit-search-auto.md` (Task 4)
+> **Plan:** (removed with the agent planning archive)
 > **Branch:** `master` หลัง merge Task 1,2,3
 > **Date:** 2026-08-31
 
