@@ -207,11 +207,13 @@ from django.dispatch import receiver
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
+    # Creation only, and there is deliberately no companion receiver that
+    # re-saves instance.profile on every User save. Django caches a reverse
+    # one-to-one on the instance the first time it is read, so such a
+    # write-back resurrects the role='customer' copy cached here at creation
+    # and silently reverts whatever the application has since saved. Login
+    # triggers it: update_last_login saves the User. Nothing on User needs
+    # propagating into Profile anyway -- role, phone and avatar are all
+    # written to the Profile directly by the forms and the admin views.
     if created:
         Profile.objects.create(user=instance)
-
-
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    if hasattr(instance, "profile"):
-        instance.profile.save()
