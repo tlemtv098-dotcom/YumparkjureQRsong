@@ -67,9 +67,29 @@
                         {% endif %}
                     </div>
 
+                    {% if not user_obj %}
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="{{ user_form.password1.id_for_label }}" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">รหัสผ่าน *</label>
+                            {{ user_form.password1 }}
+                            {% if user_form.password1.errors %}
+                            <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ user_form.password1.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ user_form.password2.id_for_label }}" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">ยืนยันรหัสผ่าน *</label>
+                            {{ user_form.password2 }}
+                            {% if user_form.password2.errors %}
+                            <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ user_form.password2.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">นี่คือรหัสผ่านที่ผู้ใช้จะใช้เข้าสู่ระบบจริง ไม่ใช่รหัสผ่านชั่วคราว กรุณาส่งให้ผู้ใช้ทราบ</p>
+                    {% endif %}
+
                     {% if user_obj %}
                     <div class="border-t border-slate-200 dark:border-slate-700 pt-4">
-                        <p class="text-xs text-slate-500 dark:text-slate-400">รหัสผ่าน: ไม่เปลี่ยน (เว้นว่าง = ไม่เปลี่ยน) | ต้องการรีเซ็ตรหัสผ่าน ใช้ Django Admin</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">รหัสผ่าน: ไม่เปลี่ยน (เว้นว่าง = ไม่เปลี่ยน) | ต้องการให้ผู้ใช้เปลี่ยนรหัสผ่าน ให้ผู้ใช้แก้ไขเองที่หน้า <a href="{% url "change_password" %}" class="text-amber-600 dark:text-amber-400 hover:underline">เปลี่ยนรหัสผ่าน</a></p>
                     </div>
                     {% endif %}
                 </div>

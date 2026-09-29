@@ -13,7 +13,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q, Count
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
-from .forms import RegisterForm, ProfileForm, UserForm, ProfileRoleForm
+from .forms import RegisterForm, ProfileForm, UserForm, UserCreateForm, ProfileRoleForm
 from .models import Profile, Playlist, Genre, Tag, SongQueue, BlockedVideo, GoodVideo
 
 
@@ -138,19 +138,22 @@ def user_list_view(request):
 def user_create_view(request):
     """Create new user (admin only)"""
     if request.method == "POST":
-        user_form = UserForm(request.POST)
+        user_form = UserCreateForm(request.POST)
         profile_form = ProfileRoleForm(request.POST)
         if user_form.is_valid() and profile_form.is_valid():
             user = user_form.save(commit=False)
-            user.set_password(User.objects.make_random_password())
+            # The admin chooses the password, so the account is usable straight
+            # away. The old make_random_password() call both threw it away and
+            # no longer exists in Django 5.1+.
+            user.set_password(user_form.cleaned_data["password1"])
             user.save()
             profile = user.profile
             profile.role = profile_form.cleaned_data["role"]
             profile.save()
-            messages.success(request, f"สร้างผู้ใช้ {user.username} สำเร็จ (รหัสผ่านสุ่มถูกสร้าง)")
+            messages.success(request, f"สร้างผู้ใช้ {user.username} สำเร็จ")
             return redirect("user_list")
     else:
-        user_form = UserForm()
+        user_form = UserCreateForm()
         profile_form = ProfileRoleForm()
     return render(request, "admin/user_form.html", {
         "user_form": user_form,

@@ -158,6 +158,43 @@ class UserForm(forms.ModelForm):
         return username
 
 
+class UserCreateForm(UserCreationForm):
+    """User create form for admin, with a real password pair.
+
+    Kept separate from UserForm on purpose. ``user_edit_view`` saves UserForm on
+    every profile edit, so password fields on it would silently reset an
+    existing user's password each time an admin touched the form.
+    """
+    class Meta:
+        model = User
+        fields = ("username", "first_name", "last_name", "email", "is_active")
+        widgets = {
+            "username": forms.TextInput(attrs={
+                "class": "w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400",
+            }),
+            "first_name": forms.TextInput(attrs={
+                "class": "w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400",
+            }),
+            "last_name": forms.TextInput(attrs={
+                "class": "w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400",
+            }),
+            "email": forms.EmailInput(attrs={
+                "class": "w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400",
+            }),
+            "is_active": forms.CheckboxInput(attrs={
+                "class": "h-4 w-4 text-amber-500 border-slate-300 rounded focus:ring-amber-400"
+            }),
+            "password1": forms.PasswordInput(attrs={
+                "class": "w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400",
+                "placeholder": "รหัสผ่าน"
+            }),
+            "password2": forms.PasswordInput(attrs={
+                "class": "w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400",
+                "placeholder": "ยืนยันรหัสผ่าน"
+            }),
+        }
+
+
 class ProfileRoleForm(forms.ModelForm):
     """Role assignment form for admin"""
     class Meta:
