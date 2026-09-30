@@ -3,7 +3,7 @@
 ระบบขอเพลงผ่าน QR Code สำหรับร้านยำปากเจ่อ ลูกค้าสแกน QR Code ด้วยมือถือ ค้นหาเพลง YouTube และส่งเข้าคิวได้ทันที เปิดหน้าจอ Player ไว้บน TV/จอมอนิเตอร์ของร้าน
 
 - Live: https://yumpakjure.onrender.com
-- สถานะ: test 68 OK
+- สถานะ: test 247 OK
 
 ## ภาพรวม
 
@@ -109,7 +109,7 @@ mysong/
     ├── views.py               # API + cache + dedup + rate limit + rotation + AI
     ├── urls.py
     ├── admin.py               # ปรับ list_display / filter แล้ว
-    ├── tests.py               # 68 tests
+    ├── tests*.py              # 247 tests across 9 modules
     ├── static/music/
     │   ├── manifest.json      # PWA
     │   ├── sw.js              # Service Worker
