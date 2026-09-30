@@ -13,7 +13,8 @@ from django.core.paginator import Paginator
 from django.db.models import Q, Count
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
-from .forms import RegisterForm, ProfileForm, UserForm, UserCreateForm, ProfileRoleForm
+from .forms import (RegisterForm, ProfileForm, UserForm, UserCreateForm,
+                    ProfileRoleForm, GenreForm, TagForm)
 from .models import Profile, Playlist, Genre, Tag, SongQueue, BlockedVideo, GoodVideo
 
 
