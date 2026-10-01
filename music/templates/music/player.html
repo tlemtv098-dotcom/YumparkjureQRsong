@@ -616,7 +616,7 @@
         function updateMediaSession(song){
           if(!('mediaSession' in navigator)) return;
           try{
-            navigator.mediaSession.metadata = new MediaMetadata({title: song.title||'', artist:'ร้านยำปากเจ่อKPP', artwork: song.thumbnail ? [{src:song.thumbnail, sizes:'512x512', type:'image/jpeg'}] : []});
+            navigator.mediaSession.metadata = new MediaMetadata({title: song.title||'', artist:'ร้านยำปากเจ่อKPP', artwork: (song.artwork||song.thumbnail) ? [{src:(song.artwork||song.thumbnail), sizes:'512x512', type:(song.artwork?'image/png':'image/jpeg')}] : []});
             navigator.mediaSession.setActionHandler('nexttrack', ()=>{ try{skipSong();}catch(e){} });
             navigator.mediaSession.setActionHandler('play', ()=>{ try{ if(typeof AUDIO_MODE!=='undefined' && AUDIO_MODE) getAudioEl().play().catch(()=>{}); else if(player && player.playVideo) player.playVideo(); else getAudioEl().play().catch(()=>{}); }catch(e){} });
             navigator.mediaSession.setActionHandler('pause', ()=>{ try{ if(typeof AUDIO_MODE!=='undefined' && AUDIO_MODE) getAudioEl().pause(); else if(player && player.pauseVideo) player.pauseVideo(); else getAudioEl().pause(); }catch(e){} });
@@ -949,7 +949,7 @@
                                                         try { document.getElementById('now-playing-title').innerText = fbSong.title; } catch(e) {}
                                                         if ('mediaSession' in navigator) {
                                                             try {
-                                                                navigator.mediaSession.metadata = new MediaMetadata({title: fbSong.title || '', artist: 'ร้านยำปากเจ่อKPP', artwork: fbSong.thumbnail ? [{src: fbSong.thumbnail, sizes: '512x512', type: 'image/jpeg'}] : []});
+                                                                navigator.mediaSession.metadata = new MediaMetadata({title: fbSong.title || '', artist: 'ร้านยำปากเจ่อKPP', artwork: (fbSong.artwork||fbSong.thumbnail) ? [{src: (fbSong.artwork||fbSong.thumbnail), sizes: '512x512', type: (fbSong.artwork?'image/png':'image/jpeg')}] : []});
                                                                 navigator.mediaSession.setActionHandler('play', function() { try { getAudioEl().play(); } catch(e) {} });
                                                                 navigator.mediaSession.setActionHandler('pause', function() { try { getAudioEl().pause(); } catch(e) {} });
                                                                 navigator.mediaSession.setActionHandler('nexttrack', function() { try { skipSong(); } catch(e) {} });
@@ -1294,7 +1294,7 @@
                         }
                     });
                 }
-                if('mediaSession' in navigator){ try{ navigator.mediaSession.metadata = new MediaMetadata({title: currentSong.title, artist: 'ร้านยำปากเจ่อKPP', artwork: [{src: currentSong.thumbnail, sizes:'512x512', type:'image/jpeg'}]}); navigator.mediaSession.setActionHandler('nexttrack', ()=>skipSong()); navigator.mediaSession.setActionHandler('play', ()=>player.playVideo()); navigator.mediaSession.setActionHandler('pause', ()=>player.pauseVideo()); }catch(e){} }
+                if('mediaSession' in navigator){ try{ navigator.mediaSession.metadata = new MediaMetadata({title: currentSong.title, artist: 'ร้านยำปากเจ่อKPP', artwork: [{src: (currentSong.artwork||currentSong.thumbnail), sizes:'512x512', type:(currentSong.artwork?'image/png':'image/jpeg')}]}); navigator.mediaSession.setActionHandler('nexttrack', ()=>skipSong()); navigator.mediaSession.setActionHandler('play', ()=>player.playVideo()); navigator.mediaSession.setActionHandler('pause', ()=>player.pauseVideo()); }catch(e){} }
                 clearTimeout(window._mutedAutoplayFallback);
                 window._mutedAutoplayFallback = setTimeout(() => {
                     try {

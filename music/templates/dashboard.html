@@ -3,6 +3,19 @@
 {% block title %}แดชบอร์ด - ร้านยำปากเจ่อ{% endblock %}
 
 {% block extra_head %}
+<style>
+    /* Printing to PDF is done by the browser, not the server: reportlab has
+       no Thai coverage on Linux, where Render runs, so a server-rendered PDF
+       would show the Thai labels as boxes. The browser has the fonts. */
+    @media print {
+        nav, header, button, select, a.btn { display: none !important; }
+        body { background: #fff !important; }
+        .bg-white, .dark\:bg-slate-800 { box-shadow: none !important; border: 1px solid #e2e8f0; }
+        main, .max-w-7xl { max-width: 100% !important; padding: 0 !important; }
+        @page { margin: 12mm; }
+    }
+</style>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% endblock %}
 
@@ -138,7 +151,7 @@
                     <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                     ส่งออกคิวเพลง (CSV)
                 </a>
-                <button id="exportDashboardPdf" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-bold text-sm shadow transition">
+                <button id="exportDashboardPdf" onclick="exportDashboardPdf()" title="เปิดหน้าต่างพิมพ์ของเบราว์เซอร์ เลือก 'บันทึกเป็น PDF' ได้" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-bold text-sm shadow transition">
                     <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                     ส่งออกแดชบอร์ด (PDF)
                 </button>
@@ -336,6 +349,14 @@ function initCharts() {
                 }
             });
     });
+}
+
+// Export to PDF is delegated to the browser's own print pipeline, which uses
+// the system fonts. Rendering a PDF server-side would need reportlab plus a
+// Thai font file, and Render runs on Linux where the Windows font this project
+// relies on does not exist, so the Thai labels would come out as boxes.
+function exportDashboardPdf() {
+    window.print();
 }
 
 document.addEventListener("DOMContentLoaded", initCharts);

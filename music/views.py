@@ -707,6 +707,34 @@ def add_to_queue_front(request):
         return JsonResponse({'status': 'success', 'song_id': new_song.id, 'priority': True})
     return JsonResponse({'status': 'failed', 'error': 'Method not allowed'}, status=405)
 
+def _song_payload(song):
+    """Serialise a SongQueue row for the API.
+
+    ``artwork`` is an ImageField. Querying it with .values() yields the raw
+    storage path ("artwork/ab12.jpg"), which is not a usable image src, so the
+    client silently fell back to the YouTube thumbnail and the uploaded image
+    was never displayed anywhere. Emitting the resolved URL makes the field
+    actually usable, and an empty string keeps the key's shape stable for
+    clients that check for it.
+    """
+    artwork_url = ''
+    if song.artwork:
+        try:
+            artwork_url = song.artwork.url
+        except ValueError:
+            artwork_url = ''
+    return {
+        'id': song.id,
+        'title': song.title,
+        'video_id': song.video_id,
+        'thumbnail': song.thumbnail,
+        'channel': song.channel,
+        'requested_by': song.requested_by,
+        'audio_url': song.audio_url,
+        'artwork': artwork_url,
+    }
+
+
 def get_queue(request):
     # Pagination support
     page = int(request.GET.get('page', 1))
@@ -716,11 +744,11 @@ def get_queue(request):
     paginator = Paginator(songs_qs, per_page)
     page_obj = paginator.get_page(page)
     
-    songs = page_obj.object_list.values(
-        'id', 'title', 'video_id', 'thumbnail', 'channel', 'requested_by', 'audio_url', 'artwork'
-    )
+    songs = [
+        _song_payload(song) for song in page_obj.object_list
+    ]
     return JsonResponse({
-        'queue': list(songs),
+        'queue': songs,
         'pagination': {
             'current_page': page_obj.number,
             'total_pages': paginator.num_pages,
