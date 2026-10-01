@@ -1,6 +1,9 @@
-﻿from django.contrib.auth.models import User
+﻿import uuid
+
+from django.contrib.auth.models import User
 from django.db import models
 from django.conf import settings
+from django.utils.text import slugify
 
 
 class Profile(models.Model):
@@ -41,10 +44,27 @@ class Profile(models.Model):
         return self.role in ["admin", "staff"]
 
 
+def _mint_slug(model, name, prefix, max_length):
+    """Build a slug for a name the create form never asks one for.
+
+    ``slugify()`` drops every Thai character, so a genre named "เพลงรัก"
+    slugifies to "". The slug column is unique, so the second Thai-only
+    name raised IntegrityError and the create page returned a 500. Fall
+    back to a short random token whenever the slugified name is empty.
+    """
+    base = slugify(name)[:max_length].strip("-")
+    if not base:
+        base = f"{prefix}-{uuid.uuid4().hex[:6]}"
+    candidate = base
+    while model.objects.filter(slug=candidate).exists():
+        candidate = f"{base}-{uuid.uuid4().hex[:4]}"
+    return candidate
+
+
 class Genre(models.Model):
     """Music genre for categorizing songs"""
     name = models.CharField(max_length=50, unique=True)
-    slug = models.SlugField(max_length=50, unique=True)
+    slug = models.SlugField(max_length=50, unique=True, blank=True)
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -54,11 +74,17 @@ class Genre(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        # Keep the stored slug on edit; only mint one when it is empty.
+        if not self.slug:
+            self.slug = _mint_slug(Genre, self.name, "g", 50)
+        super().save(*args, **kwargs)
+
 
 class Tag(models.Model):
     """Tag for flexible song categorization"""
     name = models.CharField(max_length=30, unique=True)
-    slug = models.SlugField(max_length=30, unique=True)
+    slug = models.SlugField(max_length=30, unique=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -66,6 +92,11 @@ class Tag(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = _mint_slug(Tag, self.name, "t", 30)
+        super().save(*args, **kwargs)
 
 
 class Playlist(models.Model):
