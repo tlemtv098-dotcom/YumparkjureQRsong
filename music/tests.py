@@ -1543,6 +1543,34 @@ class CompatSyntaxTests(TestCase):
             path, content = self._read_template(parts)
             self.assertNotIn('�', content, 'garble introduced in %s' % path)
 
+    def test_no_cjk_characters_in_any_template(self):
+        """No template may contain a CJK ideograph or fullwidth form.
+
+        A stray zhong reached two user-visible labels on the user
+        management screen, the active-status filter option and the green
+        active badge, and rendered as a Chinese glyph inside a Thai word.
+
+        This scans every template rather than the two-file TEMPLATES list
+        the guards above use, because the damage was in a file that list
+        does not cover, which is exactly why those guards missed it.
+        """
+        import os
+        import re
+        from django.conf import settings
+
+        root = os.path.join(settings.BASE_DIR, 'music', 'templates')
+        pattern = re.compile(u'[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef\uf900-\ufaff]')
+        offenders = {}
+        for dirpath, _dirnames, filenames in os.walk(root):
+            for name in filenames:
+                if not name.endswith('.html'):
+                    continue
+                full = os.path.join(dirpath, name)
+                with open(full, encoding='utf-8') as handle:
+                    hits = pattern.findall(handle.read())
+                if hits:
+                    offenders[os.path.relpath(full, settings.BASE_DIR)] = hits
+        self.assertEqual(offenders, {}, 'CJK characters found in templates')
     def test_guards_present_after_replace(self):
         import os
         from django.conf import settings
