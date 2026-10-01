@@ -738,7 +738,7 @@ class SearchButtonsWrapRegressionTests(TestCase):
 class FallbackUnblockRegressionTests(TestCase):
     def test_block_fallback_id_skipped(self):
         from .models import BlockedVideo
-        res = self.client.post('/api/block/ks7p6DA0dKk/')
+        res = self.client.post('/api/block/ks7p6DA0dKk/', headers={'X-Player-Token': settings.PLAYER_TOKEN})
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()['status'], 'skipped')
         self.assertEqual(BlockedVideo.objects.filter(video_id='ks7p6DA0dKk').count(), 0)

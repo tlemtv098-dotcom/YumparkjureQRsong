@@ -809,12 +809,18 @@ def remove_my_song(request, song_id):
     return JsonResponse({'status': 'failed'}, status=400)
 
 def block_video(request, video_id):
-    if request.method == 'POST':
-        if video_id in FALLBACK_IDS:
-            return JsonResponse({'status': 'skipped', 'video_id': video_id})
-        BlockedVideo.objects.get_or_create(video_id=video_id, defaults={'reason': 'Error 153'})
-        return JsonResponse({'status': 'blocked', 'video_id': video_id})
-    return JsonResponse({'status': 'failed'}, status=405)
+    if request.method != 'POST':
+        return JsonResponse({'status': 'failed'}, status=405)
+    # Owner gate, matching mark_played, move_queue, unblock_video and
+    # clear_blocked. Without it any anonymous caller could permanently block a
+    # song for the whole shop: a blocked video_id makes _is_blocked reject it in
+    # add_to_queue, so this was a denial of service on the catalogue.
+    if not _is_owner(request):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+    if video_id in FALLBACK_IDS:
+        return JsonResponse({'status': 'skipped', 'video_id': video_id})
+    BlockedVideo.objects.get_or_create(video_id=video_id, defaults={'reason': 'Error 153'})
+    return JsonResponse({'status': 'blocked', 'video_id': video_id})
 
 @csrf_exempt
 def unblock_video(request, video_id):
