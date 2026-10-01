@@ -431,8 +431,7 @@
                 </div>
             </div>
         </div>
-    <p class="text-center text-[10px] text-slate-300 dark:text-slate-600 select-none mt-6">{{ APP_VERSION }}</p>
-    <!-- Toast container: respects safe area -->
+        <!-- Toast container: respects safe area -->
     <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 dark:bg-slate-800 text-white dark:text-slate-100 border border-transparent dark:border-slate-700 px-4 py-2 rounded-xl shadow-lg text-sm font-medium"></div>
     </div>
     <!-- Playlist panel -->
@@ -570,9 +569,7 @@
             try {
                 if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
-                    wakeLock.addEventListener('release', () => {
-                        console.log('Wake Lock released');
-                    });
+                    wakeLock.addEventListener('release', () => {});
                 }
             }
             catch (err) { console.warn('Wake Lock error:', err); }
@@ -2335,7 +2332,6 @@
             // import/export visible to all
         }
         // --- Debug helper for iOS Safari viewport ---
-        // console.log('isIOS', isIOS, 'isMobileSafari', isMobileSafari, 'isLineWebView', isLineWebView);
     </script>
     <script>
     if ('serviceWorker' in navigator && !isLineWebView) {
