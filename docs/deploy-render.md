@@ -27,21 +27,37 @@ Setting `DATABASE_URL` to a real Postgres fixes both.
 
 `YOUTUBE_API_KEY` is optional but the search endpoint returns nothing without it.
 
-## Required start command
+## How this service starts
 
-Render's default start command does not run migrations, so the database is never
-prepared and the accounts are never created. Set **Settings > Build & Deploy >
-Start Command** to:
+This service is deployed as a **Docker** image, so Render ignores a `Procfile`
+entirely. Two things follow from that, and both have bitten this project:
 
-```
-python manage.py migrate --noinput && python manage.py ensure_admin --with-demo && gunicorn yum_jukebox.wsgi:application --bind 0.0.0.0:$PORT --workers 2
-```
+- The **Docker Command** field under Settings > Build & Deploy is **not a shell**.
+  It replaces the image entrypoint as an argument list, so a shell operator like
+  `&&` is passed straight through as an argument. Writing
+  `python manage.py migrate --noinput && python manage.py ensure_admin ...`
+  there fails with `manage.py migrate: error: unrecognized arguments`, and the
+  container exits, taking the site down. Leave that field empty.
+- **Pre-Deploy Command** shows a padlock: it is a paid feature and is not
+  available on the free tier. Migrations therefore have to run at container
+  start, not before deploy.
 
-The `Procfile` in the repository root holds the same line. Render only uses it
-when no start command is set in the dashboard, so set it explicitly.
+The image's `CMD` runs `docker-entrypoint.sh`, which does the right thing in the
+right order:
 
-Order matters: migrate creates the tables, `ensure_admin` needs those tables to
-give the superuser a `Profile` row, and gunicorn starts last.
+1. `python manage.py migrate --noinput`
+2. `python manage.py ensure_admin --with-demo`
+3. `exec gunicorn ... --bind 0.0.0.0:$PORT`
+
+Migrations belong at container start, not at image build. The old Dockerfile ran
+`RUN python manage.py migrate --noinput || true` during the build, where there
+is no database connection, so it either no-opped or failed silently behind the
+`|| true` and nobody noticed until the site came back with no tables.
+
+`ensure_admin` needs the tables to exist in order to give the superuser a
+`Profile` row, which is why it cannot come before migrate.
+
+If the dashboard's Docker Command field has been filled in, clear it.
 
 ## If the site comes back and nobody can log in
 
