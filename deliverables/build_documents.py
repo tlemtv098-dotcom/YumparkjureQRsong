@@ -35,6 +35,9 @@ LIVE_URL = "https://yumpakjure.onrender.com/"
 GITHUB_URL = "https://github.com/tlemtv098-dotcom/YumparkjureQRsong"
 SYSTEM_NAME = "ระบบจูเกะซ์ร้าน KPP (Yum Jukebox)"
 SUBMIT_DATE = "15 ตุลาคม 2569 (15 October 2026)"
+STUDENT_NAME = "สุภวัฒน์ จันไพิตร"
+STUDENT_ID = "671320101"
+STUDENT_LINES = ["ชื่อ-นามสกุล นักศีมชา: สุภวัฒน์ จันไพิตร", "รหัสประจำตัวผู้เรียน: 671320101"]
 
 ACCOUNTS = [
     ["admin", "11111111", "admin (superuser)", "ดูและัปเดอร์, แดชบอร์ด, จัดการผู้ใช้/แนวเพลง/แท็ก"],
@@ -45,8 +48,8 @@ ACCOUNTS = [
 REPO_FACTS = [
     ["เว็บไซต์ที่ใช้งานจริง", LIVE_URL],
     ["ที่เก็บซอร์สโค้ด", GITHUB_URL],
-    ["จำนวนคอมมิตใน Git", "238 คอมมิต"],
-    ["ชุดทดสอบอัตโนมัติ", "247 เคส ผ่านทั้งหมด แยกเป็น 9 โมดูล"],
+    ["จำนวนคอมมิตใน Git", "242 คอมมิต"],
+    ["ชุดทดสอบอัตโนมัติ", "274 เคส ผ่านทั้งหมด แยกเป็น 9 โมดูล"],
     ["จำนวน URL route", "54 route ใน music/urls.py (ไม่รวม /admin/ ของ Django)"],
     ["จำนวน API endpoint", "26 route อยู่ใต้ /api/"],
     ["จำนวนโมเดล", "9 โมเดลใน music/models.py"],
@@ -282,7 +285,7 @@ ENV_TABLE = {
         ["ไฟล์นิ่ง", "Tailwind CSS, Chart.js, JavaScript ของเทมเพลต"],
         ["แพลตฟอร์ม", "Render (แผนฟรี) เข้าถึงได้ที่ " + LIVE_URL],
         ["ที่เก็บซอร์สโค้ด", GITHUB_URL],
-        ["ระบบควบคุมเวอร์ชัน", "Git (238 คอมมิต)"],
+        ["ระบบควบคุมเวอร์ชัน", "Git (242 คอมมิต)"],
     ],
 }
 
@@ -680,6 +683,8 @@ MANUAL = [
     {"t": "h1", "text": "คู่มือการใช้งานระบบ"},
     {"t": "center", "text": SYSTEM_NAME},
     {"t": "center", "text": "เว็บไซต์: " + LIVE_URL},
+    {"t": "center", "text": STUDENT_LINES[0]},
+    {"t": "center", "text": STUDENT_LINES[1]},
     {"t": "pagebreak"},
 
     {"t": "h1", "text": "1  ข้อมูลก่อนเริ่มใช้งาน"},
@@ -821,7 +826,7 @@ MANUAL = [
 # ================================ เนื้อหาสไลด์ (ไฟล์นำเสนอ.pptx) ==============================
 SLIDES = [
     {"kind": "title", "title": SYSTEM_NAME,
-     "sub": "ระบบจูเกะซ์สำหรับร้านกาแฟ — โครงงานภาคเรียน\n" + LIVE_URL},
+     "sub": "ระบบจูเกะซ์สำหรับร้านกาแฟ — โครงงานภาคเรียน\n" + LIVE_URL + "<br/>" + STUDENT_NAME + " | " + STUDENT_ID},
     {"kind": "bullets", "title": "ปัญหาที่ต้องการแก้ไข",
      "bullets": [
          "ลูกค้าต้องเดินมาที่เคาน์เตอร์เพื่อขอเพลง ทำให้คิวช้า",
@@ -1257,6 +1262,11 @@ def render_pdf(blocks, out_path, fonts, title, subtitle):
         "ทดสอบใช้งานได้ที่ %s<br/>ที่เก็บซอร์สโค้ด %s" % (LIVE_URL, GITHUB_URL),
         ParagraphStyle("c2", parent=sub_style, fontSize=10.5, leading=17)))
     story.append(Spacer(1, 24 * mm))
+    story.append(Spacer(1, 10 * mm))
+    for _line in STUDENT_LINES:
+        story.append(Paragraph(_line, ParagraphStyle(
+            "student", parent=sub_style, fontSize=13, leading=21)))
+    story.append(Spacer(1, 6 * mm))
     story.append(Paragraph(
         "รายงานโครงงาน<br/>เพื่อการส่งมอบและประเมินผล<br/>กำหนดส่ง %s" % SUBMIT_DATE,
         ParagraphStyle("c3", parent=sub_style, fontSize=12, leading=22)))
@@ -1423,6 +1433,8 @@ def render_docx(blocks, out_path, family, title, subtitle):
     para("ทดสอบใช้งานได้ที่ " + LIVE_URL, 11, False, WD_ALIGN_PARAGRAPH.CENTER, (0x47, 0x55, 0x69))
     para("ที่เก็บซอร์สโค้ด " + GITHUB_URL, 11, False, WD_ALIGN_PARAGRAPH.CENTER, (0x47, 0x55, 0x69))
     para("กำหนดส่ง " + SUBMIT_DATE, 11, False, WD_ALIGN_PARAGRAPH.CENTER, (0x47, 0x55, 0x69), 12)
+    for _line in STUDENT_LINES:
+        para(_line, 12, True, WD_ALIGN_PARAGRAPH.CENTER, (0x0F, 0x17, 0x2A))
     document.add_page_break()
 
     for blk in blocks:
