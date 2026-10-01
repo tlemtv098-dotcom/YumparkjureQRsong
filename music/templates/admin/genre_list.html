@@ -44,7 +44,7 @@
                             <td class="px-4 py-3 text-center text-sm text-slate-500 dark:text-slate-400">{{ genre.playlist_count }}</td>
                             <td class="px-4 py-3 text-right">
                                 <a href="{% url "genre_edit" genre.pk %}" class="text-amber-600 dark:text-amber-400 hover:text-amber-500 dark:hover:text-amber-300 text-sm font-semibold mr-3">แก้ไข</a>
-                                <button onclick="deleteGenre({{ genre.pk }})" class="text-red-600 dark:text-red-400 text-sm font-semibold hover:underline">ลบ</button>
+                                <button onclick="deleteGenre('{% url "genre_delete" genre.pk %}')" class="text-red-600 dark:text-red-400 text-sm font-semibold hover:underline">ลบ</button>
                             </td>
                         </tr>
                         {% empty %}
@@ -81,9 +81,9 @@
 </div>
 
 <script>
-function deleteGenre(genreId) {
+function deleteGenre(genreUrl) {
     if (!confirm("ยืนยันการลบแนวเพลงนี้?")) return;
-    fetch(`/admin/genres/${genreId}/delete/`, {
+    fetch(genreUrl, {
         method: "POST",
         headers: { "X-CSRFToken": getCSRFToken(), "Content-Type": "application/json" },
         credentials: "same-origin"

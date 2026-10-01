@@ -101,10 +101,10 @@
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-2">
                                     <a href="{% url "user_edit" user.pk %}" class="text-amber-600 dark:text-amber-400 hover:text-amber-500 dark:hover:text-amber-300 text-sm font-semibold">แก้ไข</a>
-                                    <button onclick="toggleUser({{ user.pk }})" class="text-sm font-semibold {% if user.is_active %}text-red-600 dark:text-red-400{% else %}text-green-600 dark:text-green-400{% endif %} hover:underline">
+                                    <button onclick="toggleUser('{% url "user_toggle_active" user.pk %}')" class="text-sm font-semibold {% if user.is_active %}text-red-600 dark:text-red-400{% else %}text-green-600 dark:text-green-400{% endif %} hover:underline">
                                         {% if user.is_active %}ปิด{% else %}เปิด{% endif %}
                                     </button>
-                                    <button onclick="deleteUser({{ user.pk }})" class="text-red-600 dark:text-red-400 text-sm font-semibold hover:underline">ลบ</button>
+                                    <button onclick="deleteUser('{% url "user_delete" user.pk %}')" class="text-red-600 dark:text-red-400 text-sm font-semibold hover:underline">ลบ</button>
                                 </div>
                             </td>
                         </tr>
@@ -142,9 +142,9 @@
 </div>
 
 <script>
-function toggleUser(userId) {
+function toggleUser(toggleUrl) {
     if (!confirm("ยืนยันการเปลี่ยนสถานะผู้ใช้นี้?")) return;
-    fetch(`/admin/users/${userId}/toggle/`, {
+    fetch(toggleUrl, {
         method: "POST",
         headers: { "X-CSRFToken": getCSRFToken(), "Content-Type": "application/json" },
         credentials: "same-origin"
@@ -154,9 +154,9 @@ function toggleUser(userId) {
     });
 }
 
-function deleteUser(userId) {
+function deleteUser(deleteUrl) {
     if (!confirm("ยืนยันการลบผู้ใช้นี้? จะไม่สามารถกู้คืนได้")) return;
-    fetch(`/admin/users/${userId}/delete/`, {
+    fetch(deleteUrl, {
         method: "POST",
         headers: { "X-CSRFToken": getCSRFToken(), "Content-Type": "application/json" },
         credentials: "same-origin"

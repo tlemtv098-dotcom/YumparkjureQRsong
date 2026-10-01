@@ -42,7 +42,7 @@
                             <td class="px-4 py-3 text-center text-sm text-slate-500 dark:text-slate-400">{{ tag.playlist_count }}</td>
                             <td class="px-4 py-3 text-right">
                                 <a href="{% url "tag_edit" tag.pk %}" class="text-amber-600 dark:text-amber-400 hover:text-amber-500 dark:hover:text-amber-300 text-sm font-semibold mr-3">แก้ไข</a>
-                                <button onclick="deleteTag({{ tag.pk }})" class="text-red-600 dark:text-red-400 text-sm font-semibold hover:underline">ลบ</button>
+                                <button onclick="deleteTag('{% url "tag_delete" tag.pk %}')" class="text-red-600 dark:text-red-400 text-sm font-semibold hover:underline">ลบ</button>
                             </td>
                         </tr>
                         {% empty %}
@@ -79,9 +79,9 @@
 </div>
 
 <script>
-function deleteTag(tagId) {
+function deleteTag(tagUrl) {
     if (!confirm("ยืนยันการลบแท็กนี้?")) return;
-    fetch(`/admin/tags/${tagId}/delete/`, {
+    fetch(tagUrl, {
         method: "POST",
         headers: { "X-CSRFToken": getCSRFToken(), "Content-Type": "application/json" },
         credentials: "same-origin"
