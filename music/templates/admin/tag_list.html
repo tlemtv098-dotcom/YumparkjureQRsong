@@ -40,9 +40,11 @@
                                 <p class="text-xs text-slate-500 dark:text-slate-400">slug: {{ tag.slug }}</p>
                             </td>
                             <td class="px-4 py-3 text-center text-sm text-slate-500 dark:text-slate-400">{{ tag.playlist_count }}</td>
-                            <td class="px-4 py-3 text-right">
-                                <a href="{% url "tag_edit" tag.pk %}" class="text-amber-600 dark:text-amber-400 hover:text-amber-500 dark:hover:text-amber-300 text-sm font-semibold mr-3">แก้ไข</a>
-                                <button onclick="deleteTag('{% url "tag_delete" tag.pk %}')" class="text-red-600 dark:text-red-400 text-sm font-semibold hover:underline">ลบ</button>
+                            <td class="px-4 py-3">
+                                <div class="flex items-center justify-end gap-2">
+                                    <a href="{% url "tag_edit" tag.pk %}" class="px-3 py-1.5 rounded-lg border text-sm font-semibold transition-colors border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40">แก้ไข</a>
+                                    <button onclick="deleteTag('{% url "tag_delete" tag.pk %}')" class="px-3 py-1.5 rounded-lg border text-sm font-semibold transition-colors border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40">ลบ</button>
+                                </div>
                             </td>
                         </tr>
                         {% empty %}
