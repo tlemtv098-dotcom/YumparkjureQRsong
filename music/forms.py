@@ -5,6 +5,29 @@ from django.core.exceptions import ValidationError
 from .models import Profile, Playlist, Genre, Tag, SongQueue
 
 
+INPUT_CLASS = (
+    "w-full border border-slate-300 dark:border-slate-600 bg-white "
+    "dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 "
+    "rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 "
+    "focus:ring-amber-400"
+)
+
+
+def style_password_fields(form, *names):
+    """Give password widgets the standard input styling.
+
+    UserCreationForm and PasswordChangeForm build their password fields from
+    SetPasswordMixin.create_password_fields(), which declares them as fields
+    rather than reading them off a model. A Meta.widgets entry therefore never
+    reaches them and they render with no class at all: no bg-white and no text
+    colour, so the typed value is white on white and invisible.
+    """
+    for name in names:
+        if name in form.fields:
+            form.fields[name].widget.attrs["class"] = INPUT_CLASS
+    return form
+
+
 class RegisterForm(UserCreationForm):
     """User registration form with email and role"""
     email = forms.EmailField(
@@ -59,17 +82,7 @@ class RegisterForm(UserCreationForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # password1/password2 come from SetPasswordMixin.create_password_fields
-        # as declared fields, so Meta.widgets never reaches them and they
-        # render unstyled: no bg-white and no text colour, leaving white text
-        # on a white background. Style them here instead.
-        for name in ("password1", "password2"):
-            self.fields[name].widget.attrs["class"] = (
-                "w-full border border-slate-300 dark:border-slate-600 bg-white "
-                "dark:bg-slate-700 text-slate-900 dark:text-white "
-                "placeholder-slate-400 rounded-xl px-3 py-3 text-sm "
-                "focus:outline-none focus:ring-2 focus:ring-amber-400"
-            )
+        style_password_fields(self, "password1", "password2")
 
     def clean_email(self):
         email = self.cleaned_data.get("email")
@@ -179,6 +192,11 @@ class UserCreateForm(UserCreationForm):
     every profile edit, so password fields on it would silently reset an
     existing user's password each time an admin touched the form.
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        style_password_fields(self, "password1", "password2")
+
     class Meta:
         model = User
         fields = ("username", "first_name", "last_name", "email", "is_active")

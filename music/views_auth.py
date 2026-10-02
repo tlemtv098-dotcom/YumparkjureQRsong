@@ -14,7 +14,7 @@ from django.db.models import Q, Count
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from .forms import (RegisterForm, ProfileForm, UserForm, UserCreateForm,
-                    ProfileRoleForm, GenreForm, TagForm)
+                    ProfileRoleForm, GenreForm, TagForm, style_password_fields)
 from .models import Profile, Playlist, Genre, Tag, SongQueue, BlockedVideo, GoodVideo
 
 
@@ -82,17 +82,18 @@ def profile_view(request):
 @login_required
 def change_password_view(request):
     """Change password"""
+    from django.contrib.auth.forms import PasswordChangeForm
     if request.method == "POST":
-        from django.contrib.auth.forms import PasswordChangeForm
         form = PasswordChangeForm(request.user, request.POST)
+        style_password_fields(form, "old_password", "new_password1", "new_password2")
         if form.is_valid():
             user = form.save()
             update_session_auth_hash(request, user)
             messages.success(request, "เปลี่ยนรหัสผ่านสำเร็จ")
             return redirect("profile")
     else:
-        from django.contrib.auth.forms import PasswordChangeForm
         form = PasswordChangeForm(request.user)
+        style_password_fields(form, "old_password", "new_password1", "new_password2")
     return render(request, "registration/change_password.html", {"form": form})
 
 
