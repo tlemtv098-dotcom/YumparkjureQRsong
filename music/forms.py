@@ -57,6 +57,20 @@ class RegisterForm(UserCreationForm):
             }),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # password1/password2 come from SetPasswordMixin.create_password_fields
+        # as declared fields, so Meta.widgets never reaches them and they
+        # render unstyled: no bg-white and no text colour, leaving white text
+        # on a white background. Style them here instead.
+        for name in ("password1", "password2"):
+            self.fields[name].widget.attrs["class"] = (
+                "w-full border border-slate-300 dark:border-slate-600 bg-white "
+                "dark:bg-slate-700 text-slate-900 dark:text-white "
+                "placeholder-slate-400 rounded-xl px-3 py-3 text-sm "
+                "focus:outline-none focus:ring-2 focus:ring-amber-400"
+            )
+
     def clean_email(self):
         email = self.cleaned_data.get("email")
         if User.objects.filter(email=email).exists():
