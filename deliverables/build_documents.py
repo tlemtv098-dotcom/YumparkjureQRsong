@@ -35,9 +35,9 @@ LIVE_URL = "https://yumpakjure.onrender.com/"
 GITHUB_URL = "https://github.com/tlemtv098-dotcom/YumparkjureQRsong"
 SYSTEM_NAME = "ระบบจูเกะซ์ร้าน KPP (Yum Jukebox)"
 SUBMIT_DATE = "15 ตุลาคม 2569 (15 October 2026)"
-STUDENT_NAME = "สุภวัฒน์ จันไพิตร"
+STUDENT_NAME = "สุภวัฒน์ จันไพจิตร"
 STUDENT_ID = "671320101"
-STUDENT_LINES = ["ชื่อ-นามสกุล นักศีมชา: สุภวัฒน์ จันไพิตร", "รหัสประจำตัวผู้เรียน: 671320101"]
+STUDENT_LINES = ["ชื่อ-นามสกุล นักศีมชา: สุภวัฒน์ จันไพจิตร", "รหัสประจำตัวผู้เรียน: 671320101"]
 
 ACCOUNTS = [
     ["admin", "12345678", "admin (superuser)", "ดูและัปเดอร์, แดชบอร์ด, จัดการผู้ใช้/แนวเพลง/แท็ก"],
