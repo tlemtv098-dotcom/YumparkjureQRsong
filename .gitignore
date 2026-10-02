@@ -46,3 +46,7 @@ test_write.txt
 # OpenChamber session metadata
 .openchamber/
 .superpowers/
+
+# Locally installed agent skills
+.agents/
+skills-lock.json
