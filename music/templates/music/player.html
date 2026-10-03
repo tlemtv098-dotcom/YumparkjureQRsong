@@ -410,9 +410,14 @@
                     <!-- ค้นหาเพลง -->
                     <div class="bg-white dark:bg-slate-800 shadow-md p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 relative">
                         <h3 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white mb-2">ค้นหาเพลง</h3>
-                        <div class="relative">
+                        <div class="relative flex gap-2">
                             <input type="text" id="manual-search" placeholder="พิมพ์ชื่อเพลงหรือศิลปิน..." aria-label="ค้นหาเพลง"
-                                   class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+                                   class="flex-1 min-w-0 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+                            <button type="button" id="manual-search-btn" onclick="hideSuggestions(); manualSearch();"
+                                    aria-label="ค้นหา"
+                                    class="shrink-0 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"></path></svg>
+                            </button>
                             <div id="search-suggestions" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"></div>
                         </div>
                         <p id="manual-loading" class="hidden text-xs text-slate-500 dark:text-slate-400 text-center py-2">AI กำลังช่วยค้นเพลง...</p>
@@ -1962,8 +1967,15 @@
                     suggestTimer = setTimeout(() => fetchSuggestions(q), 300);
                     manualSearchTimer = setTimeout(manualSearch, 500);
                 });
-                manualSearchInput.addEventListener("keypress", function(e) {
-                    if (e.key === "Enter") { hideSuggestions(); manualSearch(); }
+                // keydown, not keypress: keypress is deprecated and Chrome drops
+                // it for keys the IME or autofill owns, so Enter sometimes never
+                // reached manualSearch() and the results panel stayed empty.
+                manualSearchInput.addEventListener("keydown", function(e) {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        hideSuggestions();
+                        manualSearch();
+                    }
                 });
                 manualSearchInput.addEventListener("blur", () => setTimeout(hideSuggestions, 200));
                 // iOS Safari: prevent zoom on focus by ensuring 16px
