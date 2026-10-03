@@ -67,7 +67,10 @@ def register_view(request):
 @login_required
 def profile_view(request):
     """User profile view/edit"""
-    profile = request.user.profile
+    # get_or_create, not request.user.profile: users predating migration 0008
+    # have no Profile row, and the reverse accessor raises
+    # RelatedObjectDoesNotExist, which is a 500 rather than a page.
+    profile, _ = Profile.objects.get_or_create(user=request.user)
     if request.method == "POST":
         form = ProfileForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
