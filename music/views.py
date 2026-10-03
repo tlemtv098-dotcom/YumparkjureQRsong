@@ -199,17 +199,36 @@ def _check_rate_limit(request, limit=30, window=10):
     return True
 
 
+# Legacy single-key variable names, kept so existing deployments keep working.
+# Numbered variants (YOUTUBE_API_KEY_3, ...) are matched by pattern instead.
+YOUTUBE_KEY_ENV_NAMES = frozenset({
+    'YOUTUBE_API_KEYS', 'YOUTUBE_API_KEY', 'key', 'YOUTUBE_API_KEY_2',
+    'GOOGLE_API_KEY', 'GEMINI_API_KEY', 'GOOGLE_GENERATIVE_AI_API_KEY',
+})
+
+
 def _youtube_api_keys():
-    """Return ordered unique non-empty API keys from env (never log values)."""
+    """Return ordered unique non-empty API keys from env (never log values).
+
+    Discovers every YOUTUBE_API_KEY* name rather than a fixed list, so adding
+    YOUTUBE_API_KEY_3 in the hosting dashboard is picked up. A fixed tuple
+    silently ignored the numbered names, which made search return nothing
+    with no visible cause.
+    """
     keys = []
     for part in (os.environ.get('YOUTUBE_API_KEYS') or '').split(','):
         candidate = part.strip()
         if candidate and candidate not in keys:
             keys.append(candidate)
-    for env_name in ('YOUTUBE_API_KEY', 'key', 'YOUTUBE_API_KEY_2', 'GOOGLE_API_KEY', 'GEMINI_API_KEY', 'GOOGLE_GENERATIVE_AI_API_KEY'):
-        candidate = (os.environ.get(env_name) or '').strip()
-        if candidate and candidate not in keys:
-            keys.append(candidate)
+    for env_name, env_value in os.environ.items():
+        if not env_value:
+            continue
+        if env_name not in YOUTUBE_KEY_ENV_NAMES and not re.fullmatch(r'YOUTUBE_API_KEY_\d+', env_name):
+            continue
+        for part in str(env_value).split(','):
+            candidate = part.strip()
+            if candidate and candidate not in keys:
+                keys.append(candidate)
     return keys
 
 
