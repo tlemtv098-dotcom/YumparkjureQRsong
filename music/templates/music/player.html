@@ -1471,11 +1471,11 @@
         function toggleSearchPanel() {
             const panel = document.getElementById('search-panel');
             const btn = document.getElementById('search-toggle-btn');
-            if (panel.classList.contains('hidden')) {
-                panel.classList.remove('hidden');
-                btn.textContent = 'ปิดค้นหาเพลง';
-                fetchHits();
-            } else {
+    if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        btn.textContent = 'ปิดค้นหาเพลง';
+        loadHits(false);
+    } else {
                 panel.classList.add('hidden');
                 btn.textContent = 'ค้นหาเพลง / เลือกเพลงแนะนำ';
             }
@@ -1677,6 +1677,7 @@
                 .then(data => {
                     if (data.results && data.results.length > 0) {
                         const filtered = data.results.filter(s => !blockedVideoIds.has(s.id) && !isAI(s.title, s.channel));
+                        writeHitsCache(filtered);
                         hitSongs = filtered.slice(0, 30); renderHitList();
                         try {
                             filtered.forEach(s => { if (s && s.id) shownHitIds.add(s.id); });
@@ -1712,13 +1713,54 @@
                 .catch(err => { console.error(err); });
         }
 
+        // The recommendations panel fans out to several YouTube searches, each
+        // costing 100 units of a 10,000 unit daily quota. Reloading every 60s
+        // plus on every tab switch burned the whole day's quota in minutes and
+        // left manual search returning nothing. Cache the payload instead.
+        const HITS_CACHE_KEY = 'hitsCache';
+        const HITS_CACHE_TTL_MS = 15 * 60 * 1000;
+        let hitsCacheTimer = null;
+
+        function readHitsCache() {
+            try {
+                const raw = localStorage.getItem(HITS_CACHE_KEY);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                if (!parsed || !Array.isArray(parsed.results)) return null;
+                if (Date.now() - (parsed.at || 0) > HITS_CACHE_TTL_MS) return null;
+                return parsed.results;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function writeHitsCache(results) {
+            try {
+                localStorage.setItem(HITS_CACHE_KEY, JSON.stringify({ at: Date.now(), results }));
+            } catch (e) { /* quota or private mode: just skip caching */ }
+        }
+
+        // fresh=true means "give me something the user has not seen". A cached
+        // list has already been consumed, so fall through to the network.
+        function loadHits(fresh) {
+            const cached = (!fresh) ? readHitsCache() : null;
+            if (cached && cached.length > 0) {
+                hitSongs = cached.filter(s => !blockedVideoIds.has(s.id) && !isAI(s.title, s.channel));
+                renderHitList();
+                return;
+            }
+            fetchHits(fresh);
+        }
+
         document.addEventListener("DOMContentLoaded", function () {
             // Load recommendations independently of the YouTube iframe state.
-            fetchHits(true);
+            loadHits(false);
             fetchRandomPool();
         });
-        setInterval(fetchHits, 60000);
-        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') fetchHits(); });
+        setInterval(() => loadHits(false), HITS_CACHE_TTL_MS);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') loadHits(false);
+        });
 
         function renderHitList() {
             const container = document.getElementById("hit-list");
@@ -1946,7 +1988,7 @@
                             }
                         }, 300);
                     });
-                    fetchHits();
+                    loadHits(false);
             })
             .catch(err => {
                 if (err && err.data) {
