@@ -337,9 +337,12 @@ def dashboard_view(request):
     ).filter(song_count__gt=0).order_by("-song_count")[:5]
 
     # Daily queue stats (last 7 days)
+    # localdate(), not now().date(): with USE_TZ the latter yields the UTC
+    # date, while a created_at__date lookup converts to TIME_ZONE. Around
+    # midnight UTC+7 that lands on different days and every bucket reads 0.
     daily_stats = []
     for i in range(7):
-        day = timezone.now().date() - timedelta(days=i)
+        day = timezone.localdate() - timedelta(days=i)
         count = SongQueue.objects.filter(created_at__date=day).count()
         daily_stats.append({"date": day.strftime("%d/%m"), "count": count})
     daily_stats.reverse()
@@ -354,7 +357,7 @@ def dashboard_view(request):
         {"status": "รอเล่น", "count": SongQueue.objects.filter(is_played=False).count()},
         {"status": "เล่นแล้ว", "count": SongQueue.objects.filter(is_played=True).count()},
         {"status": "คิวหน้า", "count": SongQueue.objects.filter(is_played=False).order_by("created_at")[:5].count()},
-        {"status": "เล่นแล้ววันนี้", "count": SongQueue.objects.filter(is_played=True, created_at__date=timezone.now().date()).count()},
+        {"status": "เล่นแล้ววันนี้", "count": SongQueue.objects.filter(is_played=True, created_at__date=timezone.localdate()).count()},
     ]
 
     context = {
@@ -398,7 +401,7 @@ def dashboard_stats_api(request):
     
     daily_stats = []
     for i in range(period):
-        day = timezone.now().date() - timedelta(days=i)
+        day = timezone.localdate() - timedelta(days=i)
         count = SongQueue.objects.filter(created_at__date=day).count()
         daily_stats.append({"date": day.strftime("%d/%m"), "count": count})
     daily_stats.reverse()
@@ -411,7 +414,7 @@ def dashboard_stats_api(request):
         {"status": "รอเล่น", "count": SongQueue.objects.filter(is_played=False).count()},
         {"status": "เล่นแล้ว", "count": SongQueue.objects.filter(is_played=True).count()},
         {"status": "คิวหน้า", "count": SongQueue.objects.filter(is_played=False).order_by("created_at")[:5].count()},
-        {"status": "เล่นแล้ววันนี้", "count": SongQueue.objects.filter(is_played=True, created_at__date=timezone.now().date()).count()},
+        {"status": "เล่นแล้ววันนี้", "count": SongQueue.objects.filter(is_played=True, created_at__date=timezone.localdate()).count()},
     ]
     
     return JsonResponse({
