@@ -1485,11 +1485,18 @@
         let manualSearchResults = [];
         let manualSearchTimer = null;
         let manualSearchAbort = null;
+        let manualSearchSeq = 0;
         let suggestTimer = null;
 
         function manualSearch() {
             const query = document.getElementById("manual-search").value.trim();
             if (!query) return;
+            // Typing already schedules a search, so pressing the button (or Enter)
+            // fires a second one. The first request is aborted, but its catch
+            // handler still ran afterwards and cleared the container the newer
+            // request had already filled. The sequence number lets a superseded
+            // request bail out before touching the DOM.
+            const seq = ++manualSearchSeq;
             document.getElementById("manual-loading").classList.remove("hidden");
             document.getElementById("manual-results").innerHTML = "";
             hideSuggestions();
@@ -1504,6 +1511,8 @@
                 .then(res => { if (!res.ok) throw new Error("search failed: " + res.status); return res.json(); })
                 .then(data => {
                     clearTimeout(manualSearchTimeoutId);
+                    // A newer search has taken over; leave its results alone.
+                    if (seq !== manualSearchSeq) return;
                     document.getElementById("manual-loading").classList.add("hidden");
                     manualSearchResults = data.results.filter(song => !blockedVideoIds.has(song.id) && !isAI(song.title, song.channel));
                     const container = document.getElementById("manual-results");
@@ -1537,6 +1546,9 @@
                 })
                 .catch(err => {
                     clearTimeout(manualSearchTimeoutId);
+                    // Same guard as the success path: an aborted predecessor must
+                    // not hide the loading text or clear results it never owned.
+                    if (seq !== manualSearchSeq) return;
                     document.getElementById("manual-loading").classList.add("hidden");
                     if (err && err.name === "AbortError") return;
                     if (!isRetry) {
