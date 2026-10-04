@@ -1553,6 +1553,13 @@
                 .catch(err => {
                     clearTimeout(manualSearchTimeoutId);
                     console.warn("manualSearch: request failed", { seq, current: manualSearchSeq, name: err && err.name, msg: String(err && err.message || err).slice(0, 120) });
+                    // Our own 8s guard aborting the request is not a failure worth
+                    // retrying; the retry below re-issued the same query and just
+                    // burned more quota while the user saw an empty panel.
+                    if (err && err.name === "AbortError" && seq === manualSearchSeq) {
+                        const container = document.getElementById("manual-results");
+                        container.innerHTML = '<p class="text-xs text-slate-500 dark:text-slate-400 text-center py-2">ค้นหาใช้เวลานานเกินไป ลองอีกครั้ง</p>';
+                    }
                     // Same guard as the success path: an aborted predecessor must
                     // not hide the loading text or clear results it never owned.
                     if (seq !== manualSearchSeq) return;

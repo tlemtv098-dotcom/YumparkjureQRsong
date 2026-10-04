@@ -347,6 +347,32 @@ def embed_test(request):
 def request_view(request):
     return render(request, 'music/request.html', {'APP_VERSION': os.environ.get('RENDER_GIT_COMMIT', 'dev')[:7]})
 
+def _local_song_search(query, limit=5):
+    """Search songs already stored in the database. Costs no API quota.
+
+    Doubles as the fallback when the YouTube quota is spent, so the search box
+    keeps returning something instead of an empty panel.
+    """
+    from .models import SongQueue
+
+    matches = SongQueue.objects.filter(title__icontains=query)[:limit * 3]
+    results = []
+    seen = set()
+    for song in matches:
+        if song.video_id in seen or _is_blocked(song.video_id):
+            continue
+        seen.add(song.video_id)
+        results.append({
+            'id': song.video_id,
+            'title': song.title,
+            'channel': song.channel or 'ในระบบ',
+            'thumbnail': song.thumbnail or '',
+        })
+        if len(results) >= limit:
+            break
+    return results
+
+
 def search_song(request):
     query = request.GET.get('q', '').strip()
     if not query:
@@ -354,7 +380,12 @@ def search_song(request):
     results = search_youtube(query, 5)
     # filter blocked and ai/non_music
     results = [r for r in results if not _is_blocked(r["id"]) and not _is_ai_title(r.get("title",""), r.get("channel","")) and not _is_non_music(r.get("title",""), r.get("channel",""))]
-    return JsonResponse({"results": results})
+    source = 'youtube'
+    if not results:
+        # Quota spent or the key rejected: fall back to what we already have.
+        results = _local_song_search(query, 5)
+        source = 'local'
+    return JsonResponse({"results": results, "source": source})
 
 def suggest_song(request):
     query = request.GET.get('q', '').strip().lower()

@@ -41,18 +41,22 @@ class PlayerSearchRaceTests(TestCase):
         self.assertIn("const seq = ++manualSearchSeq;", html)
 
     def test_success_handler_ignores_a_superseded_response(self):
-        html = self.playerHtml()
-        handler = re.search(
-            r'\.then\(data => \{.*?manualSearchResults = data\.results', html, re.S
-        ).group(0)
+        block = self.manualSearchBlock()
+        handler = block[block.index(".then(data => {"):]
         self.assertIn(
-            "if (seq !== manualSearchSeq) return;", handler,
+            "if (seq !== manualSearchSeq)", handler,
             "a stale response would clear the newer results",
         )
         # The guard has to come before the container is written.
         self.assertLess(
-            handler.index("if (seq !== manualSearchSeq) return;"),
+            handler.index("if (seq !== manualSearchSeq)"),
             handler.index("manualSearchResults = data.results"),
+        )
+        # ...and the guard must actually return, not just be mentioned.
+        guard = handler[handler.index("if (seq !== manualSearchSeq)"):]
+        self.assertLess(
+            guard.index("return;"), guard.index("manualSearchResults"),
+            "the guard does not stop the stale response",
         )
 
     def manualSearchBlock(self):
