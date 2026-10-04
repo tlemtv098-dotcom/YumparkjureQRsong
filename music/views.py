@@ -255,7 +255,10 @@ def youtube_api_search(query, max_results=8):
         try:
             with urllib.request.urlopen(
                 f'https://www.googleapis.com/youtube/v3/search?{params}',
-                timeout=8,
+                # The client cancels after 120s, so a single key gets a matching
+                # budget. 8s was short enough that a cold Render instance, where
+                # this call measured 55s, aborted before the answer arrived.
+                timeout=25,
             ) as response:
                 payload = json.loads(response.read().decode('utf-8'))
         except urllib.error.HTTPError as exc:

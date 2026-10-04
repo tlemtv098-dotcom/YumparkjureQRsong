@@ -1505,7 +1505,10 @@
             function manualSearchRetry(isRetry) {
                 const manualController = new AbortController();
                 manualSearchAbort = manualController;
-                const manualSearchTimeoutId = setTimeout(() => manualController.abort(), 8000);
+                // 8s aborted every search: the endpoint calls the YouTube API for
+                // up to 8 keys and measured 55s on a cold Render instance, so the
+                // request was cancelled before it could ever answer.
+                const manualSearchTimeoutId = setTimeout(() => manualController.abort(), 120000);
 
                 fetch("/api/search/?q=" + encodeURIComponent(query), { signal: manualController.signal })
                 .then(res => { if (!res.ok) throw new Error("search failed: " + res.status); return res.json(); })
