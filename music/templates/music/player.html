@@ -1515,21 +1515,15 @@
                 .then(data => {
                     clearTimeout(manualSearchTimeoutId);
                     // A newer search has taken over; leave its results alone.
-                    if (seq !== manualSearchSeq) {
-                        console.warn("manualSearch: stale response discarded", { seq, current: manualSearchSeq });
-                        return;
-                    }
+                    if (seq !== manualSearchSeq) return;
                     document.getElementById("manual-loading").classList.add("hidden");
-                    const rawCount = (data.results || []).length;
                     manualSearchResults = data.results.filter(song => !blockedVideoIds.has(song.id) && !isAI(song.title, song.channel));
                     const container = document.getElementById("manual-results");
                     container.innerHTML = "";
                     if (manualSearchResults.length === 0) {
                         container.innerHTML = '<p class="text-xs text-slate-500 dark:text-slate-400 text-center py-2">ไม่พบเพลงที่ตรงกับคำค้น ลองคำอื่นดูนะ</p>';
-                        console.warn("manualSearch: everything was filtered out", { rawCount });
                         return;
                     }
-                    console.info("manualSearch: rendering", { seq, kept: manualSearchResults.length, of: rawCount });
                     manualSearchResults.forEach((song, idx) => {
                         container.innerHTML += `
                             <div class="bg-white dark:bg-slate-700 shadow-md p-2 rounded-xl border border-slate-200 dark:border-slate-600 flex flex-wrap items-center gap-2">
@@ -1555,8 +1549,7 @@
                 })
                 .catch(err => {
                     clearTimeout(manualSearchTimeoutId);
-                    console.warn("manualSearch: request failed", { seq, current: manualSearchSeq, name: err && err.name, msg: String(err && err.message || err).slice(0, 120) });
-                    // Our own 8s guard aborting the request is not a failure worth
+                    // Our own timeout aborting the request is not a failure worth
                     // retrying; the retry below re-issued the same query and just
                     // burned more quota while the user saw an empty panel.
                     if (err && err.name === "AbortError" && seq === manualSearchSeq) {
