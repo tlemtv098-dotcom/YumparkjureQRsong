@@ -269,7 +269,7 @@
                 .then(res => { if (!res.ok) throw new Error('Hits '+res.status); return res.json(); })
                 .then(data => {
                     if (data.results && data.results.length > 0) {
-                        hitSongs = filterBlockedSongs(data.results).slice(0, 15);
+                        hitSongs = filterBlockedSongs(data.results).slice(0, 6);
                         renderHitList();
                     }
                 })
@@ -304,7 +304,7 @@
                         container.innerHTML = '<p class="text-sm text-slate-500 text-center py-3">ไม่พบเพลงที่เล่นได้ ลองคำค้นอื่น</p>';
                         return;
                     }
-                    searchResults.forEach((song, idx) => {
+                    searchResults.slice(0, 6).forEach((song, idx) => {
                         container.innerHTML += `
                             <div class="bg-white dark:bg-slate-700 shadow-md p-3 rounded-xl border border-slate-200 dark:border-slate-600 flex items-center gap-3">
                                 <img src="${song.thumbnail}" onerror="this.onerror=null;this.src='/static/music/img/logo.jpg'" alt="ปกเพลง ${escapeHtml(song.title)}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
