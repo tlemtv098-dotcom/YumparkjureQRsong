@@ -877,7 +877,7 @@ def clear_blocked(request):
 def my_songs(request):
     client_id = request.GET.get('client_id', '')
     songs = SongQueue.objects.filter(client_id=client_id, is_played=False).values(
-        'id', 'title', 'video_id', 'thumbnail', 'channel', 'audio_url'
+        'id', 'title', 'video_id', 'thumbnail', 'channel', 'audio_url', 'requested_by'
     )
     return JsonResponse({'songs': list(songs)})
 

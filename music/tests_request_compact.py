@@ -24,3 +24,26 @@ class RequestCompactTests(TestCase):
         html = self.page()
         self.assertIn('id="requester-name"', html)
         self.assertIn("jukebox_requester_name", html)
+
+    def test_my_songs_api_returns_requester_name(self):
+        from music.models import SongQueue
+        SongQueue.objects.create(
+            title="t", video_id="abcdefghijk", requested_by="มิน",
+            client_id="naming-case-1",
+        )
+        payload = self.client.get("/api/my-songs/", {"client_id": "naming-case-1"}).json()
+        self.assertEqual(payload["songs"][0]["requested_by"], "มิน")
+
+    def test_add_stores_custom_requester_name(self):
+        from music.models import SongQueue
+        self.client.post(
+            "/api/add/", data={"title": "t2", "video_id": "abcdefghij1",
+                                "requested_by": "มิน", "client_id": "naming-case-2"},
+            content_type="application/json",
+        )
+        self.assertEqual(
+            SongQueue.objects.get(video_id="abcdefghij1").requested_by, "มิน")
+
+    def test_my_songs_rows_render_the_name(self):
+        html = self.page()
+        self.assertIn("song.requested_by", html)
