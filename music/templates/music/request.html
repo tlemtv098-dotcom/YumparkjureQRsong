@@ -146,6 +146,11 @@
 
         <div class="bg-slate-50 dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 mb-4">
             <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white mb-3">ค้นหาเพลง</h2>
+            <div class="mb-2">
+                <label for="requester-name" class="sr-only">ชื่อของคุณ</label>
+                <input type="text" id="requester-name" placeholder="ชื่อของคุณ..." aria-label="ชื่อของคุณ"
+                       class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 rounded-xl px-3 sm:px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+            </div>
             <div class="flex gap-2 sm:gap-3 mb-1">
                 <div class="relative flex-1 min-w-0">
                     <label for="searchInput" class="sr-only">ค้นหาเพลง</label>
@@ -163,6 +168,11 @@
         </div>
 
         <div class="bg-slate-50 dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 mb-4">
+            <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white mb-3">เพลงที่ฉันขอ</h2>
+            <div id="my-songs-list" class="space-y-2"></div>
+        </div>
+
+        <div class="bg-slate-50 dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 mb-4">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white">เพลงแนะนำ / เพลงฮิต</h2>
                 <button id="refresh-hits" onclick="fetchHits()"
@@ -171,11 +181,6 @@
                 </button>
             </div>
             <div id="hit-list" class="space-y-2"></div>
-        </div>
-
-        <div class="bg-slate-50 dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 mb-4">
-            <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white mb-3">เพลงที่ฉันขอ</h2>
-            <div id="my-songs-list" class="space-y-2"></div>
         </div>
     </div>
 
@@ -341,6 +346,8 @@
         }
 
         function requestSongData(song) {
+            var nameInput = document.getElementById("requester-name");
+            var requesterName = (nameInput && nameInput.value.trim()) || localStorage.getItem("jukebox_requester_name") || "ลูกค้าในร้าน";
             fetch("/api/add/", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
@@ -350,7 +357,7 @@
                     video_id: song.id,
                     thumbnail: song.thumbnail,
                     channel: song.channel,
-                    requested_by: "ลูกค้าในร้าน",
+                    requested_by: requesterName,
                     client_id: clientId
                 })
             })
@@ -496,6 +503,13 @@
             if (isLineWebView) {
                 const b = document.getElementById('webview-banner');
                 if (b) b.classList.remove('hidden');
+            }
+            var nameInput = document.getElementById("requester-name");
+            if (nameInput) {
+                try { nameInput.value = localStorage.getItem("jukebox_requester_name") || ""; } catch (e) {}
+                nameInput.addEventListener("change", function () {
+                    try { localStorage.setItem("jukebox_requester_name", nameInput.value); } catch (e) {}
+                });
             }
             renderHitList();
             fetchNowPlaying();

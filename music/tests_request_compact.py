@@ -14,3 +14,13 @@ class RequestCompactTests(TestCase):
     def test_search_results_cap_at_six(self):
         html = self.page()
         self.assertIn("searchResults.slice(0, 6).forEach", html)
+
+    def test_single_my_songs_panel_sits_below_search(self):
+        html = self.page()
+        self.assertEqual(html.count('id="my-songs-list"'), 1)
+        self.assertLess(html.index('id="my-songs-list"'), html.index('id="hit-list"'))
+
+    def test_name_input_is_persisted(self):
+        html = self.page()
+        self.assertIn('id="requester-name"', html)
+        self.assertIn("jukebox_requester_name", html)
