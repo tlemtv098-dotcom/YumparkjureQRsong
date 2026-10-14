@@ -2,6 +2,11 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Build-time environment variables (needed for collectstatic)
+ENV SECRET_KEY=build-time-secret-key-for-collectstatic-only
+ENV DEBUG=False
+ENV DATABASE_URL=sqlite:///tmp/build.db
+
 # Dependencies first so the layer caches across code changes.
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
